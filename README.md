@@ -14,6 +14,9 @@
   <img src="https://img.shields.io/badge/Swift-5-orange.svg" alt="Swift 5">
 </p>
 
+> [!NOTE]
+> **いまは β 版です。** 思わぬ不具合があるかもしれません。見つけたら [Issues](https://github.com/yzanbo/pinshot/issues) で教えてください。操作や設定の保存形式は、正式版までに変わることがあります。
+
 > **English:** Pinshot is a macOS menu bar app that captures part of your screen and keeps it floating above other windows. You can annotate the floating image with arrows, text, numbered markers, mosaic, and more, then copy or save it. The UI is currently in Japanese.
 
 ## できること
@@ -29,7 +32,7 @@
 
 ## ダウンロード
 
-[Releases](https://github.com/yzanbo/pinshot/releases) から `Pinshot-<版>.zip` をダウンロードして開き、`Pinshot.app` をアプリケーションフォルダに入れてください。Intel と Apple Silicon のどちらの Mac でも動きます。
+[Releases](https://github.com/yzanbo/pinshot/releases) から `Pinshot-<版>.dmg` をダウンロードして開き、`Pinshot` を `Applications`（アプリケーションフォルダ）へドラッグしてください（`.zip` もあります。展開して `Pinshot.app` を入れる形で、中身は同じです）。Intel と Apple Silicon のどちらの Mac でも動きます。
 
 Apple の公証を受けていない（アドホック署名の）アプリなので、初めて開くときに「開発元を確認できない」と止められます。次のどれかで開けます。
 
@@ -87,8 +90,8 @@ make uninstall
 | `make build` | 開発用にビルドするだけ |
 | `make test` | テストを動かす（アプリは起動しない） |
 | `make install` | 配布用にビルドして `/Applications` に入れる |
-| `make dist` | Releases に置く zip（`dist/Pinshot-<版>.zip`）を作る（アドホック署名） |
-| `make publish` | zip を作り、GitHub に Release（タグ `v<版>`）を作ってアップロードする |
+| `make dist` | Releases に置く DMG と zip（`dist/Pinshot-<版>.dmg`・`.zip`）を作る（アドホック署名） |
+| `make publish` | DMG と zip を作り、GitHub に Release（タグ `v<版>`）を作ってアップロードする。β 版は `make publish BETA=1`（タグ `v<版>-beta.1`・プレリリース） |
 | `make stop` | 動いている Pinshot を終了する |
 | `make generate` | `Pinshot.xcodeproj` を作るだけ（Xcode で開くとき） |
 | `make icon` | アプリのアイコンを描き直す（`scripts/make-app-icon.swift` を変えたとき） |

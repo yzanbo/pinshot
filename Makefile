@@ -5,7 +5,12 @@ RELEASE_APP := $(DERIVED_DATA)/Build/Products/Release/Pinshot.app
 INSTALL_DIR ?= /Applications
 # アプリの版（project.yml の CFBundleShortVersionString）
 VERSION := $(shell sed -n 's/.*CFBundleShortVersionString: *"\(.*\)"/\1/p' project.yml)
-DIST_ZIP := dist/Pinshot-$(VERSION).zip
+# β 版として出すときは BETA=1 のように番号を渡す（タグは v0.1.0-beta.1、GitHub ではプレリリースにする）
+BETA ?=
+RELEASE_NAME := $(VERSION)$(if $(BETA),-beta.$(BETA))
+DIST_BASE := dist/Pinshot-$(RELEASE_NAME)
+DIST_ZIP := $(DIST_BASE).zip
+DIST_DMG := $(DIST_BASE).dmg
 
 # 「Pinshot Dev」の証明書があればそれで署名する（なければアドホック署名）。
 # 毎回同じ証明書で署名すると、画面収録の許可がビルドし直しても外れない。
@@ -42,20 +47,30 @@ install: release stop
 uninstall: stop
 	rm -rf "$(INSTALL_DIR)/Pinshot.app"
 
-# GitHub の Releases に置く zip を作る（dist/Pinshot-版.zip）。
+# GitHub の Releases に置く DMG と zip を作る（dist/Pinshot-版.dmg・.zip・.sha256）。
+# DMG は、開くと Pinshot.app とアプリケーションフォルダが並び、ドラッグで入れられる形にする。
 # 自己署名の証明書はほかの Mac では意味がないので、配る版はいつもアドホック署名にする
 dist:
 	$(MAKE) release SIGN_IDENTITY=-
 	mkdir -p dist
 	ditto -c -k --sequesterRsrc --keepParent "$(RELEASE_APP)" "$(DIST_ZIP)"
-	cd dist && shasum -a 256 "Pinshot-$(VERSION).zip" > "Pinshot-$(VERSION).zip.sha256"
+	rm -rf dist/dmg-root
+	mkdir -p dist/dmg-root
+	ditto "$(RELEASE_APP)" dist/dmg-root/Pinshot.app
+	ln -s /Applications dist/dmg-root/Applications
+	hdiutil create -volname "Pinshot" -srcfolder dist/dmg-root -ov -format UDZO "$(DIST_DMG)"
+	rm -rf dist/dmg-root
+	cd dist && shasum -a 256 "Pinshot-$(RELEASE_NAME).dmg" "Pinshot-$(RELEASE_NAME).zip" > "Pinshot-$(RELEASE_NAME).sha256"
 	@echo ""
-	@echo "$(DIST_ZIP) を作りました（版: $(VERSION)）"
+	@echo "$(DIST_DMG) と $(DIST_ZIP) を作りました（版: $(RELEASE_NAME)）"
 
-# zip を作り、GitHub に Release（タグ v版）を作ってアップロードする（GitHub CLI を使う）
+# DMG と zip を作り、GitHub に Release（タグ v版）を作ってアップロードする（GitHub CLI を使う）。
+# β 版のときは、説明の先頭に β 版の注意を付け、プレリリースにする
 publish: dist
-	gh release create "v$(VERSION)" "$(DIST_ZIP)" "$(DIST_ZIP).sha256" \
-		--target main --title "Pinshot $(VERSION)" --notes-file scripts/release-notes.md
+	( $(if $(BETA),cat scripts/release-notes-beta.md; echo;) cat scripts/release-notes.md ) > dist/release-notes.md
+	gh release create "v$(RELEASE_NAME)" "$(DIST_DMG)" "$(DIST_ZIP)" "$(DIST_BASE).sha256" \
+		--target main --title "Pinshot $(RELEASE_NAME)$(if $(BETA), (β 版))" $(if $(BETA),--prerelease) \
+		--notes-file dist/release-notes.md
 
 # テストを動かす（アプリは起動しない）。
 # xcodebuild test は端末によっては動かないので、ビルドしてから xctest で直接動かす
