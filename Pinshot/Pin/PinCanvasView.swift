@@ -96,8 +96,14 @@ final class PinCanvasView: NSView, NSTextFieldDelegate, NSDraggingSource {
     let closeButton = PinCloseButton(frame: NSRect(x: 6, y: 6, width: 20, height: 20))
     private let hud = HUDView(frame: .zero)
     var quickBar: FirstMouseHostingView<QuickActionBar>?
-    private var quickBarStyle: QuickBarStyle = .full
     var selectionBar: NSView?
+
+    // 画像がとても小さく、中に入らない部品を、画像の外に出すウィンドウ（PinCanvasView+Outside.swift）
+    var outsideClose: PinAccessory?
+    var outsideQuickBar: PinAccessory?
+    var outsideHUD: PinAccessory?
+    var outsideHUDView: HUDView?
+    var outsideSelectionBar: PinAccessory?
 
     init(image: CGImage, imageSize: CGSize, state: EditorState) {
         self.baseImage = image
@@ -119,7 +125,7 @@ final class PinCanvasView: NSView, NSTextFieldDelegate, NSDraggingSource {
     /// マウスを乗せたときの操作バー（コントローラーをつないだあとに作る）
     private func makeQuickBarIfNeeded() {
         guard quickBar == nil, let controller else { return }
-        let bar = FirstMouseHostingView(rootView: makeQuickActionBar(appearance: controller.appearance, style: quickBarStyle))
+        let bar = FirstMouseHostingView(rootView: makeQuickActionBar(appearance: controller.appearance))
         bar.frame.size = bar.fittingSize
         // 下の真ん中に固定（flipped なので上の余白を伸ばす）
         bar.autoresizingMask = [.minXMargin, .maxXMargin, .minYMargin]
@@ -133,6 +139,7 @@ final class PinCanvasView: NSView, NSTextFieldDelegate, NSDraggingSource {
         let shouldShow = state.isEditing && !selection.isEmpty && moveStart == nil && handleDrag == nil && textField == nil
         guard shouldShow else {
             selectionBar?.isHidden = true
+            outsideSelectionBar?.hide()
             return
         }
         if selectionBar == nil {
@@ -147,6 +154,13 @@ final class PinCanvasView: NSView, NSTextFieldDelegate, NSDraggingSource {
             selectionBar = bar
         }
         guard let bar = selectionBar else { return }
+        if bounds.width < bar.frame.width + 8 || bounds.height < bar.frame.height + 8 {
+            // 画像の中に入らないときは、画像の上に出す（編集中はツールバーが下に出るので、上にする）
+            bar.isHidden = true
+            showOutsideSelectionBar()
+            return
+        }
+        outsideSelectionBar?.hide()
         let rects = selectedIndices.map { viewRect(annotations[$0].bounds) }
         guard let first = rects.first else { return }
         let union = rects.dropFirst().reduce(first) { $0.union($1) }
@@ -161,10 +175,9 @@ final class PinCanvasView: NSView, NSTextFieldDelegate, NSDraggingSource {
         bar.isHidden = false
     }
 
-    private func makeQuickActionBar(appearance: PinAppearance, style: QuickBarStyle) -> QuickActionBar {
+    func makeQuickActionBar(appearance: PinAppearance) -> QuickActionBar {
         QuickActionBar(
             appearance: appearance,
-            style: style,
             edit: { [weak self] in self?.controller?.setEditing(true) },
             setOpacity: { [weak self] value in self?.controller?.setOpacity(CGFloat(value)) },
             copy: { [weak self] in self?.controller?.copyToPasteboard() },
@@ -173,33 +186,11 @@ final class PinCanvasView: NSView, NSTextFieldDelegate, NSDraggingSource {
         )
     }
 
-    /// 形ごとの操作バーの大きさ（一度だけ測る）
-    private static var quickBarSizes: [QuickBarStyle: NSSize] = [:]
-
-    private static func quickBarSize(_ style: QuickBarStyle) -> NSSize {
-        if let size = quickBarSizes[style] { return size }
-        let probe = NSHostingView(rootView: QuickActionBar(
-            appearance: PinAppearance(opacity: 1),
-            style: style,
-            edit: {}, setOpacity: { _ in }, copy: {}, save: {}, more: {}
-        ))
-        let size = probe.fittingSize
-        quickBarSizes[style] = size
-        return size
-    }
-
-    /// 画像の大きさに入りきる中で、いちばん多くのボタンを出せる形を選ぶ（入らなくても、編集ボタンだけは出す）
-    private func fittingQuickBarStyle() -> QuickBarStyle {
-        for style in QuickBarStyle.widestFirst where style != .minimal {
-            let size = Self.quickBarSize(style)
-            // 文字付きの形は、画像の下の方に置いても絵を隠しすぎない高さがあるときだけ
-            let neededHeight = style == .compact ? size.height + 12 : size.height + 40
-            if bounds.width >= size.width + 16, bounds.height >= neededHeight {
-                return style
-            }
-        }
-        return .minimal
-    }
+    /// 操作バーの大きさ（一度だけ測る）
+    static let quickBarSize: NSSize = NSHostingView(rootView: QuickActionBar(
+        appearance: PinAppearance(opacity: 1),
+        edit: {}, setOpacity: { _ in }, copy: {}, save: {}, more: {}
+    )).fittingSize
 
     private func layoutQuickBar() {
         guard let bar = quickBar else { return }
@@ -286,31 +277,44 @@ final class PinCanvasView: NSView, NSTextFieldDelegate, NSDraggingSource {
 
     /// ×・編集ボタン・操作バーの表示を、設定・マウスの位置・編集中かどうかに合わせる
     func updateChrome() {
+        // マウスを乗せたときだけ出す設定では、画像の外に出した部品の上にマウスがあるときも「乗せている」とみなす
+        let hovering = isHovering || isHoveringOutsideParts
         let visible: Bool = switch settings.closeButtonMode {
         case .always: true
-        case .hover: isHovering
+        case .hover: hovering
         case .hidden: false
         }
-        closeButton.isHidden = !(visible && bounds.width >= 44 && bounds.height >= 32 && !state.isEditing)
+        let editing = state.isEditing
+        let clickThrough = controller?.isClickThrough ?? false
+        // 画像の外の部品は、マウスを乗せたときだけ出す設定では、画像から部品へマウスを動かす間に消えないよう、少し待って隠す
+        let hideDelay: TimeInterval = settings.closeButtonMode == .hover ? 0.6 : 0
 
+        // ×：中に入らないほど小さいときは、画像の左に出す
+        let closeFits = bounds.width >= 44 && bounds.height >= 32
+        closeButton.isHidden = !(visible && closeFits && !editing)
+        updateOutsideClose(visible: visible && !closeFits && !editing && !clickThrough, hideDelay: hideDelay)
+
+        // 操作バー：画像の中に入りきらなくなったら、小さくせずに画像の下（外）に出す
         if settings.showsQuickActions { makeQuickBarIfNeeded() }
+        let showsBar = settings.showsQuickActions && visible && !editing
+        let barFits = quickBarFitsInside
         if let bar = quickBar {
-            // 狭いときも消さずに、ボタンを減らした形にする（編集ボタンはいつも残す）
-            let style = fittingQuickBarStyle()
-            if style != quickBarStyle, let controller {
-                quickBarStyle = style
-                bar.rootView = makeQuickActionBar(appearance: controller.appearance, style: style)
-                bar.frame.size = bar.fittingSize
-            }
-            bar.isHidden = !(settings.showsQuickActions && visible && !state.isEditing)
+            bar.isHidden = !(showsBar && barFits)
             layoutQuickBar()
         }
+        updateOutsideQuickBar(visible: showsBar && !barFits && !clickThrough, hideDelay: hideDelay)
         updateSelectionBar()
         needsDisplay = true
     }
 
+    /// 拡大率・不透明度・「コピーしました」などを出す（画像の中に入らないときは、画像の上に出す）
     func showHUD(_ text: String, progress: Double? = nil) {
-        hud.show(text, progress: progress, in: self)
+        let size = HUDView.size(for: text, progress: progress)
+        if bounds.width >= size.width + 8, bounds.height >= size.height + 8 {
+            hud.show(text, progress: progress, in: self)
+        } else {
+            showOutsideHUD(text, progress: progress, size: size)
+        }
     }
 
     override func setFrameSize(_ newSize: NSSize) {

@@ -21,6 +21,18 @@ final class HUDView: NSView {
     private let label = NSTextField(labelWithString: "")
     private let gauge = HUDGaugeView(frame: .zero)
     private var generation = 0
+    /// 消え終わったとき（画像の外に出しているときに、その窓を片付けるのに使う）
+    var onFadeOut: (() -> Void)?
+
+    /// text と progress を出すときの大きさ
+    static func size(for text: String, progress: Double?) -> NSSize {
+        let label = NSTextField(labelWithString: text)
+        label.font = .systemFont(ofSize: 12, weight: .semibold)
+        label.sizeToFit()
+        let gaugeHeight: CGFloat = progress == nil ? 0 : 10
+        let width = max(label.frame.width + 20, progress == nil ? 0 : 140)
+        return NSSize(width: width, height: label.frame.height + 10 + gaugeHeight)
+    }
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -74,7 +86,12 @@ final class HUDView: NSView {
             NSAnimationContext.runAnimationGroup({ context in
                 context.duration = 0.3
                 self.animator().alphaValue = 0
-            }, completionHandler: nil)
+            }, completionHandler: { [weak self] in
+                MainActor.assumeIsolated {
+                    guard let self, self.generation == current else { return }
+                    self.onFadeOut?()
+                }
+            })
         }
     }
 }

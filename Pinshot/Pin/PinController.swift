@@ -196,6 +196,8 @@ final class PinController: NSObject, NSWindowDelegate {
         guard panel.level != level else { return }
         panel.level = level
         toolbar.updateLevel()
+        // 画像の外に出している部品も、同じ階層にそろえる
+        canvas.updateChrome()
     }
 
     func setOnTop(_ onTop: Bool) {
@@ -217,6 +219,7 @@ final class PinController: NSObject, NSWindowDelegate {
     func close() {
         canvas.commitPendingText()
         toolbar.hide()
+        canvas.hideOutsideParts()
         panel.close()
     }
 
@@ -379,5 +382,6 @@ final class PinController: NSObject, NSWindowDelegate {
             canvas.showHUD("クリック透過中（メニューバーから解除）")
         }
         panel.ignoresMouseEvents = enabled
+        canvas.updateChrome()
     }
 }

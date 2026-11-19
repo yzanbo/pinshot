@@ -11,25 +11,10 @@ final class PinAppearance: ObservableObject {
     }
 }
 
-/// 操作バーの形（画像の幅に合わせて、入りきる中でいちばん多いものを選ぶ）
-enum QuickBarStyle: Int, CaseIterable {
-    /// 編集（文字付き）・不透明度・コピー・保存・そのほか
-    case full
-    /// 編集（文字付き）・コピー・保存・そのほか（不透明度は「そのほか」のメニューから）
-    case standard
-    /// 編集（アイコン）・そのほか
-    case compact
-    /// 編集（アイコン）だけ。どんなに小さくても、これだけは出す
-    case minimal
-
-    /// 広いものから順に
-    static let widestFirst: [QuickBarStyle] = [.full, .standard, .compact, .minimal]
-}
-
-/// 浮かせた画像の下側に出す、よく使う操作のバー（編集・不透明度・コピー・保存・そのほか）
+/// 浮かせた画像の下側に出す、よく使う操作のバー（編集・不透明度・コピー・保存・そのほか）。
+/// 画像の中に入りきらないときは、小さくせずに、そのまま画像の外（下）に出す
 struct QuickActionBar: View {
     @ObservedObject var appearance: PinAppearance
-    var style: QuickBarStyle = .full
     var edit: () -> Void
     var setOpacity: (Double) -> Void
     var copy: () -> Void
@@ -41,40 +26,32 @@ struct QuickActionBar: View {
     var body: some View {
         HStack(spacing: 2) {
             editButton
-
-            if style == .full {
-                divider
-                // 画像の不透明度（ドラッグで変える）
-                HStack(spacing: 4) {
-                    Image(systemName: "circle.lefthalf.filled")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.white)
-                    Slider(
-                        value: Binding(get: { appearance.opacity }, set: { setOpacity($0) }),
-                        in: 0.1...1
-                    )
-                    .controlSize(.mini)
-                    .frame(width: 64)
-                    .tint(.white)
-                    Text("\(Int((appearance.opacity * 100).rounded()))%")
-                        .font(.system(size: 10, weight: .medium).monospacedDigit())
-                        .foregroundStyle(.white)
-                        .frame(width: 30, alignment: .trailing)
-                }
-                .padding(.leading, 6)
-                .help("画像の不透明度（⌘ か ⌥ を押しながらスクロールしても変えられる）")
-                .hoverCursor(.arrow)
+            divider
+            // 画像の不透明度（ドラッグで変える）
+            HStack(spacing: 4) {
+                Image(systemName: "circle.lefthalf.filled")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.white)
+                Slider(
+                    value: Binding(get: { appearance.opacity }, set: { setOpacity($0) }),
+                    in: 0.1...1
+                )
+                .controlSize(.mini)
+                .frame(width: 64)
+                .tint(.white)
+                Text("\(Int((appearance.opacity * 100).rounded()))%")
+                    .font(.system(size: 10, weight: .medium).monospacedDigit())
+                    .foregroundStyle(.white)
+                    .frame(width: 30, alignment: .trailing)
             }
+            .padding(.leading, 6)
+            .help("画像の不透明度（⌘ か ⌥ を押しながらスクロールしても変えられる）")
+            .hoverCursor(.arrow)
 
-            if style == .full || style == .standard {
-                divider
-                QuickActionButton(symbol: "doc.on.doc", help: "コピー（⌘C）", action: copy)
-                QuickActionButton(symbol: "square.and.arrow.down", help: "保存（⌘S）", action: save)
-            }
-
-            if style != .minimal {
-                QuickActionButton(symbol: "ellipsis", help: "そのほかの操作（不透明度・コピー・保存など）", action: more)
-            }
+            divider
+            QuickActionButton(symbol: "doc.on.doc", help: "コピー（⌘C）", action: copy)
+            QuickActionButton(symbol: "square.and.arrow.down", help: "保存（⌘S）", action: save)
+            QuickActionButton(symbol: "ellipsis", help: "そのほかの操作", action: more)
         }
         .padding(3)
         .background(Capsule().fill(Color.black.opacity(0.6)))
@@ -82,26 +59,16 @@ struct QuickActionBar: View {
         .fixedSize()
     }
 
-    /// 編集モードに入るボタン（左端に置き、広いときは文字も付ける。狭いときは丸いアイコンだけ）
-    @ViewBuilder
+    /// 編集モードに入るボタン（左端に置き、文字も付けて分かりやすくする）
     private var editButton: some View {
         Button(action: edit) {
-            if style == .full || style == .standard {
-                Label("編集", systemImage: "pencil")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 8)
-                    .frame(height: 22)
-                    .background(Capsule().fill(Color.accentColor))
-                    .contentShape(Capsule())
-            } else {
-                Image(systemName: "pencil")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 22, height: 22)
-                    .background(Circle().fill(Color.accentColor))
-                    .contentShape(Circle())
-            }
+            Label("編集", systemImage: "pencil")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 8)
+                .frame(height: 22)
+                .background(Capsule().fill(Color.accentColor))
+                .contentShape(Capsule())
         }
         .buttonStyle(.plain)
         .help(Self.editHelp)

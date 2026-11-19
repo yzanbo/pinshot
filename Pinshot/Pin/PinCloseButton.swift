@@ -3,6 +3,8 @@ import AppKit
 /// 画像の上に置く押せるボタンの土台（マウスを乗せると指のカーソル・押した見た目）
 class PinButtonView: NSView {
     var onClick: (() -> Void)?
+    /// マウスを乗せた（true）・離した（false）とき
+    var onHoverChange: ((Bool) -> Void)?
 
     fileprivate(set) var isHovering = false
     fileprivate(set) var isPressed = false
@@ -23,11 +25,13 @@ class PinButtonView: NSView {
         isHovering = true
         NSCursor.pointingHand.set()
         needsDisplay = true
+        onHoverChange?(true)
     }
 
     override func mouseExited(with event: NSEvent) {
         isHovering = false
         needsDisplay = true
+        onHoverChange?(false)
     }
 
     override func mouseDown(with event: NSEvent) {
