@@ -94,6 +94,15 @@ enum ScrollStitcher {
         guard height > 16 else { return .lost }
         if previous.rows == next.rows { return .unchanged }
 
+        // ほとんどの行が同じ位置のままなら、スクロールしていない（動画・スピナーなど、一部だけが動いている）
+        var stayed = 0
+        var compared = 0
+        for i in 0..<height where !next.uniform[i] {
+            compared += 1
+            if next.rows[i] == previous.rows[i] { stayed += 1 }
+        }
+        if compared >= 8, Double(stayed) / Double(compared) >= 0.9 { return .unchanged }
+
         // 上下の、位置も中身も同じ帯を固定部分とみなす
         var header = 0
         while header < height, previous.rows[header] == next.rows[header] { header += 1 }
@@ -142,32 +151,35 @@ enum ScrollStitcher {
     }
 }
 
-/// スクロールしながら撮った画像を、1 枚の縦長の画像につなぐ
+/// スクロールしながら撮った画像を、1 枚の縦長の画像につなぐ。
+/// 撮った画像は丸ごとは持たず、新しく見えた行だけを写し取って持つ（長いページでもメモリが膨らまないように）
 final class ScrollStitch {
-    private struct Segment {
-        let image: CGImage
-        let rows: Range<Int>
-    }
+    /// つないだ帯（上から順。それぞれ、撮った画像から必要な行だけを写し取ったもの）
+    private var strips: [CGImage] = []
+    private var stripsHeight = 0
+    /// 操作パネルに出す縮小画像用に、帯を足すたびに縮めておいたもの
+    private var previewStrips: [CGImage] = []
+    private let previewScale: CGFloat
 
     private let first: CGImage
     private(set) var last: CGImage
-    private var segments: [Segment] = []
     /// 最初に見つけた固定部分（以後は同じ値を使う）
     private(set) var header: Int?
     private(set) var footer: Int?
 
     let width: Int
 
-    init(first: CGImage) {
+    /// previewWidth: 操作パネルに出す縮小画像の幅（ピクセル）
+    init(first: CGImage, previewWidth: CGFloat = 160) {
         self.first = first
         self.last = first
         self.width = first.width
+        self.previewScale = min(1, previewWidth / CGFloat(max(first.width, 1)))
     }
 
     /// いまつながっている高さ（ピクセル、下の固定部分を含む）
     var totalHeight: Int {
-        guard !segments.isEmpty else { return first.height }
-        return segments.reduce(0) { $0 + $1.rows.count } + (footer ?? 0)
+        strips.isEmpty ? first.height : stripsHeight + (footer ?? 0)
     }
 
     /// 下にスクロールした画像を足す
@@ -178,59 +190,89 @@ final class ScrollStitch {
         let footer = self.footer ?? 0
         let bottom = height - footer
 
-        if segments.isEmpty {
+        if strips.isEmpty {
             // 1 枚目は、下の固定部分より上をすべて使う
-            segments.append(Segment(image: first, rows: 0..<bottom))
+            addStrip(from: first, rows: 0..<bottom)
         }
         // 新しく見えた部分（下の固定部分のすぐ上の offset 行）だけを足す
         let start = max(header ?? 0, bottom - match.offset)
         if start < bottom {
-            segments.append(Segment(image: image, rows: start..<bottom))
+            addStrip(from: image, rows: start..<bottom)
         }
         last = image
     }
 
     /// つないだ画像を作る
     func compose() -> CGImage? {
-        var parts = segments
-        if parts.isEmpty {
-            return first
-        }
+        guard !strips.isEmpty else { return first }
+        var parts = strips
         // 最後に、下の固定部分を 1 回だけ付ける
-        if let footer, footer > 0 {
-            parts.append(Segment(image: last, rows: (last.height - footer)..<last.height))
-        }
-        return draw(parts, scale: 1)
+        if let footerStrip { parts.append(footerStrip) }
+        return Self.stack(parts, width: width, space: first.rgbColorSpace)
     }
 
     /// 操作パネルに出す縮小画像
-    func preview(maxWidth: CGFloat) -> CGImage? {
-        var parts = segments.isEmpty ? [Segment(image: first, rows: 0..<first.height)] : segments
-        if !segments.isEmpty, let footer, footer > 0 {
-            parts.append(Segment(image: last, rows: (last.height - footer)..<last.height))
+    func preview() -> CGImage? {
+        var parts: [CGImage] = []
+        if strips.isEmpty {
+            if let small = Self.scaled(first, by: previewScale) { parts.append(small) }
+        } else {
+            parts = previewStrips
+            if let footerStrip, let small = Self.scaled(footerStrip, by: previewScale) { parts.append(small) }
         }
-        return draw(parts, scale: min(1, maxWidth / CGFloat(width)))
+        guard let widest = parts.map(\.width).max() else { return nil }
+        return Self.stack(parts, width: widest, space: first.rgbColorSpace)
     }
 
-    private func draw(_ parts: [Segment], scale: CGFloat) -> CGImage? {
-        let total = parts.reduce(0) { $0 + $1.rows.count }
-        let outWidth = max(1, Int((CGFloat(width) * scale).rounded()))
-        let outHeight = max(1, Int((CGFloat(total) * scale).rounded()))
-        guard let ctx = CGContext.makeRGBA(width: outWidth, height: outHeight, space: first.rgbColorSpace) else { return nil }
-        ctx.interpolationQuality = scale < 1 ? .medium : .none
+    // MARK: - 中で使う
 
-        // 上から順に並べる（CGContext は左下が原点なので、上の部分ほど y が大きい）
-        var y = 0
+    /// 下の固定部分（最後に撮った画像から写し取る）
+    private var footerStrip: CGImage? {
+        guard let footer, footer > 0 else { return nil }
+        return Self.copyRows((last.height - footer)..<last.height, of: last)
+    }
+
+    private func addStrip(from image: CGImage, rows: Range<Int>) {
+        guard let strip = Self.copyRows(rows, of: image) else { return }
+        strips.append(strip)
+        stripsHeight += strip.height
+        if let small = Self.scaled(strip, by: previewScale) {
+            previewStrips.append(small)
+        }
+    }
+
+    /// image の rows の行（上から数える）だけを、新しいビットマップに写し取る。
+    /// cropping(to:) だけだと、切り抜いた画像が元の画像を丸ごと持ち続けるため
+    static func copyRows(_ rows: Range<Int>, of image: CGImage) -> CGImage? {
+        let rows = rows.clamped(to: 0..<image.height)
+        guard !rows.isEmpty,
+              let cropped = image.cropping(to: CGRect(x: 0, y: rows.lowerBound, width: image.width, height: rows.count)),
+              let ctx = CGContext.makeRGBA(width: image.width, height: rows.count, space: image.rgbColorSpace)
+        else { return nil }
+        ctx.interpolationQuality = .none
+        ctx.draw(cropped, in: CGRect(x: 0, y: 0, width: image.width, height: rows.count))
+        return ctx.makeImage()
+    }
+
+    private static func scaled(_ image: CGImage, by scale: CGFloat) -> CGImage? {
+        guard scale < 1 else { return image }
+        let width = max(1, Int((CGFloat(image.width) * scale).rounded()))
+        let height = max(1, Int((CGFloat(image.height) * scale).rounded()))
+        guard let ctx = CGContext.makeRGBA(width: width, height: height, space: image.rgbColorSpace) else { return nil }
+        ctx.interpolationQuality = .medium
+        ctx.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        return ctx.makeImage()
+    }
+
+    /// 帯を上から順に縦に並べる（CGContext は左下が原点なので、上の帯ほど y が大きい）
+    private static func stack(_ parts: [CGImage], width: Int, space: CGColorSpace?) -> CGImage? {
+        let total = parts.reduce(0) { $0 + $1.height }
+        guard let ctx = CGContext.makeRGBA(width: max(1, width), height: max(1, total), space: space) else { return nil }
+        ctx.interpolationQuality = .none
+        var y = total
         for part in parts {
-            guard let strip = part.image.cropping(to: CGRect(x: 0, y: part.rows.lowerBound, width: width, height: part.rows.count)) else { continue }
-            let rect = CGRect(
-                x: 0,
-                y: CGFloat(total - y - part.rows.count) * scale,
-                width: CGFloat(width) * scale,
-                height: CGFloat(part.rows.count) * scale
-            )
-            ctx.draw(strip, in: rect)
-            y += part.rows.count
+            y -= part.height
+            ctx.draw(part, in: CGRect(x: 0, y: y, width: part.width, height: part.height))
         }
         return ctx.makeImage()
     }

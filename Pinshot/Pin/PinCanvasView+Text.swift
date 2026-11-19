@@ -104,11 +104,11 @@ extension PinCanvasView {
     /// 書いた文字を直す
     func beginReEdit(at index: Int) {
         guard case .text(let runs, let origin, let style) = annotations[index].shape else { return }
-        let original = annotations[index]
-        reEditSnapshot = snapshot
+        // 直している間は元の文字を描かない（取り出しておき、確定したら同じ位置に戻す。やめたら元に戻す）
+        document.beginChange()
+        let original = document.takeOut(at: index)
         reEditIndex = index
         reEditOriginal = original
-        annotations.remove(at: index)
         selectedID = nil
         setFontSizeSilently(Annotation.maxFontSize(runs))
         state.color = original.color.withAlpha(1)
@@ -145,6 +145,10 @@ extension PinCanvasView {
 
     func controlTextDidEndEditing(_ obj: Notification) {
         guard let field = textField else { return }
+        // クリックで入力が終わったときは、そのクリックで新しく描き始めないよう、時刻を覚えておく（mouseDown で捨てる）
+        if let event = NSApp.currentEvent, event.type == .leftMouseDown, event.window === window {
+            textEndingClickTimestamp = event.timestamp
+        }
         let runs = Self.runs(from: field.attributedStringValue, scale: scaleFactor, fallbackSize: textFontSize)
         if let selectionObserver {
             NotificationCenter.default.removeObserver(selectionObserver)
@@ -161,20 +165,19 @@ extension PinCanvasView {
         )
         let isEmpty = Annotation.plainText(runs).isEmpty
 
-        if let before = reEditSnapshot, let index = reEditIndex, let original = reEditOriginal {
-            // 直していたとき
+        if let index = reEditIndex, let original = reEditOriginal {
+            // 直していたとき（空にしたら消す）
             var updated = newAnnotation
             updated.id = original.id
             if textCancelled || updated == original {
-                annotations = before.annotations
+                document.endChange(keep: false)
             } else {
-                pushUndo(before)
                 if !isEmpty {
-                    annotations.insert(updated, at: min(index, annotations.count))
+                    document.insert(updated, at: index)
                 }
+                document.endChange(keep: true)
                 historyChanged()
             }
-            reEditSnapshot = nil
             reEditIndex = nil
             reEditOriginal = nil
         } else if !textCancelled, !isEmpty {

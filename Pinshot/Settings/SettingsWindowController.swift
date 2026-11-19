@@ -7,6 +7,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     static let shared = SettingsWindowController()
 
     private var window: NSWindow?
+    private var shortcutRecorder: ShortcutRecorderModel?
 
     func show() {
         if window == nil {
@@ -20,9 +21,10 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             )))
             tabs.addTabViewItem(makeTab("画像", symbol: "photo.on.rectangle", view: PinSettingsView(settings: settings)))
             tabs.addTabViewItem(makeTab("書き出し", symbol: "square.and.arrow.up", view: ExportSettingsView(settings: settings)))
+            let recorder = ShortcutRecorderModel(settings: settings)
             tabs.addTabViewItem(makeTab("ショートカット", symbol: "keyboard", view: ShortcutSettingsView(
                 settings: settings,
-                recorder: ShortcutRecorderModel(settings: settings)
+                recorder: recorder
             )))
 
             let window = NSWindow(contentViewController: tabs)
@@ -32,7 +34,9 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             window.isReleasedWhenClosed = false
             window.delegate = self
             window.center()
+            recorder.window = window
             self.window = window
+            shortcutRecorder = recorder
         }
         NSApp.activate()
         window?.makeKeyAndOrderFront(nil)
@@ -50,8 +54,13 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     }
 
     func windowWillClose(_ notification: Notification) {
-        // 記録の途中で閉じたら、記録をやめる
-        AppSettings.shared.recordingAction = nil
+        // 記録の途中で閉じたら、記録をやめる（キーの横取りも止める）
+        shortcutRecorder?.stop()
+    }
+
+    func windowDidResignKey(_ notification: Notification) {
+        // ほかのウィンドウ・アプリに移ったら、記録をやめる
+        shortcutRecorder?.stop()
     }
 }
 

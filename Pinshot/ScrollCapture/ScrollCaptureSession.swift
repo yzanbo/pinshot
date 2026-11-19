@@ -32,6 +32,14 @@ final class ScrollCaptureSession {
     /// 1 回にスクロールする量（ポイント）
     private var stepPoints: CGFloat
     private var unchangedCount = 0
+    /// 自動スクロールで、続けてつなげなかった回数
+    private var lostCount = 0
+    /// 直前に送ったスクロールの量（つなげなかったとき、同じだけ戻すため）
+    private var lastScroll: CGFloat = 0
+    /// つなげなかったので、送ったスクロールを戻す必要がある
+    private var needsScrollBack = false
+    /// 自動スクロールで続けてつなげなかったら、自分でスクロールしてもらう回数
+    private let maxLostCount = 3
 
     /// つなげる長さの上限（ピクセル）
     private let maxHeightPixels = 30_000
@@ -54,6 +62,10 @@ final class ScrollCaptureSession {
         showBorder()
         showPanel()
         installKeyMonitors()
+        if !AccessibilityPermission.isGranted {
+            // 許可がないと、ほかのアプリの上で押したキーは届かない。操作パネルでキー（esc）を受けられるようにする
+            panel?.makeKey()
+        }
 
         if let window {
             // 撮るウィンドウを前に出す（隠れていると、上のウィンドウにスクロールが送られたり、上のウィンドウが写ったりするため）
@@ -93,13 +105,18 @@ final class ScrollCaptureSession {
 
                 let frame: CGImage
                 let signature: FrameSignature?
-                if auto, isCursorInRegion {
+                // マウスが枠の外にあるとき・ほかのウィンドウが重なったときは、スクロールを送らない（送ると別のものが動く）
+                let scrolls = auto && isCursorInRegion && isTargetUnderCursor
+                if scrolls {
                     model.message = "自動でスクロールしています…"
-                    postScroll(points: stepPoints * scrollSign)
+                    lastScroll = stepPoints * scrollSign
+                    postScroll(points: lastScroll)
                     (frame, signature) = try await captureWhenStill(filter: filter)
                 } else {
                     if auto {
-                        model.message = "マウスを枠の中に戻すと、自動スクロールを続けます"
+                        model.message = isCursorInRegion
+                            ? "撮っているウィンドウの上にほかのウィンドウがあるので、止めています"
+                            : "マウスを枠の中に戻すと、自動スクロールを続けます"
                     } else if !trusted {
                         model.message = "枠の中を、ゆっくり下へスクロールしてください"
                     } else {
@@ -111,7 +128,13 @@ final class ScrollCaptureSession {
                     signature = FrameSignature(image: frame)
                 }
                 guard !finished, let signature else { continue }
-                process(frame, signature: signature, auto: auto)
+                process(frame, signature: signature, scrolled: scrolls, auto: auto)
+                if needsScrollBack, !finished {
+                    // つなげなかったぶんを戻してから、少ない量でやり直す
+                    needsScrollBack = false
+                    postScroll(points: -lastScroll)
+                    _ = try await captureWhenStill(filter: filter)
+                }
             }
         } catch is CancellationError {
             return
@@ -120,13 +143,15 @@ final class ScrollCaptureSession {
         }
     }
 
-    private func process(_ frame: CGImage, signature: FrameSignature, auto: Bool) {
+    /// scrolled: この画像の前に、自動でスクロールを送ったか。auto: 自動スクロールのモードか
+    private func process(_ frame: CGImage, signature: FrameSignature, scrolled: Bool, auto: Bool) {
         guard let stitch, let previous = lastSignature else { return }
 
         switch ScrollStitcher.findOffset(previous: previous, next: signature, header: stitch.header, footer: stitch.footer) {
         case .moved(let match):
             directionConfirmed = true
             unchangedCount = 0
+            lostCount = 0
             model.warning = nil
             stitch.append(frame, match: match)
             lastSignature = signature
@@ -137,7 +162,8 @@ final class ScrollCaptureSession {
             }
 
         case .unchanged:
-            guard auto else { return }
+            // スクロールを送っていないときは、変わらなくて当たり前なので数えない
+            guard scrolled else { return }
             // 向きがまだ分からないうちに変化がなければ、一度だけ逆向きを試す（ページの上端で上へ送っていた場合）
             if !directionConfirmed, !triedFlippingDirection {
                 triedFlippingDirection = true
@@ -153,7 +179,7 @@ final class ScrollCaptureSession {
         case .lost:
             // 上にスクロールしていないかを確かめる
             if case .moved = ScrollStitcher.findOffset(previous: signature, next: previous) {
-                if auto, !directionConfirmed {
+                if scrolled, !directionConfirmed {
                     // 送ったスクロールの向きが逆だった（システムの設定による）。向きを入れ替える
                     scrollSign *= -1
                     lastSignature = signature
@@ -164,11 +190,20 @@ final class ScrollCaptureSession {
                 }
                 return
             }
-            if auto {
-                // 重なりが見つからない（1 回のスクロールが大きすぎる）。量を減らして続ける
-                stepPoints = max(30, stepPoints * 0.6)
-                model.warning = "スクロール量を減らして続けています"
-            } else {
+            if scrolled {
+                lostCount += 1
+                if lostCount >= maxLostCount {
+                    // 何度やってもつなげない（動き続ける広告・動画など）。自動はやめて、自分でスクロールしてもらう
+                    lostCount = 0
+                    model.autoScroll = false
+                    model.warning = "自動ではつなげませんでした。自分でゆっくりスクロールするか、「完了」を押してください"
+                } else {
+                    // 重なりが見つからない（1 回のスクロールが大きすぎる）。戻してから、量を減らしてやり直す
+                    stepPoints = max(30, stepPoints * 0.6)
+                    needsScrollBack = true
+                    model.warning = "スクロール量を減らして続けています"
+                }
+            } else if !auto {
                 model.warning = "速すぎてつなげませんでした。少し戻してから、ゆっくりスクロールしてください"
             }
         }
@@ -178,7 +213,7 @@ final class ScrollCaptureSession {
         guard let stitch else { return }
         let scale = CGFloat(stitch.width) / max(rect.width, 1)
         model.heightPoints = Int(CGFloat(stitch.totalHeight) / scale)
-        if let image = stitch.preview(maxWidth: 160) {
+        if let image = stitch.preview() {
             model.preview = NSImage(cgImage: image, size: NSSize(width: image.width, height: image.height))
         }
     }
@@ -236,6 +271,15 @@ final class ScrollCaptureSession {
 
     private var isCursorInRegion: Bool {
         rect.insetBy(dx: 2, dy: 2).contains(NSEvent.mouseLocation)
+    }
+
+    /// マウスの下にあるのが、撮っているウィンドウ（のアプリ）か。
+    /// ⌘Tab などでほかのウィンドウが重なったら、そちらをスクロールしないよう止める（範囲をドラッグで選んだときは確かめない）
+    private var isTargetUnderCursor: Bool {
+        guard let window else { return true }
+        let mouse = NSEvent.mouseLocation
+        guard let top = WindowList.visibleWindows().first(where: { $0.frame.contains(mouse) }) else { return true }
+        return top.ownerPID == window.ownerPID
     }
 
     /// スクロール操作はマウスの下に届くので、マウスを範囲の中に置く（クリックした場所があればそこ、なければ真ん中）
@@ -337,7 +381,7 @@ final class ScrollCaptureSession {
             ?? NSPoint(x: visible.maxX - size.width - 16, y: visible.minY + 16)
         origin.x = min(max(origin.x, visible.minX + 8), visible.maxX - size.width - 8)
 
-        let panel = OverlayPanel(contentRect: NSRect(origin: origin, size: size), level: .statusBar)
+        let panel = KeyableOverlayPanel(contentRect: NSRect(origin: origin, size: size), level: .statusBar)
         panel.isMovableByWindowBackground = true
         hosting.frame = NSRect(origin: .zero, size: size)
         hosting.autoresizingMask = [.width, .height]

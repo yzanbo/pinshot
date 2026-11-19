@@ -11,6 +11,8 @@ import SwiftUI
 /// - `+Selection`: 選択と、色・大きさの反映、複製・重なり順
 /// - `+History`: 元に戻す・やり直す
 /// - `+Text`: 文字の入力
+///
+/// 書き込み・トリミング・元に戻す履歴は `document`（AnnotationDocument）が持つ。変えるときは必ず document のメソッドを通す
 final class PinCanvasView: NSView, NSTextFieldDelegate, NSDraggingSource {
     let baseImage: CGImage
     /// 元の画像の大きさ（ポイント）。書き込みの座標はこの画像が基準
@@ -31,15 +33,18 @@ final class PinCanvasView: NSView, NSTextFieldDelegate, NSDraggingSource {
         )
     }
 
-    // 書き込みとトリミングは、このビューの中（PinCanvasView+◯◯.swift）だけで書き換える。外からは読むだけにする
-    var annotations: [Annotation] = []
-    var cropRect: CGRect
-    var history = EditHistory()
+    /// 書き込み・トリミング・元に戻す履歴
+    var document: AnnotationDocument
+
+    /// 書き込み（読むだけ。変えるときは document を通す）
+    var annotations: [Annotation] { document.annotations }
+    /// 表示している範囲（画像のポイント座標）
+    var cropRect: CGRect { document.cropRect }
 
     /// 表示している大きさ（トリミング後、ポイント）
     var contentSize: CGSize { cropRect.size }
 
-    var snapshot: EditSnapshot { EditSnapshot(annotations: annotations, cropRect: cropRect) }
+    var snapshot: EditSnapshot { document.snapshot }
 
     // ドラッグ中の書き込み・トリミング
     var drafting: Annotation?
@@ -60,7 +65,6 @@ final class PinCanvasView: NSView, NSTextFieldDelegate, NSDraggingSource {
     var moveStart: CGPoint?
     /// 動かし始めたときの、選んでいる書き込み
     var moveOriginals: [UUID: Annotation] = [:]
-    var snapshotBeforeMove: EditSnapshot?
     var didMove = false
 
     // 文字の入力
@@ -72,16 +76,15 @@ final class PinCanvasView: NSView, NSTextFieldDelegate, NSDraggingSource {
     /// ツールバーの文字の大きさを、表示を合わせるためだけに変えた回数（その通知では文字を変えない）
     var silentFontSizeChanges = 0
     var selectionObserver: Any?
-    /// 色・オプションの変更で最後に「元に戻す」を積んだ書き込みと時刻（カラーパネルで連続して変えたとき、1 つにまとめる）
-    var lastStyleUndo: (id: UUID, time: Date)?
     var textCancelled = false
-    /// 書いた文字を直しているときの、直す前の状態
-    var reEditSnapshot: EditSnapshot?
+    /// クリックで文字の入力が終わったときの、そのクリックの時刻（同じクリックで新しく描き始めないため）
+    var textEndingClickTimestamp: TimeInterval?
+    /// 書いた文字を直しているときの、元の位置と元の文字
     var reEditIndex: Int?
     var reEditOriginal: Annotation?
 
-    /// 選んだ書き込みのつまみをドラッグしているとき
-    var handleDrag: (handle: EditHandle, original: Annotation, before: EditSnapshot)?
+    /// 選んだ書き込みのつまみをドラッグしているとき（つかんだつまみと、つかむ前の書き込み）
+    var handleDrag: (handle: EditHandle, original: Annotation)?
     var handleChanged = false
 
     /// 端をつかんで大きさを変えている間の状態
@@ -101,7 +104,7 @@ final class PinCanvasView: NSView, NSTextFieldDelegate, NSDraggingSource {
         self.imageSize = imageSize
         self.state = state
         self.baseNSImage = NSImage(cgImage: image, size: imageSize)
-        self.cropRect = CGRect(origin: .zero, size: imageSize)
+        self.document = AnnotationDocument(imageSize: imageSize)
         super.init(frame: NSRect(origin: .zero, size: imageSize))
 
         // 左上に固定（flipped なので下の余白を伸ばす）
@@ -223,9 +226,8 @@ final class PinCanvasView: NSView, NSTextFieldDelegate, NSDraggingSource {
 
     /// 閉じた画像を戻すとき、書き込みとトリミングを戻す
     func restore(_ snapshot: EditSnapshot) {
-        annotations = snapshot.annotations
-        cropRect = snapshot.cropRect
-        state.nextCounterNumber = (annotations.compactMap(\.counterNumber).max() ?? 0) + 1
+        document.restore(snapshot)
+        state.nextCounterNumber = document.nextCounterNumber
         needsDisplay = true
     }
 

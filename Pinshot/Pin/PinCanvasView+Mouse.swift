@@ -7,6 +7,13 @@ extension PinCanvasView {
         let viewPoint = convert(event.locationInWindow, from: nil)
         let point = imagePoint(viewPoint)
 
+        // 文字の入力を終わらせたクリックは、確定するだけにする（同じクリックで新しい入力欄・番号などを作らない）。
+        // ウィンドウは mouseDown を送る前に入力先をこのビューへ移すので、ここに来たときには入力はもう終わっている
+        if let timestamp = textEndingClickTimestamp {
+            textEndingClickTimestamp = nil
+            if timestamp == event.timestamp { return }
+        }
+
         // 書いた文字をダブルクリックすると直せる
         if event.clickCount == 2, let index = hitAnnotation(at: point), annotations[index].isText {
             if textField != nil {
@@ -26,8 +33,9 @@ extension PinCanvasView {
 
         // 選んだ書き込みのつまみをつかんだら、形を直す
         if state.isEditing, let handle = handle(at: viewPoint), let index = selectedIndex {
-            handleDrag = (handle, annotations[index], snapshot)
+            handleDrag = (handle, annotations[index])
             handleChanged = false
+            document.beginChange()
             updateSelectionBar()
             return
         }
@@ -78,7 +86,7 @@ extension PinCanvasView {
                 NSCursor.closedHand.set()
                 moveStart = point
                 moveOriginals = Dictionary(uniqueKeysWithValues: selectedIndices.map { (annotations[$0].id, annotations[$0]) })
-                snapshotBeforeMove = snapshot
+                document.beginChange()
                 didMove = false
                 updateSelectionBar()
             } else {
@@ -88,7 +96,12 @@ extension PinCanvasView {
                 moveWindow(with: event)
             }
         case .text:
-            beginTextInput(at: point, runs: [], color: state.drawColor, style: state.textStyle)
+            if let index = hitAnnotation(at: point), annotations[index].isText {
+                // 書いた文字をクリックしたら、その文字を直す（新しい入力欄を重ねない）
+                beginReEdit(at: index)
+            } else {
+                beginTextInput(at: point, runs: [], color: state.drawColor, style: state.textStyle)
+            }
         case .counter:
             addCounter(at: point)
         case .pen:
@@ -123,10 +136,8 @@ extension PinCanvasView {
 
         if let start = moveStart, !moveOriginals.isEmpty {
             let delta = CGVector(dx: point.x - start.x, dy: point.y - start.y)
-            for index in annotations.indices {
-                if let original = moveOriginals[annotations[index].id] {
-                    annotations[index] = original.translated(by: delta)
-                }
+            for original in moveOriginals.values {
+                document.replace(original.translated(by: delta))
             }
             didMove = true
             needsDisplay = true
@@ -160,9 +171,9 @@ extension PinCanvasView {
             return
         }
 
-        if let drag = handleDrag {
+        if handleDrag != nil {
+            document.endChange(keep: handleChanged)
             if handleChanged {
-                pushUndo(drag.before)
                 historyChanged()
             }
             handleDrag = nil
@@ -173,13 +184,12 @@ extension PinCanvasView {
         }
 
         if moveStart != nil {
-            if didMove, let before = snapshotBeforeMove {
-                pushUndo(before)
+            document.endChange(keep: didMove)
+            if didMove {
                 historyChanged()
             }
             moveStart = nil
             moveOriginals = [:]
-            snapshotBeforeMove = nil
             updateSelectionBar()
             didMove = false
             updateCursor()
@@ -223,7 +233,7 @@ extension PinCanvasView {
     }
 
     private func dragHandle(_ handle: EditHandle, original: Annotation, to point: CGPoint, event: NSEvent) {
-        guard let index = annotations.firstIndex(where: { $0.id == original.id }) else { return }
+        guard document.index(of: original.id) != nil else { return }
         var updated = original
         switch handle {
         case .arrowStart, .arrowEnd:
@@ -255,7 +265,7 @@ extension PinCanvasView {
             updated = original.withEditableRect(CGRect(corner: CGPoint(x: minX, y: minY), CGPoint(x: maxX, y: maxY)))
         }
         guard updated.isMeaningful else { return }
-        annotations[index] = updated
+        document.replace(updated)
         handleChanged = true
         needsDisplay = true
     }
@@ -306,9 +316,8 @@ extension PinCanvasView {
     // MARK: - 番号
 
     private func addCounter(at point: CGPoint) {
-        let next = (annotations.compactMap(\.counterNumber).max() ?? 0) + 1
         commit(Annotation(
-            shape: .counter(next, center: point, radius: state.counterSize.radius, style: state.counterStyle),
+            shape: .counter(document.nextCounterNumber, center: point, radius: state.counterSize.radius, style: state.counterStyle),
             color: state.drawColor,
             lineWidth: 0
         ))
@@ -317,12 +326,8 @@ extension PinCanvasView {
     // MARK: - トリミング
 
     private func applyCrop(_ draft: CGRect) {
-        let newCrop = draft.standardized.intersection(cropRect).integral
-        guard newCrop.width >= 8, newCrop.height >= 8, newCrop != cropRect else { return }
-        pushUndo(snapshot)
-        let old = cropRect
-        cropRect = newCrop
-        controller?.cropDidChange(from: old, to: newCrop)
+        guard let old = document.crop(to: draft) else { return }
+        controller?.cropDidChange(from: old, to: cropRect)
         historyChanged()
         showHUD("トリミングしました（⌘Z で戻す）")
     }

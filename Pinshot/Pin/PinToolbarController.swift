@@ -47,6 +47,8 @@ final class PinToolbarController {
 
     func hide() {
         hideHint()
+        // つまみのドラッグ中に隠したとき（esc で編集を終えたなど）に、ドラッグの途中の状態が残らないようにする
+        moveStartMouse = nil
         guard let toolbar = toolbarPanel else { return }
         pinPanel.removeChildWindow(toolbar)
         toolbar.orderOut(nil)

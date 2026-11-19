@@ -21,3 +21,8 @@ class OverlayPanel: NSPanel {
         isReleasedWhenClosed = false
     }
 }
+
+/// キー入力を受けられる OverlayPanel（アプリを前に出さずに、入力欄・esc などのキーを受ける）
+final class KeyableOverlayPanel: OverlayPanel {
+    override var canBecomeKey: Bool { true }
+}

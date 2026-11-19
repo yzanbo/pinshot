@@ -34,7 +34,7 @@ extension PinController {
 
         // 決めたフォルダにすぐ保存する設定のとき
         if settings.saveMode == .folder {
-            let url = settings.saveFolder.appendingPathComponent(ImageExporter.defaultFileName())
+            let url = ImageExporter.uniqueURL(in: settings.saveFolder, fileName: ImageExporter.defaultFileName())
             write(data, to: url)
             return
         }

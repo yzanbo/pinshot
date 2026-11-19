@@ -31,7 +31,7 @@ final class TextInputController: NSObject, NSTextFieldDelegate, NSWindowDelegate
             if origin.y < visible.minY { origin.y = mouse.y + 10 }
             origin.x = min(max(origin.x, visible.minX + 4), visible.maxX - size.width - 4)
         }
-        let panel = KeyablePanel(contentRect: NSRect(origin: origin, size: size), level: .popUpMenu)
+        let panel = KeyableOverlayPanel(contentRect: NSRect(origin: origin, size: size), level: .popUpMenu)
         panel.delegate = self
 
         let background = NSVisualEffectView(frame: NSRect(origin: .zero, size: size))
@@ -124,9 +124,4 @@ enum FontSizeInputController {
             return true
         }
     }
-}
-
-/// キー入力を受けられる、枠のないパネル
-private final class KeyablePanel: OverlayPanel {
-    override var canBecomeKey: Bool { true }
 }

@@ -16,7 +16,8 @@ final class CaptureController {
 
     /// 範囲選択の画面を出してキャプチャを始める
     func start(mode: CaptureMode = .region, timer: Int = 0) {
-        guard !isCapturing else { return }
+        // スクロールキャプチャの間に範囲を選ぶ画面を出すと、送ったスクロールをその画面が受けてしまう
+        guard !isCapturing, !ScrollCaptureController.shared.isRunning else { return }
         isCapturing = true
         let windows = WindowList.visibleWindows()
 
@@ -53,7 +54,7 @@ final class CaptureController {
 
     /// 一覧から選んだウィンドウを、範囲選択の画面を出さずに撮る
     func captureWindow(id: CGWindowID) {
-        guard !isCapturing else { return }
+        guard !isCapturing, !ScrollCaptureController.shared.isRunning else { return }
         guard let info = WindowList.visibleWindows().first(where: { $0.id == id }) else {
             NSSound.beep()
             return

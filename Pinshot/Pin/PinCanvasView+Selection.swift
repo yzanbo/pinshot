@@ -50,19 +50,7 @@ extension PinCanvasView {
     /// 続けて変えているあいだ（1 秒以内）は、最初の状態だけを「元に戻す」に残す（カラーパネルで色を動かしたときなど）
     private func updateSelected(_ transform: (Annotation) -> Annotation) {
         guard state.isEditing, !selection.isEmpty else { return }
-        let changes = selectedIndices.compactMap { index -> (Int, Annotation)? in
-            let updated = transform(annotations[index])
-            return updated == annotations[index] ? nil : (index, updated)
-        }
-        guard !changes.isEmpty, let id = selection.first else { return }
-        let isContinuing = lastStyleUndo.map { $0.id == id && Date().timeIntervalSince($0.time) < 1.0 } ?? false
-        if !isContinuing {
-            pushUndo(snapshot)
-        }
-        lastStyleUndo = (id, Date())
-        for (index, updated) in changes {
-            annotations[index] = updated
-        }
+        guard document.update(ids: selection, transform) else { return }
         historyChanged()
     }
 
@@ -101,21 +89,8 @@ extension PinCanvasView {
 
     /// 選んでいる書き込みを、少し右下にずらして複製する（番号は続きの番号にする）
     func duplicateSelected() {
-        let indices = selectedIndices.sorted()
-        guard !indices.isEmpty else { return }
-        pushUndo(snapshot)
-        var nextNumber = (annotations.compactMap(\.counterNumber).max() ?? 0) + 1
-        var newIDs: [UUID] = []
-        for index in indices {
-            var copy = annotations[index].translated(by: CGVector(dx: 12, dy: 12))
-            copy.id = UUID()
-            if case .counter(_, let center, let radius, let style) = copy.shape {
-                copy.shape = .counter(nextNumber, center: center, radius: radius, style: style)
-                nextNumber += 1
-            }
-            annotations.append(copy)
-            newIDs.append(copy.id)
-        }
+        let newIDs = document.duplicate(ids: selection, offset: CGVector(dx: 12, dy: 12))
+        guard !newIDs.isEmpty else { return }
         selection = newIDs
         historyChanged()
         showHUD("複製しました")
@@ -123,25 +98,7 @@ extension PinCanvasView {
 
     /// 選んでいる書き込みを、1 つ前面（forward）か背面へ動かす
     func reorderSelected(forward: Bool) {
-        var indices = selectedIndices.sorted()
-        guard !indices.isEmpty else { return }
-        let before = snapshot
-        var changed = false
-        if forward {
-            for index in indices.reversed() where index < annotations.count - 1 && !indices.contains(index + 1) {
-                annotations.swapAt(index, index + 1)
-                indices = indices.map { $0 == index ? index + 1 : $0 }
-                changed = true
-            }
-        } else {
-            for index in indices where index > 0 && !indices.contains(index - 1) {
-                annotations.swapAt(index, index - 1)
-                indices = indices.map { $0 == index ? index - 1 : $0 }
-                changed = true
-            }
-        }
-        guard changed else { return }
-        pushUndo(before)
+        guard document.reorder(ids: selection, forward: forward) else { return }
         historyChanged()
         showHUD(forward ? "前面へ" : "背面へ")
     }

@@ -21,6 +21,21 @@ enum AnnotationRenderer {
         }
         for annotation in annotations where !annotation.isSpotlight {
             draw(annotation, in: ctx, imageSize: imageSize, effects: effects, shadow: shadow)
+            // モザイク・ぼかしは元の画像から作った画像で塗り替えるので、スポットライトの暗さを、その範囲にもう一度かける
+            if !spotlights.isEmpty, let rect = effectRect(of: annotation) {
+                ctx.saveGState()
+                ctx.clip(to: rect.standardized)
+                drawSpotlights(spotlights, imageSize: imageSize, in: ctx)
+                ctx.restoreGState()
+            }
+        }
+    }
+
+    /// モザイク・ぼかしの範囲（ほかの書き込みは nil）
+    private static func effectRect(of annotation: Annotation) -> CGRect? {
+        switch annotation.shape {
+        case .mosaic(let rect), .blur(let rect): rect
+        default: nil
         }
     }
 

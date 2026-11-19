@@ -14,7 +14,8 @@ final class PinManager {
     private struct ClosedPin {
         let image: CGImage
         let imageSize: CGSize
-        let snapshot: EditSnapshot
+        /// 書き込み・トリミング・背景・最前面の設定
+        let state: PinController.RestoreState
         let frame: NSRect
         let zoom: CGFloat
         let opacity: CGFloat
@@ -55,7 +56,7 @@ final class PinManager {
         imageSize: CGSize,
         frame: NSRect,
         zoom: CGFloat,
-        restoring: EditSnapshot?
+        restoring: PinController.RestoreState?
     ) -> PinController {
         let controller = PinController(image: image, imageSize: imageSize, frame: frame, zoom: zoom, restoring: restoring)
         controller.onClose = { [weak self] closed in
@@ -70,7 +71,7 @@ final class PinManager {
         closedPins.insert(ClosedPin(
             image: controller.canvas.baseImage,
             imageSize: controller.canvas.imageSize,
-            snapshot: controller.canvas.snapshot,
+            state: controller.restoreState,
             frame: controller.contentScreenFrame,
             zoom: controller.zoom,
             opacity: controller.panel.alphaValue
@@ -92,7 +93,7 @@ final class PinManager {
             imageSize: closed.imageSize,
             frame: closed.frame,
             zoom: closed.zoom,
-            restoring: closed.snapshot
+            restoring: closed.state
         )
         controller.setOpacity(closed.opacity)
         controller.show()

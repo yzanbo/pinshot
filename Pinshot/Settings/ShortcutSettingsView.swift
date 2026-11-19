@@ -89,6 +89,8 @@ struct ShortcutRecorder: View {
 final class ShortcutRecorderModel: ObservableObject {
     /// 記録の案内や、ほかの操作から外したことを知らせる文（どの操作の行に出すか）
     @Published private(set) var message: (action: ShortcutAction, text: String)?
+    /// 設定のウィンドウ。記録するのは、このウィンドウで押したキーだけ（ほかのウィンドウのキーは横取りしない）
+    weak var window: NSWindow?
     private let settings: AppSettings
     private var monitor: Any?
 
@@ -110,6 +112,7 @@ final class ShortcutRecorderModel: ObservableObject {
         message = (action, "esc でやめる")
         monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self else { return event }
+            if let window = self.window, event.window !== window { return event }
             if event.keyCode == 53 { // esc
                 self.stop()
                 return nil

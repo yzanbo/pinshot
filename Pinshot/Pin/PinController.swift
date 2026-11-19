@@ -28,7 +28,18 @@ final class PinController: NSObject, NSWindowDelegate {
 
     var isOnTop: Bool { onTopOverride ?? AppSettings.shared.alwaysOnTop }
 
-    init(image: CGImage, imageSize: CGSize, frame: NSRect, zoom: CGFloat = 1, restoring: EditSnapshot? = nil) {
+    /// 閉じた画像を戻すときに引き継ぐ、画像ごとの状態
+    struct RestoreState {
+        var snapshot: EditSnapshot
+        var backdrop: EditorState.BackdropState
+        var onTopOverride: Bool?
+    }
+
+    var restoreState: RestoreState {
+        RestoreState(snapshot: canvas.snapshot, backdrop: state.backdropState, onTopOverride: onTopOverride)
+    }
+
+    init(image: CGImage, imageSize: CGSize, frame: NSRect, zoom: CGFloat = 1, restoring: RestoreState? = nil) {
         let state = EditorState()
         self.state = state
         self.appearance = PinAppearance(opacity: AppSettings.shared.defaultOpacity)
@@ -40,7 +51,9 @@ final class PinController: NSObject, NSWindowDelegate {
         self.zoom = zoom
 
         if let restoring {
-            canvas.restore(restoring)
+            canvas.restore(restoring.snapshot)
+            state.restoreBackdrop(restoring.backdrop)
+            onTopOverride = restoring.onTopOverride
         }
         canvas.controller = self
         canvas.frame = NSRect(origin: .zero, size: frame.size)
@@ -211,6 +224,11 @@ final class PinController: NSObject, NSWindowDelegate {
         onClose?(self)
     }
 
+    func windowDidResignKey(_ notification: Notification) {
+        // space を押したままほかへ移ると keyUp が届かないので、押していない状態に戻す
+        canvas.releaseHeldKeys()
+    }
+
     func windowDidChangeScreen(_ notification: Notification) {
         // 別の画面へ動かしたら、ツールバーをその画面に収まる位置に置き直す
         toolbar.layout()
@@ -270,6 +288,7 @@ final class PinController: NSObject, NSWindowDelegate {
 
     /// 画面から外れていたら、見える画面の中に戻す（ディスプレイを外したときなど）
     func ensureOnScreen() {
+        canvas.commitPendingText()
         let frame = panel.frame
         let visibleScreens = NSScreen.screens.map(\.visibleFrame)
         let isVisible = visibleScreens.contains { $0.intersection(frame).width >= 40 && $0.intersection(frame).height >= 40 }
@@ -315,6 +334,8 @@ final class PinController: NSObject, NSWindowDelegate {
 
     /// anchor（スクリーン座標）の位置が動かないように大きさを変える
     private func applyZoom(_ newZoom: CGFloat, anchor: NSPoint, baseFrame: NSRect) {
+        // 入力中の文字は、いまの拡大率で大きさを決めているので、先に確定する
+        canvas.commitPendingText()
         let fx = (anchor.x - baseFrame.minX) / baseFrame.width
         let fy = (anchor.y - baseFrame.minY) / baseFrame.height
         let size = paddedContentSize

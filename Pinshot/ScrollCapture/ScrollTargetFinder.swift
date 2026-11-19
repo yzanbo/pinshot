@@ -8,6 +8,13 @@ enum ScrollTargetFinder {
     private static let minSize: CGFloat = 80
     /// Web の中身のアクセシビリティ情報を出すよう頼んだアプリ
     private static var webAccessibilityRequested: Set<pid_t> = []
+    /// 1 回の問い合わせを待つ長さ（応答しないアプリで、範囲を選ぶ画面が固まらないように）
+    private static let messagingTimeout: Float = 0.3
+    private static var didSetMessagingTimeout = false
+    /// いまの探索の中で、問い合わせが時間切れになったか（なったら、それ以上は聞かない）
+    private static var timedOut = false
+    /// ウィンドウ全体を探すときに見る要素の数の上限
+    private static let searchLimit = 1500
 
     /// window の中で、point（スクリーン座標）の下にあるスクロール領域（スクリーン座標）。
     /// 見つからなければ、そのウィンドウの中でいちばん大きいスクロール領域。それもなければ nil。
@@ -18,19 +25,20 @@ enum ScrollTargetFinder {
         guard AXIsProcessTrusted() else { return nil }
         let pid = window.ownerPID
         guard pid != ProcessInfo.processInfo.processIdentifier else { return nil }
+        prepareMessaging()
         enableWebAccessibility(pid: pid)
 
         let app = AXUIElementCreateApplication(pid)
-        // 1 回の問い合わせが長く止まらないようにする（応答しないアプリで固まらないため）
-        AXUIElementSetMessagingTimeout(app, 0.25)
         let windowFrame = window.frame
         let cgPoint = ScreenGeometry.quartzPoint(point)
         var element: AXUIElement?
-        if AXUIElementCopyElementAtPosition(app, Float(cgPoint.x), Float(cgPoint.y), &element) == .success,
-           let element,
-           let rect = scrollAncestor(of: element, clippedTo: windowFrame) {
+        let hit = AXUIElementCopyElementAtPosition(app, Float(cgPoint.x), Float(cgPoint.y), &element)
+        if hit == .cannotComplete { timedOut = true }
+        if hit == .success, let element, let rect = scrollAncestor(of: element, clippedTo: windowFrame) {
             return rect.integral
         }
+        // 応答しないアプリには、それ以上聞かない
+        guard !timedOut else { return nil }
         if let axWindow = axWindow(of: app, matching: windowFrame),
            let rect = largestScrollArea(in: axWindow, clippedTo: windowFrame) {
             return rect.integral
@@ -52,8 +60,8 @@ enum ScrollTargetFinder {
     /// ウィンドウを前に出す（ほかのウィンドウに隠れていると、そちらにスクロールが送られたり写ったりするため）
     static func raise(_ window: WindowInfo) {
         guard AXIsProcessTrusted() else { return }
+        prepareMessaging()
         let app = AXUIElementCreateApplication(window.ownerPID)
-        AXUIElementSetMessagingTimeout(app, 0.25)
         if let axWindow = axWindow(of: app, matching: window.frame) {
             AXUIElementPerformAction(axWindow, kAXRaiseAction as CFString)
         }
@@ -68,7 +76,7 @@ enum ScrollTargetFinder {
         var current: AXUIElement? = element
         var webArea: NSRect?
         for _ in 0..<40 {
-            guard let node = current else { break }
+            guard let node = current, !timedOut else { break }
             if let role = Self.string(node, kAXRoleAttribute), scrollRoles.contains(role), var rect = frame(of: node) {
                 if let windowFrame { rect = rect.intersection(windowFrame) }
                 if rect.width >= minSize, rect.height >= minSize {
@@ -88,7 +96,7 @@ enum ScrollTargetFinder {
         var best: NSRect?
         var queue: [(AXUIElement, Int)] = [(window, 0)]
         var visited = 0
-        while !queue.isEmpty, visited < 3000 {
+        while !queue.isEmpty, visited < searchLimit, !timedOut {
             let (node, depth) = queue.removeFirst()
             visited += 1
             if let role = string(node, kAXRoleAttribute), scrollRoles.contains(role), var rect = frame(of: node) {
@@ -98,7 +106,7 @@ enum ScrollTargetFinder {
                     best = rect
                 }
             }
-            guard depth < 14, let children = elements(node, kAXChildrenAttribute) else { continue }
+            guard depth < 12, let children = elements(node, kAXChildrenAttribute) else { continue }
             queue.append(contentsOf: children.map { ($0, depth + 1) })
         }
         return best
@@ -115,6 +123,16 @@ enum ScrollTargetFinder {
         return matched ?? windows.first { frame(of: $0)?.intersects(windowFrame) ?? false }
     }
 
+    /// 問い合わせを待つ長さを決め、時間切れの印を消す（探すたびに呼ぶ）。
+    /// 待つ長さは、システム全体の要素に設定すると、このアプリのすべての問い合わせに効く
+    /// （アプリの要素に設定しても、その子の要素には効かない）
+    private static func prepareMessaging() {
+        timedOut = false
+        guard !didSetMessagingTimeout else { return }
+        didSetMessagingTimeout = true
+        AXUIElementSetMessagingTimeout(AXUIElementCreateSystemWide(), messagingTimeout)
+    }
+
     /// Chrome や Electron のアプリは、頼まないと Web の中身のアクセシビリティ情報を出さないので、出してもらう
     private static func enableWebAccessibility(pid: pid_t) {
         guard !webAccessibilityRequested.contains(pid) else { return }
@@ -126,8 +144,11 @@ enum ScrollTargetFinder {
     // MARK: - アクセシビリティの値を読む
 
     private static func value(_ element: AXUIElement, _ attribute: String) -> CFTypeRef? {
+        guard !timedOut else { return nil }
         var value: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(element, attribute as CFString, &value) == .success else { return nil }
+        let result = AXUIElementCopyAttributeValue(element, attribute as CFString, &value)
+        if result == .cannotComplete { timedOut = true }
+        guard result == .success else { return nil }
         return value
     }
 

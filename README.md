@@ -15,6 +15,7 @@ make cert       # 開発用の署名の証明書を作る（最初に一度だ�
 make icon       # アプリのアイコンを描き直す（scripts/make-app-icon.swift を変えたときだけ）
 make run        # 動いている Pinshot を終了し、ビルドして起動する
 make build      # ビルドだけ
+make test       # テストを動かす（アプリは起動しない）
 make stop       # 動いている Pinshot を終了する
 make generate   # Pinshot.xcodeproj を作るだけ（Xcode で開くとき）
 ```
@@ -52,7 +53,8 @@ make generate   # Pinshot.xcodeproj を作るだけ（Xcode で開くとき）
 3. つないだ画像が、画面に収まる大きさで浮かぶ
 
 - スクロール領域を見つけて自動でスクロールするには「アクセシビリティ」の許可が必要です（操作パネルの「アクセシビリティを許可…」から）。許可がないとき・領域が見つからないときは、クリックでウィンドウ全体、ドラッグでその範囲を撮ります。許可するまでは、自分でゆっくり下へスクロールすれば、同じようにつなぎます
-- 自動スクロール中にマウスを枠の外へ出すと止まり、戻すと続きます
+- 自動スクロール中にマウスを枠の外へ出したとき・ほかのウィンドウが重なったときは止まり、戻すと続きます
+- うまくつなげないときは、少し戻して量を減らしながらやり直します。それでもつなげないとき（動き続ける広告・動画など）は自動をやめるので、自分でゆっくりスクロールするか「完了」を押してください
 - 固定ヘッダー・フッターは 1 回だけ残します。長さは 30,000 ピクセルまでです
 
 メニューバーのアイコンからは、次も選べます。
@@ -189,6 +191,7 @@ Pinshot/
 ├── Editor/         書き込みのデータ、描画、書き出し
 │   ├── Annotation・AnnotationStyles・Tool・RGBAColor   書き込みのデータ（Windows 版と形式をそろえる）
 │   ├── AnnotationRenderer・ImageEffects・ImageExporter 描画・モザイクとぼかし・書き出し
+│   ├── AnnotationDocument    1 枚の画像の編集データ（書き込み・トリミング・元に戻す履歴）。変えるときは必ずここを通す
 │   ├── EditorState・EditorStyle・StylePreset・EditHistory  編集の状態・スタイルの保存・元に戻す
 │   └── Toolbar/              ツールバー（SwiftUI）と、その部品・入力欄・カラーパネル
 ├── Assets.xcassets/ アプリのアイコン（scripts/make-app-icon.swift で描いて書き出す）
@@ -203,4 +206,6 @@ Pinshot/
     ├── Permissions           画面収録・アクセシビリティの許可
     ├── GraphicsHelpers       画像の描き先を作る
     └── ViewHelpers           カーソルの切り替え・マウスの追跡など
+
+PinshotTests/       画面に関係ない処理のテスト（make test）
 ```

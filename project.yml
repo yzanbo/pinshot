@@ -35,3 +35,38 @@ targets:
         DEVELOPMENT_TEAM: ""
         ENABLE_HARDENED_RUNTIME: NO
         COMBINE_HIDPI_IMAGES: YES
+    scheme:
+      testTargets:
+        - PinshotTests
+
+  # 画面に関係ない処理（書き込みのデータ・つなぎ合わせ・書き出しなど）のテスト。
+  # アプリを起動せずに動かせるよう、使うソースをテストに直接入れる
+  PinshotTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: PinshotTests
+      - path: Pinshot/Editor/RGBAColor.swift
+      - path: Pinshot/Editor/Tool.swift
+      - path: Pinshot/Editor/AnnotationStyles.swift
+      - path: Pinshot/Editor/Annotation.swift
+      - path: Pinshot/Editor/EditorStyle.swift
+      - path: Pinshot/Editor/EditHistory.swift
+      - path: Pinshot/Editor/AnnotationDocument.swift
+      - path: Pinshot/Editor/EditHandle.swift
+      - path: Pinshot/Editor/AnnotationRenderer.swift
+      - path: Pinshot/Editor/ImageEffects.swift
+      - path: Pinshot/Editor/ImageExporter.swift
+      - path: Pinshot/Pin/ResizeEdges.swift
+      - path: Pinshot/ScrollCapture/ScrollStitcher.swift
+      - path: Pinshot/Settings/ExportDecoration.swift
+      - path: Pinshot/Settings/Shortcut.swift
+      - path: Pinshot/Screenshot/CaptureTypes.swift
+      - path: Pinshot/Support/GraphicsHelpers.swift
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: dev.portfolio.pinshot.tests
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "-"
+        DEVELOPMENT_TEAM: ""

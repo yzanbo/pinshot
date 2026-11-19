@@ -124,6 +124,20 @@ enum ImageExporter {
         }
     }
 
+    /// folder の中で、まだ使われていない名前の URL（同じ名前があれば「名前 2.png」「名前 3.png」… にする）
+    static func uniqueURL(in folder: URL, fileName: String, fileManager: FileManager = .default) -> URL {
+        let base = (fileName as NSString).deletingPathExtension
+        let ext = (fileName as NSString).pathExtension
+        var url = folder.appendingPathComponent(fileName)
+        var number = 2
+        while fileManager.fileExists(atPath: url.path) {
+            let name = ext.isEmpty ? "\(base) \(number)" : "\(base) \(number).\(ext)"
+            url = folder.appendingPathComponent(name)
+            number += 1
+        }
+        return url
+    }
+
     static func defaultFileName() -> String {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")

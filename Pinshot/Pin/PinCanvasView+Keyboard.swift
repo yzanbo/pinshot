@@ -34,10 +34,7 @@ extension PinCanvasView {
             }
             if state.isEditing, !selection.isEmpty {
                 // 選んでいる書き込みを動かす
-                pushUndo(snapshot)
-                for index in selectedIndices {
-                    annotations[index] = annotations[index].translated(by: CGVector(dx: dx, dy: dy))
-                }
+                document.translate(ids: selection, by: CGVector(dx: dx, dy: dy))
                 historyChanged()
             } else {
                 // 画像（ウィンドウ）を動かす（画面の座標は上が +）
@@ -75,6 +72,19 @@ extension PinCanvasView {
             return
         }
         super.keyUp(with: event)
+    }
+
+    /// 押している状態のキーを、押していない状態に戻す。
+    /// space を押したまま、ほかのウィンドウ・アプリに移ると keyUp が届かないため
+    func releaseHeldKeys() {
+        guard isSpaceHeld else { return }
+        isSpaceHeld = false
+        refreshCursor()
+    }
+
+    override func resignFirstResponder() -> Bool {
+        releaseHeldKeys()
+        return super.resignFirstResponder()
     }
 
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
