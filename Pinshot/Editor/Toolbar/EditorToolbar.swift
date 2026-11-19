@@ -64,7 +64,7 @@ struct EditorToolbar: View {
             ToolbarSection {
                 ColorMenuButton(state: state)
                 PresetMenuButton(state: state)
-                BackdropMenuButton(state: state)
+                BackdropButton(state: state)
             }
 
             ToolbarDivider()
@@ -135,9 +135,10 @@ struct EditorToolbar: View {
     // MARK: - 2 行目（ツールごとのオプション）
 
     private var hasOptions: Bool {
+        if state.showsBackdropOptions { return true }
         switch state.optionsTool {
-        case .rectangle, .ellipse, .arrow, .pen, .highlight, .counter, .text: true
-        default: false
+        case .rectangle, .ellipse, .arrow, .pen, .highlight, .counter, .text: return true
+        default: return false
         }
     }
 
@@ -151,6 +152,76 @@ struct EditorToolbar: View {
 
     @ViewBuilder
     private var optionSections: some View {
+        if state.showsBackdropOptions {
+            backdropSections
+        } else {
+            toolSections
+        }
+    }
+
+    /// 背景のオプション（背景のボタンを押したとき）。色などを選ぶと、背景も付ける
+    @ViewBuilder
+    private var backdropSections: some View {
+        let shown = state.backdropShown
+        let decoration = state.backdropDecoration
+        OptionSection(label: "背景") {
+            SegmentedGroup {
+                SegmentButton(state: state, text: "なし", hint: "背景を外す", isSelected: !shown) {
+                    state.setBackdropShown(false)
+                }
+                SegmentButton(state: state, text: "付ける", hint: "背景を付ける（書き出しも同じ見た目）", isSelected: shown) {
+                    state.setBackdropShown(true)
+                }
+            }
+        }
+        OptionSection(label: "色") {
+            SegmentedGroup {
+                ForEach(ExportBackground.allCases) { background in
+                    SegmentButton(
+                        state: state,
+                        hint: "背景の色：\(background.label)",
+                        isSelected: shown && decoration.background == background
+                    ) {
+                        state.updateBackdrop { $0.background = background }
+                    } label: {
+                        Image(nsImage: background.swatchImage(diameter: 12))
+                    }
+                }
+            }
+        }
+        OptionSection(label: "余白") {
+            SegmentedGroup {
+                ForEach(ExportPadding.allCases) { padding in
+                    SegmentButton(state: state, text: padding.label, hint: "背景の余白：\(padding.label)", isSelected: shown && decoration.padding == padding) {
+                        state.updateBackdrop { $0.padding = padding }
+                    }
+                }
+            }
+        }
+        OptionSection(label: "角") {
+            SegmentedGroup {
+                ForEach(ExportCorner.allCases) { corner in
+                    SegmentButton(state: state, text: corner.label, hint: "画像の角の丸み：\(corner.label)", isSelected: shown && decoration.corner == corner) {
+                        state.updateBackdrop { $0.corner = corner }
+                    }
+                }
+            }
+        }
+        OptionSection(label: "影") {
+            SegmentedGroup {
+                SegmentButton(state: state, text: "なし", hint: "画像の影を付けない", isSelected: shown && !decoration.shadow) {
+                    state.updateBackdrop { $0.shadow = false }
+                }
+                SegmentButton(state: state, text: "あり", hint: "画像に影を付ける", isSelected: shown && decoration.shadow) {
+                    state.updateBackdrop { $0.shadow = true }
+                }
+            }
+        }
+    }
+
+    /// いまのツール（入力中の文字・選んだ書き込み）のオプション
+    @ViewBuilder
+    private var toolSections: some View {
         let tool = state.optionsTool
         switch tool {
         case .rectangle:

@@ -107,50 +107,18 @@ struct ColorMenuButton: View {
     }
 }
 
-/// 背景のボタン（押すと付ける・外す、▾ で色・余白・角の丸み・影。書き出しも同じ見た目）
-struct BackdropMenuButton: View {
+/// 背景のボタン。押すと、ツールバーの 2 行目に背景のオプション（付ける・外す・色・余白・角の丸み・影）を出す（もう一度押すと閉じる）
+struct BackdropButton: View {
     @ObservedObject var state: EditorState
 
     var body: some View {
-        SplitMenuButton(
+        ToolbarIconButton(
             state: state,
-            hint: "背景：押すと付ける・外す（書き出しも同じ見た目）、▾ で色・余白・角の丸み・影を選ぶ",
-            isSelected: state.backdropShown,
-            primaryAction: { state.setBackdropShown(!state.backdropShown) },
-            menu: {
-                let decoration = state.backdropDecoration
-                let shown = state.backdropShown
-                var entries: [MenuEntry] = [
-                    .item(title: shown ? "背景を外す" : "背景を付ける") { state.setBackdropShown(!shown) },
-                    .separator,
-                ]
-                entries += ExportBackground.allCases.map { background in
-                    .item(title: background.label, image: background.swatchImage(diameter: 12), isChecked: shown && decoration.background == background) {
-                        state.updateBackdrop { $0.background = background }
-                    }
-                }
-                entries.append(.separator)
-                entries += ExportPadding.allCases.map { padding in
-                    .item(title: "余白：\(padding.label)", isChecked: shown && decoration.padding == padding) {
-                        state.updateBackdrop { $0.padding = padding }
-                    }
-                }
-                entries.append(.separator)
-                entries += ExportCorner.allCases.map { corner in
-                    .item(title: "角の丸み：\(corner.label)", isChecked: shown && decoration.corner == corner) {
-                        state.updateBackdrop { $0.corner = corner }
-                    }
-                }
-                entries.append(.separator)
-                entries.append(.item(title: "影を付ける", isChecked: shown && decoration.shadow) {
-                    state.updateBackdrop { $0.shadow.toggle() }
-                })
-                return entries
-            }
+            symbol: "photo.artframe",
+            hint: "背景：押すと、下の行で背景を付ける・外す、色・余白・角の丸み・影を選べる（書き出しも同じ見た目）",
+            isSelected: state.showsBackdropOptions
         ) {
-            Image(systemName: "photo.artframe")
-                .font(ToolbarMetrics.iconFont)
-                .foregroundStyle(state.backdropShown ? ToolbarMetrics.selectedForeground : Color.primary)
+            state.showsBackdropOptions.toggle()
         }
     }
 }

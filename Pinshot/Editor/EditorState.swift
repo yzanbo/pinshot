@@ -96,6 +96,8 @@ final class EditorState: ObservableObject {
 
     /// この画像に背景を付けるか・背景の見た目（画像ごと。初期値は設定の「保存」タブの背景）
     @Published var backdropShown: Bool
+    /// ツールバーの 2 行目に、背景のオプション（付ける・外す・色・余白・角の丸み・影）を出しているか
+    @Published var showsBackdropOptions = false
     @Published var backdropDecoration: ExportDecoration
     /// まだこの画像の背景を触っていなければ、設定の変更に追従する
     private(set) var backdropFollowsSettings = true

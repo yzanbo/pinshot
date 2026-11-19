@@ -101,13 +101,20 @@ final class PinController: NSObject, NSWindowDelegate {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] hint in self?.toolbar.updateHint(hint) }
             .store(in: &cancellables)
-        // ツールや選択が変わったら、前の説明は消す（消えたボタンの説明が残らないように）
-        Publishers.Merge(
+        // ツールや選択が変わったら、前の説明は消す（消えたボタンの説明が残らないように）。
+        // 2 行目も、背景のオプションからツールのオプションに戻す
+        Publishers.Merge3(
             state.$tool.dropFirst().map { _ in () },
-            state.$selectionTool.dropFirst().map { _ in () }
+            state.$selectionTool.dropFirst().map { _ in () },
+            state.$isEditingText.dropFirst().filter { $0 }.map { _ in () }
         )
         .receive(on: DispatchQueue.main)
-        .sink { [weak self] _ in self?.state.hoverHint = nil }
+        .sink { [weak self] _ in
+            self?.state.hoverHint = nil
+            if self?.state.showsBackdropOptions == true {
+                self?.state.showsBackdropOptions = false
+            }
+        }
         .store(in: &cancellables)
         // 文字の大きさは、入力中の文字にもすぐ反映する
         state.$fontSize
