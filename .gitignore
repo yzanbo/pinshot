@@ -1,0 +1,6 @@
+.DS_Store
+build/
+# project.yml から作るので管理しない（make generate で作り直せる）
+Pinshot.xcodeproj/
+xcuserdata/
+build-check/

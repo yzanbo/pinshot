@@ -1,0 +1,148 @@
+import AppKit
+
+extension PinCanvasView {
+    // MARK: - 選択・色や大きさの反映
+
+    func select(_ index: Int) {
+        let annotation = annotations[index]
+        selectedID = annotation.id
+        // ツールバーの色・太さ・オプションを、選んだ書き込みに合わせる
+        guard !annotation.isEffect else { return }
+        state.color = annotation.color.withAlpha(1)
+        state.opacity = Double(annotation.color.a)
+        state.setLineWidth(annotation.lineWidth, for: annotation.tool)
+        switch annotation.shape {
+        case .text(let runs, _, let style):
+            setFontSizeSilently(Annotation.maxFontSize(runs))
+            state.textStyle = style
+        case .counter(_, _, let radius, let style):
+            state.counterSize = CounterSize.closest(toRadius: radius)
+            state.counterStyle = style
+        case .arrow(_, _, let style):
+            state.arrowStyle = style
+        case .rectangle(_, let style):
+            state.rectangleStyle = style
+        case .ellipse(_, let style):
+            state.ellipseStyle = style
+        default:
+            break
+        }
+    }
+
+    /// ツールバーで色・太さ・オプションを変えたとき、入力中の文字・選んでいる書き込みにも反映する
+    func applyStyleToSelection(aspects: StyleAspects = .all) {
+        if let field = textField {
+            textColor = state.drawColor
+            textStyle = state.textStyle
+            if let editor = field.currentEditor() as? NSTextView {
+                let whole = NSRange(location: 0, length: (editor.string as NSString).length)
+                editor.textStorage?.addAttribute(.foregroundColor, value: textColor.nsColor, range: whole)
+                editor.typingAttributes = typingAttributes(size: textFontSize)
+            }
+            return
+        }
+        let style = state.style
+        let widthTool = state.optionsTool
+        updateSelected { $0.restyled(with: style, aspects: aspects, lineWidthTool: widthTool) }
+    }
+
+    /// 選んでいる書き込みを transform で作り直す（変わったものだけ）。
+    /// 続けて変えているあいだ（1 秒以内）は、最初の状態だけを「元に戻す」に残す（カラーパネルで色を動かしたときなど）
+    private func updateSelected(_ transform: (Annotation) -> Annotation) {
+        guard state.isEditing, !selection.isEmpty else { return }
+        let changes = selectedIndices.compactMap { index -> (Int, Annotation)? in
+            let updated = transform(annotations[index])
+            return updated == annotations[index] ? nil : (index, updated)
+        }
+        guard !changes.isEmpty, let id = selection.first else { return }
+        let isContinuing = lastStyleUndo.map { $0.id == id && Date().timeIntervalSince($0.time) < 1.0 } ?? false
+        if !isContinuing {
+            pushUndo(snapshot)
+        }
+        lastStyleUndo = (id, Date())
+        for (index, updated) in changes {
+            annotations[index] = updated
+        }
+        historyChanged()
+    }
+
+    /// 文字の大きさを変えたとき、入力中の文字・選んでいる文字に反映する
+    func fontSizeDidChange() {
+        let size = state.fontSize
+        // 表示を合わせただけのとき（入力カーソルの位置・選んだ文字・直し始め）は、文字を変えない
+        if silentFontSizeChanges > 0 {
+            silentFontSizeChanges -= 1
+            return
+        }
+        if let field = textField {
+            // 入力中は、選んでいる部分（なければ、ここから先に入力する文字）の大きさだけを変える
+            textFontSize = size
+            if let editor = field.currentEditor() as? NSTextView {
+                let range = editor.selectedRange()
+                if range.length > 0 {
+                    editor.textStorage?.addAttribute(.font, value: Annotation.textFont(size: size * scaleFactor), range: range)
+                }
+                editor.typingAttributes = typingAttributes(size: size)
+            }
+            resizeTextField(field)
+            return
+        }
+        updateSelected { $0.withFontSize(size) }
+    }
+
+    // MARK: - すべて選択・複製・重なり順
+
+    func selectAll() {
+        guard !annotations.isEmpty else { return }
+        state.tool = .select
+        selection = annotations.map(\.id)
+        needsDisplay = true
+    }
+
+    /// 選んでいる書き込みを、少し右下にずらして複製する（番号は続きの番号にする）
+    func duplicateSelected() {
+        let indices = selectedIndices.sorted()
+        guard !indices.isEmpty else { return }
+        pushUndo(snapshot)
+        var nextNumber = (annotations.compactMap(\.counterNumber).max() ?? 0) + 1
+        var newIDs: [UUID] = []
+        for index in indices {
+            var copy = annotations[index].translated(by: CGVector(dx: 12, dy: 12))
+            copy.id = UUID()
+            if case .counter(_, let center, let radius, let style) = copy.shape {
+                copy.shape = .counter(nextNumber, center: center, radius: radius, style: style)
+                nextNumber += 1
+            }
+            annotations.append(copy)
+            newIDs.append(copy.id)
+        }
+        selection = newIDs
+        historyChanged()
+        showHUD("複製しました")
+    }
+
+    /// 選んでいる書き込みを、1 つ前面（forward）か背面へ動かす
+    func reorderSelected(forward: Bool) {
+        var indices = selectedIndices.sorted()
+        guard !indices.isEmpty else { return }
+        let before = snapshot
+        var changed = false
+        if forward {
+            for index in indices.reversed() where index < annotations.count - 1 && !indices.contains(index + 1) {
+                annotations.swapAt(index, index + 1)
+                indices = indices.map { $0 == index ? index + 1 : $0 }
+                changed = true
+            }
+        } else {
+            for index in indices where index > 0 && !indices.contains(index - 1) {
+                annotations.swapAt(index, index - 1)
+                indices = indices.map { $0 == index ? index - 1 : $0 }
+                changed = true
+            }
+        }
+        guard changed else { return }
+        pushUndo(before)
+        historyChanged()
+        showHUD(forward ? "前面へ" : "背面へ")
+    }
+}

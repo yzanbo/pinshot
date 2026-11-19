@@ -1,0 +1,37 @@
+name: Pinshot
+options:
+  bundleIdPrefix: dev.portfolio
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    SWIFT_STRICT_CONCURRENCY: minimal
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+targets:
+  Pinshot:
+    type: application
+    platform: macOS
+    sources:
+      - path: Pinshot
+    info:
+      path: Pinshot/Info.plist
+      properties:
+        CFBundleDisplayName: Pinshot
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        # Dock に出さず、メニューバーだけに常駐する
+        LSUIElement: true
+        LSMinimumSystemVersion: "14.0"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.portfolio.pinshot
+        # アプリのアイコン（scripts/make-app-icon.swift で描いて書き出す）
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # 開発中はアドホック署名。Xcode で Team を設定すると、画面収録の許可が再ビルドで外れにくくなる
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "-"
+        DEVELOPMENT_TEAM: ""
+        ENABLE_HARDENED_RUNTIME: NO
+        COMBINE_HIDPI_IMAGES: YES

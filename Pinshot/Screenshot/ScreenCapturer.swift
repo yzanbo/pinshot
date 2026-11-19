@@ -1,0 +1,123 @@
+import AppKit
+import ScreenCaptureKit
+
+/// 1 枚の画面と、その画面を撮った画像
+struct ScreenShot {
+    let screen: NSScreen
+    let image: CGImage
+}
+
+@MainActor
+enum ScreenCapturer {
+    /// 画面に出ているものの一覧（許可がないとエラーになる）
+    static func shareableContent() async throws -> SCShareableContent {
+        let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+        ScreenPermission.confirmed = true
+        return content
+    }
+
+    /// つながっているすべての画面を、そのときの見た目のまま撮る
+    static func captureAllScreens(content: SCShareableContent) async throws -> [ScreenShot] {
+        var shots: [ScreenShot] = []
+        for screen in NSScreen.screens {
+            if let shot = try await capture(screen: screen, content: content) {
+                shots.append(shot)
+            }
+        }
+        return shots
+    }
+
+    /// 1 枚の画面を撮る
+    static func capture(screen: NSScreen, content: SCShareableContent) async throws -> ScreenShot? {
+        guard
+            let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID,
+            let display = content.displays.first(where: { $0.displayID == number })
+        else { return nil }
+
+        let filter = SCContentFilter(display: display, excludingWindows: [])
+        let config = SCStreamConfiguration()
+        let scale = screen.backingScaleFactor
+        config.width = Int(screen.frame.width * scale)
+        config.height = Int(screen.frame.height * scale)
+        config.showsCursor = false
+        config.captureResolution = .best
+
+        let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
+        return ScreenShot(screen: screen, image: image)
+    }
+
+    /// ウィンドウだけを撮る（ほかのウィンドウに隠れていても、そのウィンドウの中身が撮れる）。
+    /// 戻り値の size はポイント
+    static func captureWindow(id: CGWindowID, content: SCShareableContent) async throws -> (image: CGImage, size: CGSize)? {
+        guard let window = content.windows.first(where: { $0.windowID == id }) else { return nil }
+
+        let filter = SCContentFilter(desktopIndependentWindow: window)
+        let config = SCStreamConfiguration()
+        let rect = filter.contentRect
+        let scale = CGFloat(filter.pointPixelScale)
+        config.width = Int(rect.width * scale)
+        config.height = Int(rect.height * scale)
+        config.showsCursor = false
+        config.captureResolution = .best
+        config.ignoreShadowsSingleWindow = true
+
+        let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
+        return (image, rect.size)
+    }
+
+    /// 撮った画面から、rect（スクリーン座標）の部分を切り抜く。戻り値の size はポイント
+    static func crop(_ shot: ScreenShot, to rect: NSRect) -> (image: CGImage, size: CGSize)? {
+        let screenFrame = shot.screen.frame
+        let local = rect.offsetBy(dx: -screenFrame.minX, dy: -screenFrame.minY).intersection(
+            NSRect(origin: .zero, size: screenFrame.size)
+        )
+        guard local.width >= 1, local.height >= 1 else { return nil }
+
+        // AppKit（左下が原点）→ 画像（左上が原点）、ポイント → ピクセル
+        let scaleX = CGFloat(shot.image.width) / screenFrame.width
+        let scaleY = CGFloat(shot.image.height) / screenFrame.height
+        let pixelRect = CGRect(
+            x: local.minX * scaleX,
+            y: (screenFrame.height - local.maxY) * scaleY,
+            width: local.width * scaleX,
+            height: local.height * scaleY
+        ).integral
+
+        guard let image = shot.image.cropping(to: pixelRect) else { return nil }
+        return (image, local.size)
+    }
+}
+
+enum WindowList {
+    /// 画面に出ているふつうのウィンドウ（手前から順）
+    @MainActor
+    static func visibleWindows() -> [WindowInfo] {
+        guard let list = CGWindowListCopyWindowInfo(
+            [.optionOnScreenOnly, .excludeDesktopElements],
+            kCGNullWindowID
+        ) as? [[String: Any]] else { return [] }
+
+        let myPID = Int(ProcessInfo.processInfo.processIdentifier)
+
+        return list.compactMap { info in
+            guard
+                (info[kCGWindowLayer as String] as? Int) == 0,
+                let pid = info[kCGWindowOwnerPID as String] as? Int, pid != myPID,
+                let number = info[kCGWindowNumber as String] as? Int,
+                let boundsInfo = info[kCGWindowBounds as String] as? NSDictionary,
+                let bounds = CGRect(dictionaryRepresentation: boundsInfo as CFDictionary),
+                bounds.width >= 40, bounds.height >= 40
+            else { return nil }
+            if let alpha = info[kCGWindowAlpha as String] as? Double, alpha <= 0 { return nil }
+
+            return WindowInfo(
+                id: CGWindowID(number),
+                // CGWindow の座標は「メインの画面の左上が原点」なので、AppKit の座標（左下が原点）に直す
+                frame: ScreenGeometry.appKitRect(fromQuartz: bounds),
+                appName: info[kCGWindowOwnerName as String] as? String ?? "",
+                title: info[kCGWindowName as String] as? String ?? "",
+                ownerPID: pid_t(pid)
+            )
+        }
+    }
+}
