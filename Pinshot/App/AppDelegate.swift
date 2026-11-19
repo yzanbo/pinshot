@@ -27,6 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         AppSupport.installMainMenu()
         AppSupport.allowCursorChangesInBackground()
+        OpenMenus.startObserving()
         statusMenu.install()
         registerHotKeys()
 
@@ -67,7 +68,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 continue
             }
             let hotKey = HotKey(keyCode: shortcut.keyCode, modifiers: shortcut.modifiers) { [weak self] in
-                self?.perform(action)
+                self?.performFromShortcut(action)
             }
             hotKeys[action] = hotKey
             if hotKey == nil { unavailable.insert(action) }
@@ -76,6 +77,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // 登録できなかったものは、設定のショートカットの画面でも知らせる
         if !recording, settings.unavailableShortcuts != unavailable {
             settings.unavailableShortcuts = unavailable
+        }
+    }
+
+    /// ショートカットで押されたとき。メニュー（ツールバーの ▾ など）が開いていたら、先に閉じてから行う
+    /// （開いたままだと、範囲を選ぶ画面がメニューの下になって操作できない）
+    private func performFromShortcut(_ action: ShortcutAction) {
+        guard OpenMenus.isAnyOpen else {
+            perform(action)
+            return
+        }
+        OpenMenus.closeAll()
+        // メニューが閉じ終わってから始める
+        DispatchQueue.main.async { [weak self] in
+            self?.perform(action)
         }
     }
 

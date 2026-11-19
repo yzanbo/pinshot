@@ -17,10 +17,11 @@ enum ScreenCapturer {
     }
 
     /// つながっているすべての画面を、そのときの見た目のまま撮る
-    static func captureAllScreens(content: SCShareableContent) async throws -> [ScreenShot] {
+    /// excluding: 写さないウィンドウ（範囲を選ぶ画面が出るまでかぶせる膜など）
+    static func captureAllScreens(content: SCShareableContent, excluding windowIDs: Set<CGWindowID> = []) async throws -> [ScreenShot] {
         var shots: [ScreenShot] = []
         for screen in NSScreen.screens {
-            if let shot = try await capture(screen: screen, content: content) {
+            if let shot = try await capture(screen: screen, content: content, excluding: windowIDs) {
                 shots.append(shot)
             }
         }
@@ -28,13 +29,14 @@ enum ScreenCapturer {
     }
 
     /// 1 枚の画面を撮る
-    static func capture(screen: NSScreen, content: SCShareableContent) async throws -> ScreenShot? {
+    static func capture(screen: NSScreen, content: SCShareableContent, excluding windowIDs: Set<CGWindowID> = []) async throws -> ScreenShot? {
         guard
             let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID,
             let display = content.displays.first(where: { $0.displayID == number })
         else { return nil }
 
-        let filter = SCContentFilter(display: display, excludingWindows: [])
+        let excluded = content.windows.filter { windowIDs.contains($0.windowID) }
+        let filter = SCContentFilter(display: display, excludingWindows: excluded)
         let config = SCStreamConfiguration()
         let scale = screen.backingScaleFactor
         config.width = Int(screen.frame.width * scale)

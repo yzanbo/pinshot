@@ -1,9 +1,15 @@
+import AppKit
 import SwiftUI
 
 /// 範囲選択の画面の下に出す、モードとタイマーを選ぶバー
 struct CaptureModeBar: View {
     @ObservedObject var options: CaptureOptions
     let cancel: () -> Void
+
+    /// ボタンからマウスが離れたときに戻すカーソル（いまのモードのキャプチャ用のカーソル）
+    private var exitCursor: NSCursor {
+        options.mode.selectsRegion ? CaptureCursors.selection : CaptureCursors.window
+    }
 
     var body: some View {
         VStack(spacing: 8) {
@@ -12,7 +18,8 @@ struct CaptureModeBar: View {
                     BarButton(
                         symbol: mode.symbolName,
                         title: mode.label,
-                        isSelected: options.mode == mode
+                        isSelected: options.mode == mode,
+                        exitCursor: exitCursor
                     ) {
                         options.mode = mode
                     }
@@ -27,13 +34,14 @@ struct CaptureModeBar: View {
                 BarButton(
                     symbol: "timer",
                     title: options.timer == 0 ? "タイマーなし" : "\(options.timer) 秒後",
-                    isSelected: options.timer > 0
+                    isSelected: options.timer > 0,
+                    exitCursor: exitCursor
                 ) {
                     options.cycleTimer()
                 }
                 .help("押すたびに なし → 3 秒 → 5 秒 → 10 秒")
 
-                BarButton(symbol: "xmark", title: "キャンセル", isSelected: false, action: cancel)
+                BarButton(symbol: "xmark", title: "キャンセル", isSelected: false, exitCursor: exitCursor, action: cancel)
             }
 
             Text("\(options.mode.hint)　・　space で範囲 ⇄ ウィンドウ　・　esc でキャンセル")
@@ -58,6 +66,7 @@ private struct BarButton: View {
     let symbol: String
     let title: String
     let isSelected: Bool
+    let exitCursor: NSCursor
     let action: () -> Void
 
     var body: some View {
@@ -77,6 +86,12 @@ private struct BarButton: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .hoverCursor()
+        // 乗せている間は指、離れたらキャプチャ用のカーソル（矢印に戻すと、キャプチャ用のカーソルと取り合ってちらつく）
+        .onContinuousHover { phase in
+            switch phase {
+            case .active: NSCursor.pointingHand.set()
+            case .ended: exitCursor.set()
+            }
+        }
     }
 }

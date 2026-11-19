@@ -135,11 +135,20 @@ final class SelectionView: NSView {
         resetTrackingArea([.mouseEnteredAndExited, .mouseMoved, .cursorUpdate])
     }
 
-    override func cursorUpdate(with event: NSEvent) { cursor.set() }
+    /// マウスがモードバーの上にあるか（あるときは、バーのボタンのカーソル＝指に任せる）
+    var isPointerOverModeBar: (() -> Bool)?
+
+    /// キャプチャ用のカーソルを出す（モードバーの上では出さない。出すとボタンの指のカーソルと取り合ってちらつく）
+    private func applyCursor() {
+        guard isPointerOverModeBar?() != true else { return }
+        cursor.set()
+    }
+
+    override func cursorUpdate(with event: NSEvent) { applyCursor() }
     override func resetCursorRects() { addCursorRect(bounds, cursor: cursor) }
 
     override func mouseMoved(with event: NSEvent) {
-        cursor.set()
+        applyCursor()
         movePointer(to: convert(event.locationInWindow, from: nil))
     }
 
@@ -178,7 +187,8 @@ final class SelectionView: NSView {
         case .region:
             if let rect = selectionRect, rect.width > 0, rect.height > 0 { return rect }
             // シンプルな表示では、マウスの下のウィンドウを囲まない（クリックすればウィンドウの範囲を撮れる）
-            return start == nil && !isSimple ? hoveredWindow?.rect : nil
+            // クリックではウィンドウを撮らないので、マウスの下のウィンドウは囲まない
+            return nil
         case .window:
             return hoveredWindow?.rect
         case .screen:
@@ -288,9 +298,11 @@ final class SelectionView: NSView {
         switch mode {
         case .region, .scroll:
             let dragged = selectionRect.map { $0.width >= 4 && $0.height >= 4 } ?? false
-            // ドラッグせずにクリックしたときは、マウスの下のウィンドウ（スクロールのモードでは、見つけたスクロール領域）の範囲
+            // ドラッグせずにクリックしたとき：範囲のモードでは何も撮らない（範囲はドラッグで選ぶ）。
+            // スクロールのモードでは、マウスの下のウィンドウの、見つけたスクロール領域（なければウィンドウ）を撮る
             let clickedScrollRect = hoveredScrollWindowID == hoveredWindow?.info.id ? hoveredScrollRect : nil
-            let target = dragged ? selectionRect?.integral : (mode == .scroll ? clickedScrollRect ?? hoveredWindow?.rect : hoveredWindow?.rect)?.integral
+            let clickTarget = mode == .scroll ? clickedScrollRect ?? hoveredWindow?.rect : nil
+            let target = (dragged ? selectionRect : clickTarget)?.integral
             guard let rect = target, rect.width >= 4, rect.height >= 4, let window else {
                 start = nil
                 current = nil

@@ -21,17 +21,28 @@ final class CaptureController {
         isCapturing = true
         let windows = WindowList.visibleWindows()
 
+        // 押した瞬間に、すべての画面に透明なウィンドウをかぶせる（そのまま範囲を選ぶ画面になる。カーソルは準備ができてから変える）
+        let shield = CaptureShield()
+        shield.show()
+
         Task { @MainActor [weak self] in
+            // 撮れなかったときは、かぶせたウィンドウを外す（範囲を選ぶ画面に渡したものは、そちらが閉じる）
+            defer { shield.close() }
             guard let self else { return }
             do {
                 let content = try await ScreenCapturer.shareableContent()
-                let shots = try await ScreenCapturer.captureAllScreens(content: content)
+                let shots = try await ScreenCapturer.captureAllScreens(content: content, excluding: shield.windowIDs)
                 guard !shots.isEmpty else {
                     isCapturing = false
                     return
                 }
                 let options = CaptureOptions(mode: mode, timer: timer)
-                let selection = SelectionController(shots: shots, windows: windows, options: options) { [weak self] target in
+                let selection = SelectionController(
+                    shots: shots,
+                    windows: windows,
+                    options: options,
+                    existingWindows: shield.handOver()
+                ) { [weak self] target in
                     guard let self else { return }
                     self.selection = nil
                     guard let target else {

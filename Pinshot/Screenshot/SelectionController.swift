@@ -13,6 +13,9 @@ final class SelectionController {
     private var activeWindowIndex: Int?
     /// マウスの動きを拾えなかったときのための、見回りのタイマー
     private var followTimer: Timer?
+    /// 十字にした直後に、毎フレーム出し直すタイマー（macOS があとからカーソルを戻しても、見えないうちに直す）
+    private var cursorBurstTimer: Timer?
+    private var cursorBurstEnd = Date.distantPast
     /// 範囲選択の画面を出したときのマウスの位置（スクロールキャプチャで、見ていた場所を探すのに使う）
     private let options: CaptureOptions
     private let completion: (CaptureTarget?) -> Void
@@ -22,17 +25,26 @@ final class SelectionController {
     private var mouseMonitors: [Any] = []
     private var cancellables = Set<AnyCancellable>()
 
+    /// existingWindows: すでに画面にかぶせてあるウィンドウ（CaptureShield から渡す）。同じ画面のものがあれば、それを使う
     init(
         shots: [ScreenShot],
         windows windowInfos: [WindowInfo],
         options: CaptureOptions,
+        existingWindows: [SelectionWindow] = [],
         completion: @escaping (CaptureTarget?) -> Void
     ) {
         self.options = options
         self.completion = completion
 
+        var unused = existingWindows
         for shot in shots {
-            let window = SelectionWindow(screen: shot.screen)
+            // かぶせてあるウィンドウを使うと、新しいウィンドウを出さずに済み、カーソルが一瞬矢印に戻らない
+            let window: SelectionWindow
+            if let index = unused.firstIndex(where: { $0.frame == shot.screen.frame }) {
+                window = unused.remove(at: index)
+            } else {
+                window = SelectionWindow(screen: shot.screen)
+            }
             let size = shot.screen.frame.size
             let container = NSView(frame: NSRect(origin: .zero, size: size))
 
@@ -48,6 +60,7 @@ final class SelectionController {
             overlay.autoresizingMask = [.width, .height]
             overlay.onSelect = { [weak self] target in self?.finish(target) }
             overlay.onCancel = { [weak self] in self?.finish(nil) }
+            overlay.isPointerOverModeBar = { [weak self] in self?.isMouseOverModeBar ?? false }
             overlay.onDraggingChange = { [weak self] dragging in
                 self?.isDragging = dragging
                 self?.modeBar?.isHidden = dragging
@@ -57,8 +70,12 @@ final class SelectionController {
             container.addSubview(overlay)
 
             window.contentView = container
+            window.backgroundColor = .clear
             windows.append(window)
             overlays.append(overlay)
+        }
+        for window in unused {
+            window.orderOut(nil)
         }
 
         // モードを切り替えたら、すべての画面を描き直す
@@ -78,6 +95,9 @@ final class SelectionController {
         // アプリ全体は前に出さない（前に撮った画像まで前に出てしまうため）。範囲を選ぶ画面だけを前に出してキーにする。
         // カーソルは、マウスが動くたびに十字を出し直して保つ
         for window in windows {
+            // 描き終えてから出す（出した瞬間に、描きかけの画面が見えないように）
+            window.contentView?.layoutSubtreeIfNeeded()
+            window.displayIfNeeded()
             window.orderFrontRegardless()
         }
         let mouse = NSEvent.mouseLocation
@@ -92,13 +112,23 @@ final class SelectionController {
         // どのモードで撮るかが分かるよう、モードバーはいつも出す
         addModeBar(to: windows[index])
         activeWindowIndex = index
-        followTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.followMouse() }
+        // マウスを動かさなくても、モードバー・カーソルが外れたままにならないよう、短い間隔で見回る
+        followTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.followMouse()
+                self?.applyCaptureCursor()
+            }
         }
 
-        // カーソルを十字にし、マウスが動くたびに出し直す（ほかのアプリにカーソルを戻されないように）
+        // 範囲を選べる状態になったこのときに、初めて十字にする（それまではカーソルを変えない）。
+        // 画面をキーにした直後は macOS がカーソルを戻すことがあるので、しばらくは毎フレーム出し直す。
+        // そのあとも、マウスが動くたびと見回りのタイマーで出し直す
         CaptureCursors.selection.push()
         applyCaptureCursor()
+        cursorBurstEnd = Date().addingTimeInterval(0.35)
+        cursorBurstTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.burstCursor() }
+        }
         let handler: (NSEvent) -> Void = { [weak self] _ in
             Task { @MainActor in
                 self?.followMouse()
@@ -168,20 +198,32 @@ final class SelectionController {
         bar.removeFromSuperview()
         bar.frame.origin = NSPoint(x: ((container.bounds.width - bar.frame.width) / 2).rounded(), y: 56)
         container.addSubview(bar)
-        if let overlay = overlays.first(where: { $0.window === window }) {
+        if let overlay = overlays.first(where: { $0.window === window }), !window.isKeyWindow {
             window.makeKeyAndOrderFront(nil)
             window.makeFirstResponder(overlay)
         }
+    }
+
+    private func burstCursor() {
+        guard !finished, Date() < cursorBurstEnd else {
+            cursorBurstTimer?.invalidate()
+            cursorBurstTimer = nil
+            return
+        }
+        applyCaptureCursor()
+    }
+
+    /// マウスがモードバーの上にあるか
+    private var isMouseOverModeBar: Bool {
+        guard let bar = modeBar, !bar.isHidden, let window = bar.window, let container = bar.superview else { return false }
+        return bar.frame.contains(container.convert(window.mouseLocationOutsideOfEventStream, from: nil))
     }
 
     /// いまのモードに合ったキャプチャ用のカーソル（範囲は ⌘⇧4 と同じ十字、ウィンドウ・画面全体はカメラ）
     private func applyCaptureCursor() {
         guard !finished else { return }
         // モードバーの上では、ボタンのカーソル（指）を優先する
-        if let bar = modeBar, !bar.isHidden, let window = bar.window,
-           bar.frame.contains(bar.superview?.convert(window.mouseLocationOutsideOfEventStream, from: nil) ?? .zero) {
-            return
-        }
+        guard !isMouseOverModeBar else { return }
         (options.mode.selectsRegion ? CaptureCursors.selection : CaptureCursors.window).set()
     }
 
@@ -198,6 +240,8 @@ final class SelectionController {
         mouseMonitors.removeAll()
         followTimer?.invalidate()
         followTimer = nil
+        cursorBurstTimer?.invalidate()
+        cursorBurstTimer = nil
         NSCursor.pop()
         NSCursor.arrow.set()
         cancellables.removeAll()
@@ -219,8 +263,9 @@ final class SelectionWindow: NSPanel {
         hidesOnDeactivate = false
         setFrame(screen.frame, display: false)
         level = .screenSaver
-        isOpaque = true
-        backgroundColor = .black
+        // 画像が描かれる前の一瞬も黒く見えないよう、下地は透明にする（下に見えるのは撮ったときと同じ画面）
+        isOpaque = false
+        backgroundColor = .clear
         hasShadow = false
         isReleasedWhenClosed = false
         acceptsMouseMovedEvents = true

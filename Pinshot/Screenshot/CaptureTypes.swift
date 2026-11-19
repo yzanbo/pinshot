@@ -30,7 +30,7 @@ enum CaptureMode: String, CaseIterable, Identifiable {
     /// 範囲選択の画面に出す案内
     var hint: String {
         switch self {
-        case .region: "ドラッグで範囲を選択（クリックでウィンドウの範囲）"
+        case .region: "ドラッグで範囲を選択"
         case .window: "撮りたいウィンドウをクリック"
         case .screen: "撮りたい画面をクリック"
         case .scroll: "撮りたいウィンドウのスクロールする部分をクリック（ドラッグで範囲を選ぶこともできる）"
