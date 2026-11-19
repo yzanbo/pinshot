@@ -27,9 +27,21 @@
 
 くわしい操作は [docs/USAGE.md](docs/USAGE.md) を見てください。
 
-## インストール（ソースからビルド）
+## ダウンロード
 
-ビルド済みのアプリは配布していないので、ソースからビルドして使います。
+[Releases](https://github.com/yzanbo/pinshot/releases) から `Pinshot-<版>.zip` をダウンロードして開き、`Pinshot.app` をアプリケーションフォルダに入れてください。Intel と Apple Silicon のどちらの Mac でも動きます。
+
+Apple の公証を受けていない（アドホック署名の）アプリなので、初めて開くときに「開発元を確認できない」と止められます。次のどれかで開けます。
+
+- **macOS 15 以降**：一度開こうとしたあと、システム設定 →「プライバシーとセキュリティ」の下の方にある「このまま開く」を押す
+- **macOS 14**：Pinshot を右クリック（control + クリック）して「開く」を選ぶ
+- **ターミナル**：`xattr -dr com.apple.quarantine /Applications/Pinshot.app` を実行してから開く
+
+初めてキャプチャするときに「画面収録」の許可を求められます。システム設定で Pinshot をオンにして、Pinshot を開き直してください。新しい版に入れ替えたときは、別のアプリと見なされるため、許可を取り直す必要があります（システム設定の一覧で古い Pinshot を「−」で消してから、もう一度許可してください）。
+
+## ソースからビルド
+
+自分でビルドする場合の手順です。自分の Mac でビルドしたアプリは、「開発元を確認できない」という警告が出ません。
 
 ### 用意するもの
 
@@ -75,6 +87,8 @@ make uninstall
 | `make build` | 開発用にビルドするだけ |
 | `make test` | テストを動かす（アプリは起動しない） |
 | `make install` | 配布用にビルドして `/Applications` に入れる |
+| `make dist` | Releases に置く zip（`dist/Pinshot-<版>.zip`）を作る（アドホック署名） |
+| `make publish` | zip を作り、GitHub に Release（タグ `v<版>`）を作ってアップロードする |
 | `make stop` | 動いている Pinshot を終了する |
 | `make generate` | `Pinshot.xcodeproj` を作るだけ（Xcode で開くとき） |
 | `make icon` | アプリのアイコンを描き直す（`scripts/make-app-icon.swift` を変えたとき） |

@@ -4,3 +4,5 @@ build/
 Pinshot.xcodeproj/
 xcuserdata/
 build-check/
+# make dist で作る配布用の zip
+dist/

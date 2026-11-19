@@ -3,12 +3,15 @@ APP := $(DERIVED_DATA)/Build/Products/Debug/Pinshot.app
 RELEASE_APP := $(DERIVED_DATA)/Build/Products/Release/Pinshot.app
 # make install で入れる場所
 INSTALL_DIR ?= /Applications
+# アプリの版（project.yml の CFBundleShortVersionString）
+VERSION := $(shell sed -n 's/.*CFBundleShortVersionString: *"\(.*\)"/\1/p' project.yml)
+DIST_ZIP := dist/Pinshot-$(VERSION).zip
 
 # 「Pinshot Dev」の証明書があればそれで署名する（なければアドホック署名）。
 # 毎回同じ証明書で署名すると、画面収録の許可がビルドし直しても外れない。
 SIGN_IDENTITY ?= $(shell security find-identity -v -p codesigning 2>/dev/null | grep -q '"Pinshot Dev"' && echo "Pinshot Dev" || echo "-")
 
-.PHONY: generate build release install uninstall test run stop clean cert icon
+.PHONY: generate build release install uninstall dist publish test run stop clean cert icon
 
 # アイコンを描くスクリプトをビルドする場所
 ICON_TOOL_DIR := $(DERIVED_DATA)/icon-tool
@@ -38,6 +41,21 @@ install: release stop
 # アプリケーションフォルダから Pinshot を消す（設定と許可は残る）
 uninstall: stop
 	rm -rf "$(INSTALL_DIR)/Pinshot.app"
+
+# GitHub の Releases に置く zip を作る（dist/Pinshot-版.zip）。
+# 自己署名の証明書はほかの Mac では意味がないので、配る版はいつもアドホック署名にする
+dist:
+	$(MAKE) release SIGN_IDENTITY=-
+	mkdir -p dist
+	ditto -c -k --sequesterRsrc --keepParent "$(RELEASE_APP)" "$(DIST_ZIP)"
+	cd dist && shasum -a 256 "Pinshot-$(VERSION).zip" > "Pinshot-$(VERSION).zip.sha256"
+	@echo ""
+	@echo "$(DIST_ZIP) を作りました（版: $(VERSION)）"
+
+# zip を作り、GitHub に Release（タグ v版）を作ってアップロードする（GitHub CLI を使う）
+publish: dist
+	gh release create "v$(VERSION)" "$(DIST_ZIP)" "$(DIST_ZIP).sha256" \
+		--target main --title "Pinshot $(VERSION)" --notes-file scripts/release-notes.md
 
 # テストを動かす（アプリは起動しない）。
 # xcodebuild test は端末によっては動かないので、ビルドしてから xctest で直接動かす
