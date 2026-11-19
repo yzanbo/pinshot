@@ -400,12 +400,12 @@ final class PinCanvasView: NSView, NSTextFieldDelegate, NSDraggingSource {
                 }
             } else {
                 for index in selectedIndices {
-                    let path = NSBezierPath(rect: viewRect(annotations[index].bounds).insetBy(dx: -5, dy: -5))
-                    path.lineWidth = 1
-                    path.setLineDash([4, 3], count: 2, phase: 0)
-                    NSColor.controlAccentColor.setStroke()
-                    path.stroke()
+                    drawFocusRing(viewRect(annotations[index].bounds))
                 }
+            }
+            // 文字を入力している間も、選んだときと同じ点線で囲んで、入力中の文字だと分かるようにする
+            if let field = textField {
+                drawFocusRing(textRect(of: field))
             }
         } else if isHovering {
             // マウスを乗せている間は、背景と見分けやすいよう細い枠を出す
@@ -414,6 +414,21 @@ final class PinCanvasView: NSView, NSTextFieldDelegate, NSDraggingSource {
             border.lineWidth = 1
             border.stroke()
         }
+    }
+
+    /// 選んでいる・入力している書き込みを囲む点線
+    private func drawFocusRing(_ rect: NSRect) {
+        let path = NSBezierPath(rect: rect.insetBy(dx: -5, dy: -5))
+        path.lineWidth = 1
+        path.setLineDash([4, 3], count: 2, phase: 0)
+        NSColor.controlAccentColor.setStroke()
+        path.stroke()
+    }
+
+    /// 入力欄の中の、文字の部分（入力欄は、左に約 2pt・右に 14pt・上下に 2pt の余白を持つ）
+    private func textRect(of field: NSTextField) -> NSRect {
+        let frame = field.frame
+        return NSRect(x: frame.minX + 2, y: frame.minY + 2, width: max(frame.width - 14, 1), height: max(frame.height - 4, 1))
     }
 
     /// トリミングする範囲の外を暗くする

@@ -21,7 +21,7 @@ extension PinCanvasView {
                 window?.makeFirstResponder(self)
             }
             if !state.isEditing { controller?.setEditing(true) }
-            beginReEdit(at: index)
+            beginReEdit(at: index, caretAt: event.locationInWindow)
             return
         }
 
@@ -98,7 +98,7 @@ extension PinCanvasView {
         case .text:
             if let index = hitAnnotation(at: point), annotations[index].isText {
                 // 書いた文字をクリックしたら、その文字を直す（新しい入力欄を重ねない）
-                beginReEdit(at: index)
+                beginReEdit(at: index, caretAt: event.locationInWindow)
             } else {
                 beginTextInput(at: point, runs: [], color: state.drawColor, style: state.textStyle)
             }

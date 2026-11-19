@@ -58,6 +58,13 @@ final class AnnotationTests: XCTestCase {
         XCTAssertEqual(arrow.withFontSize(30), arrow)
     }
 
+    func testMultilineTextIsTallerAndKeepsLines() {
+        let one = Annotation.textSize([TextRun(text: "メモ", fontSize: 20)])
+        let two = Annotation.textSize([TextRun(text: "メモ\n2 行目", fontSize: 20)])
+        XCTAssertGreaterThan(two.height, one.height * 1.8)
+        XCTAssertEqual(Annotation.plainText([TextRun(text: "a\nb", fontSize: 20)]), "a\nb")
+    }
+
     func testTranslated() {
         let moved = arrow.translated(by: CGVector(dx: 5, dy: -3))
         guard case .arrow(let from, let to, _) = moved.shape else { return XCTFail() }

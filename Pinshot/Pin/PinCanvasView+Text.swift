@@ -3,7 +3,8 @@ import AppKit
 extension PinCanvasView {
     // MARK: - 文字の入力
 
-    func beginTextInput(at point: CGPoint, runs: [TextRun], color: RGBAColor, style: TextStyle) {
+    /// caret: 書いた文字を直すとき、入力カーソルを置く場所（ウィンドウの座標。クリックした場所）。nil なら全体を選ぶ
+    func beginTextInput(at point: CGPoint, runs: [TextRun], color: RGBAColor, style: TextStyle, caret: NSPoint? = nil) {
         textOrigin = point
         textColor = color
         textStyle = style
@@ -21,6 +22,9 @@ extension PinCanvasView {
         field.font = Annotation.textFont(size: textFontSize * scaleFactor)
         field.textColor = color.nsColor
         field.placeholderString = "文字を入力"
+        // shift + return で改行できるよう、複数行にする（自動では折り返さない）
+        field.usesSingleLineMode = false
+        field.maximumNumberOfLines = 0
         field.cell?.wraps = false
         field.cell?.isScrollable = true
         field.delegate = self
@@ -39,6 +43,11 @@ extension PinCanvasView {
         if let editor = field.currentEditor() as? NSTextView {
             if runs.isEmpty {
                 editor.typingAttributes = typingAttributes(size: textFontSize)
+            } else if let caret {
+                // クリックした場所に入力カーソルを置く（全体は選ばない）
+                if let container = editor.textContainer { editor.layoutManager?.ensureLayout(for: container) }
+                let index = editor.characterIndexForInsertion(at: editor.convert(caret, from: nil))
+                editor.setSelectedRange(NSRange(location: min(index, (editor.string as NSString).length), length: 0))
             } else {
                 editor.selectAll(nil)
             }
@@ -99,10 +108,12 @@ extension PinCanvasView {
             ? ("文字を入力" as NSString).size(withAttributes: [.font: typingFont]).width
             : 20
         field.frame.size = NSSize(width: ceil(max(size.width, minWidth)) + 14, height: ceil(size.height) + 4)
+        // 入力中の文字を囲む点線を、大きさに合わせて描き直す
+        needsDisplay = true
     }
 
-    /// 書いた文字を直す
-    func beginReEdit(at index: Int) {
+    /// 書いた文字を直す。caretAt（ウィンドウの座標）を渡すと、そこに入力カーソルを置く
+    func beginReEdit(at index: Int, caretAt caret: NSPoint? = nil) {
         guard case .text(let runs, let origin, let style) = annotations[index].shape else { return }
         // 直している間は元の文字を描かない（取り出しておき、確定したら同じ位置に戻す。やめたら元に戻す）
         document.beginChange()
@@ -115,7 +126,7 @@ extension PinCanvasView {
         state.opacity = Double(original.color.a)
         state.textStyle = style
         needsDisplay = true
-        beginTextInput(at: origin, runs: runs, color: original.color, style: style)
+        beginTextInput(at: origin, runs: runs, color: original.color, style: style, caret: caret)
     }
 
     /// 入力中の文字があれば確定する
@@ -132,6 +143,12 @@ extension PinCanvasView {
     func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
         switch commandSelector {
         case #selector(NSResponder.insertNewline(_:)):
+            if NSApp.currentEvent?.modifierFlags.contains(.shift) == true {
+                // shift + return は改行
+                textView.insertNewlineIgnoringFieldEditor(nil)
+                return true
+            }
+            // return は確定
             window?.makeFirstResponder(self)
             return true
         case #selector(NSResponder.cancelOperation(_:)):

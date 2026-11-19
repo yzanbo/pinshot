@@ -55,9 +55,8 @@ extension PinCanvasView {
         let point = imagePoint(viewPoint)
         switch state.tool {
         case .select:
-            // 書き込みの上なら動かせる手、文字の上なら直せることを示す
-            guard let index = hitAnnotation(at: point) else { return .arrow }
-            return annotations[index].isText ? .iBeam : .openHand
+            // 書き込み（文字も）の上なら、ドラッグで動かせることを示す手（文字はダブルクリックで直せる）
+            return hitAnnotation(at: point) == nil ? .arrow : .openHand
         case .text:
             return .iBeam
         case .counter:
