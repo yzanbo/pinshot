@@ -27,40 +27,65 @@
 
 くわしい操作は [docs/USAGE.md](docs/USAGE.md) を見てください。
 
-## 動く環境
+## インストール（ソースからビルド）
+
+ビルド済みのアプリは配布していないので、ソースからビルドして使います。
+
+### 用意するもの
 
 - macOS 14 以降
-- ビルドするとき：Xcode 16 以降、[XcodeGen](https://github.com/yonaskolb/XcodeGen)
+- Xcode 16 以降（App Store から入れる。コマンドラインツールだけではビルドできません）
+- [XcodeGen](https://github.com/yonaskolb/XcodeGen)
 
-> いまはビルド済みのアプリを配布していません（Apple の Developer ID での署名・公証をしていないため）。ソースからビルドして使ってください。
-
-## ビルドと起動
+### 手順
 
 ```bash
 brew install xcodegen
 git clone https://github.com/yzanbo/pinshot.git
 cd pinshot
-make cert   # 開発用の署名の証明書を作る（最初に一度だけ）
-make run    # ビルドして起動する
+make install
 ```
+
+`make install` は配布用（Release）にビルドし、`/Applications/Pinshot.app` に入れます。Intel と Apple Silicon のどちらの Mac でも動きます。終わったら、アプリケーションフォルダから Pinshot を開いてください。自分の Mac でビルドしたアプリなので、「開発元を確認できない」という警告は出ません。
+
+初めてキャプチャするときに「画面収録」の許可を求められます。システム設定で Pinshot をオンにして、Pinshot を開き直してください。
+
+### 新しい版にする
+
+```bash
+cd pinshot
+git pull
+make install
+```
+
+署名なし（アドホック署名）でビルドしているため、新しい版を入れると macOS から別のアプリと見なされ、画面収録の許可を取り直す必要があります。システム設定の画面収録の一覧で、古い Pinshot を「−」で消してから、もう一度許可してください。何度もビルドし直す場合は、下の `make cert` を使うと、許可が外れなくなります。
+
+### 消す
+
+```bash
+make uninstall
+```
+
+## 開発するとき
 
 | コマンド | 内容 |
 |---|---|
-| `make run` | 動いている Pinshot を終了し、ビルドして起動する |
-| `make build` | ビルドだけ |
+| `make cert` | 開発用の署名の証明書「Pinshot Dev」を作る（最初に一度だけ。任意） |
+| `make run` | 動いている Pinshot を終了し、開発用（Debug）にビルドして起動する |
+| `make build` | 開発用にビルドするだけ |
 | `make test` | テストを動かす（アプリは起動しない） |
+| `make install` | 配布用にビルドして `/Applications` に入れる |
 | `make stop` | 動いている Pinshot を終了する |
 | `make generate` | `Pinshot.xcodeproj` を作るだけ（Xcode で開くとき） |
 | `make icon` | アプリのアイコンを描き直す（`scripts/make-app-icon.swift` を変えたとき） |
-| `make cert` | 開発用の署名の証明書「Pinshot Dev」を作る |
 
 `Pinshot.xcodeproj` は `project.yml` から作るため、リポジトリには入れていません。
 
 ### `make cert` について
 
-macOS は、画面収録の許可をアプリの署名にひも付けて覚えます。署名なし（アドホック署名）だと、ビルドし直すたびに別のアプリと見なされ、許可しても効かなくなります。そのため、自己署名の証明書「Pinshot Dev」をログインキーチェーンに作り、毎回それで署名します（[scripts/create-dev-cert.sh](scripts/create-dev-cert.sh)）。
+macOS は、画面収録の許可をアプリの署名にひも付けて覚えます。アドホック署名だと、ビルドし直すたびに別のアプリと見なされ、許可が外れます。`make cert` は自己署名の証明書「Pinshot Dev」をログインキーチェーンに作り（途中でパスワードを聞かれます）、以後の `make run`・`make install` はそれで署名します（[scripts/create-dev-cert.sh](scripts/create-dev-cert.sh)）。
 
-証明書を作らずにビルドした場合や、許可しているのに案内の画面が出続ける場合は、システム設定の画面収録の一覧から古い Pinshot を「−」で消し、`make cert` → `make run` のあとで許可し直してください。
+許可しているのに案内の画面が出続けるときは、システム設定の画面収録の一覧から古い Pinshot を「−」で消し、Pinshot を開き直してから許可し直してください。
 
 ## 必要な許可とプライバシー
 
@@ -72,7 +97,7 @@ macOS は、画面収録の許可をアプリの署名にひも付けて覚え�
 - Pinshot はネットワークに接続しません。撮った画像は Mac の中だけで扱います。ファイルに書き出すのは、保存したときと、ほかのアプリへドラッグ＆ドロップしたとき（一時フォルダに PNG を置く）だけです
 - 背景にいるときもカーソルの形を変えるために、macOS の公開されていない API（CoreGraphics の `SetsCursorInBackground`）を使っています。このため、Mac App Store では配布できません
 
-## 開発
+## コードについて
 
 - コードの構成と設計のメモ：[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - テスト：`make test`（書き込みのデータ・元に戻す・スクロールキャプチャのつなぎ合わせ・書き出しなど、画面に関係ない処理）
