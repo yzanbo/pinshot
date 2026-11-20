@@ -164,11 +164,10 @@ final class CaptureHistory: ObservableObject {
 
     // MARK: - 一覧のファイル
 
+    /// 一覧を読む（1 件ずつ読み、読めないものだけ飛ばす。そのときは元のファイルを別名で残す。StoredJSON）。
+    /// 画像のファイルがなくなっているものは除く
     private func loadIndex() -> [CaptureHistoryEntry] {
-        guard let data = try? Data(contentsOf: indexURL),
-              let saved = try? JSONDecoder().decode([CaptureHistoryEntry].self, from: data) else { return [] }
-        // 画像のファイルがなくなっているものは除く
-        return saved
+        StoredJSON.loadList(CaptureHistoryEntry.self, from: indexURL).elements
             .filter { FileManager.default.fileExists(atPath: imageURL(for: $0).path) }
             .sorted { $0.date > $1.date }
     }
@@ -176,10 +175,6 @@ final class CaptureHistory: ObservableObject {
     private func saveIndex() {
         guard let data = try? JSONEncoder().encode(entries) else { return }
         let url = indexURL
-        let folder = folder
-        io.async {
-            try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            try? data.write(to: url, options: .atomic)
-        }
+        io.async { StoredJSON.write(data, to: url) }
     }
 }

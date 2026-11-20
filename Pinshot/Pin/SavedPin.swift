@@ -38,7 +38,11 @@ struct SavedBackdrop: Codable, Equatable {
 
 /// 浮かせていた画像と、閉じた画像（「閉じた画像を戻す」で戻せるもの）
 struct SavedPinSession: Codable, Equatable {
-    var version = 1
+    /// いまの版が書く形の番号（書き込みの種類を足すなど、前の版で読めない形にしたら増やす）
+    static let currentVersion = 1
+
+    /// 書いた版の形の番号（いまより新しければ、新しい版が書いたもの）
+    var version = SavedPinSession.currentVersion
     /// 浮かせていた画像（浮かせた順）
     var pins: [SavedPin] = []
     /// 閉じた画像（新しい順）
@@ -47,5 +51,39 @@ struct SavedPinSession: Codable, Equatable {
     /// 使っている画像のファイル名（これ以外の PNG は、もう使わないので消してよい）
     var imageFileNames: Set<String> {
         Set((pins + closed).map(\.imageFileName))
+    }
+
+    /// 読んだ状態と、そのまま上書きすると中身を失うか
+    struct Decoded: Equatable {
+        var session: SavedPinSession
+        /// 読めずに飛ばした画像の数（新しい版で足した書き込みの種類を含むものなど）
+        var skipped: Int
+        /// 新しい版が書いたもの（読めても、この版が知らない項目は、書き直すと消える）
+        var isNewer: Bool
+
+        /// このまま上書きすると、中身を失うか（そのときは元のファイルを残してから書く）
+        var losesData: Bool { skipped > 0 || isNewer }
+    }
+
+    /// 保存した状態を読む。画像は 1 枚ずつ読み、読めないものだけ飛ばす（1 枚のせいで全部を失わない）。
+    /// 全体として読めなければ nil
+    static func decode(from data: Data) -> Decoded? {
+        guard let raw = try? JSONDecoder().decode(LossySession.self, from: data) else { return nil }
+        let rawPins = raw.pins ?? []
+        let rawClosed = raw.closed ?? []
+        let pins = rawPins.compactMap(\.value)
+        let closed = rawClosed.compactMap(\.value)
+        return Decoded(
+            session: SavedPinSession(version: currentVersion, pins: pins, closed: closed),
+            skipped: (rawPins.count - pins.count) + (rawClosed.count - closed.count),
+            isNewer: (raw.version ?? currentVersion) > currentVersion
+        )
+    }
+
+    /// 1 枚ずつ読むための形
+    private struct LossySession: Decodable {
+        var version: Int?
+        var pins: [Lossy<SavedPin>]?
+        var closed: [Lossy<SavedPin>]?
     }
 }

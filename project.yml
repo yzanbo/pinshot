@@ -74,6 +74,7 @@ targets:
       - path: Pinshot/Recording/RecordingRules.swift
       - path: Pinshot/Recording/GIFExporter.swift
       - path: Pinshot/Support/SaveLocation.swift
+      - path: Pinshot/Support/StoredJSON.swift
       - path: Pinshot/History/CaptureHistoryEntry.swift
       - path: Pinshot/History/TextHistoryEntry.swift
       - path: Pinshot/History/ListSelection.swift

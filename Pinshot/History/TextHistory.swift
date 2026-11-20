@@ -161,20 +161,15 @@ final class TextHistory: ObservableObject {
 
     // MARK: - 一覧のファイル
 
+    /// 一覧を読む（1 件ずつ読み、読めないものだけ飛ばす。そのときは元のファイルを別名で残す。StoredJSON）
     private func loadIndex() -> [RecognizedTextEntry] {
-        guard let data = try? Data(contentsOf: indexURL),
-              let saved = try? JSONDecoder().decode([RecognizedTextEntry].self, from: data) else { return [] }
-        return saved.sorted { $0.date > $1.date }
+        StoredJSON.loadList(RecognizedTextEntry.self, from: indexURL).elements.sorted { $0.date > $1.date }
     }
 
     private func saveIndex() {
         guard let data = try? JSONEncoder().encode(entries) else { return }
         let url = indexURL
-        let folder = folder
-        io.async {
-            try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            try? data.write(to: url, options: .atomic)
-        }
+        io.async { StoredJSON.write(data, to: url) }
     }
 }
 

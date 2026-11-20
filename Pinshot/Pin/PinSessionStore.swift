@@ -47,10 +47,17 @@ final class PinSessionStore {
         if wait { io.sync(execute: work) } else { io.async(execute: work) }
     }
 
-    /// 保存した状態と画像を読む。画像のファイルがなくなっているものは除く
+    /// 保存した状態と画像を読む。画像のファイルがなくなっているものは除く。
+    /// 読めないところがあったとき（壊れた・新しい版が書いたなど）は、次の保存で上書きして消えないよう、
+    /// 状態と画像を別のフォルダに残してから、読めた分だけで始める（何も読めなければ nil）
     func load() -> (session: SavedPinSession, images: [UUID: CGImage])? {
-        guard let data = try? Data(contentsOf: sessionURL),
-              var session = try? JSONDecoder().decode(SavedPinSession.self, from: data) else { return nil }
+        guard let data = try? Data(contentsOf: sessionURL) else { return nil }
+        guard let decoded = SavedPinSession.decode(from: data) else {
+            keepUnreadable(data)
+            return nil
+        }
+        if decoded.losesData { keepUnreadable(data) }
+        var session = decoded.session
         var images: [UUID: CGImage] = [:]
         for pin in session.pins + session.closed {
             if let image = CGImage.load(contentsOf: folder.appendingPathComponent(pin.imageFileName)) {
@@ -59,8 +66,32 @@ final class PinSessionStore {
         }
         session.pins.removeAll { images[$0.id] == nil }
         session.closed.removeAll { images[$0.id] == nil }
-        lastSaved = data
+        lastSaved = decoded.losesData ? nil : data
         return (session, images)
+    }
+
+    /// 読めないところがあった状態と画像を、Pins の中の別のフォルダ（unreadable-日時）に写して残す。
+    /// 保存するときに片付けるのは Pins のすぐ下の PNG だけなので、ここに残したものは消えない。
+    /// 同じ状態をもう残していれば、増やさない（読めないまま起動し直すたびに増えないように）
+    private func keepUnreadable(_ data: Data) {
+        let fileManager = FileManager.default
+        let existing = (try? fileManager.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? []
+        let alreadyKept = existing.contains { url in
+            url.lastPathComponent.hasPrefix("unreadable-")
+                && (try? Data(contentsOf: url.appendingPathComponent("session.json"))) == data
+        }
+        guard !alreadyKept else { return }
+        let backup = folder.appendingPathComponent("unreadable-\(StoredJSON.stamp(Date()))", isDirectory: true)
+        do {
+            try fileManager.createDirectory(at: backup, withIntermediateDirectories: true)
+            try data.write(to: backup.appendingPathComponent("session.json"))
+            for url in existing where url.pathExtension == "png" {
+                try? fileManager.copyItem(at: url, to: backup.appendingPathComponent(url.lastPathComponent))
+            }
+            NSLog("Pinshot: 読めないところがあった浮かせていた画像の状態を \(backup.lastPathComponent) に残しました")
+        } catch {
+            NSLog("Pinshot: 読めなかった浮かせていた画像の状態を残せませんでした: \(error.localizedDescription)")
+        }
     }
 
     /// 保存したものをすべて消す（戻さない設定にしたとき）

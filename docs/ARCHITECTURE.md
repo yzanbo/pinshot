@@ -27,7 +27,7 @@ Pinshot/
 │   └── CaptureOutline        録画している範囲の外側の赤い点線の枠（録画には写らない）
 ├── Pin/            最前面に浮かぶウィンドウと、画像の表示・操作
 │   ├── PinManager            浮かせている画像の一覧（閉じた画像を戻す・すべて閉じる・終了後も戻すための保存と復元 など）
-│   ├── SavedPin・PinSessionStore  終了・再起動のあとも戻す状態（テストあり）と、その保存先（~/Library/Application Support/Pinshot/Pins に PNG と session.json）
+│   ├── SavedPin・PinSessionStore  終了・再起動のあとも戻す状態（1 枚ずつ読む・形の番号。テストあり）と、その保存先（~/Library/Application Support/Pinshot/Pins に PNG と session.json。読めないところがあれば unreadable-日時 のフォルダに残す）
 │   ├── PinController(+◯◯)    画像 1 枚ぶんの操作（拡大縮小・不透明度・編集モード）。+Export はコピー・保存、+Menu は右クリックメニュー
 │   ├── PinPanel・PinAppearance  画像のウィンドウ、画像の不透明度と拡大率（操作バーとツールバーで同じ値を見る）
 │   ├── PinToolbarController  編集ツールバーのウィンドウ（出す・置く場所・説明のポップアップ）
@@ -90,6 +90,7 @@ Pinshot/
     ├── KeyCode・PercentText  キーの番号の名前、「80%」の表示
     ├── ImageSaver            PNG と録画のファイルを設定に合わせて保存する（浮かせた画像・履歴・録画から使う）
     ├── AppFolders            アプリのデータを置くフォルダ（履歴・浮かせていた画像・録画・上げたもの）
+    ├── StoredJSON            そのフォルダに置く一覧の JSON の読み書き（1 件ずつ読み、読めないものだけ飛ばす。そのときは元のファイルを別名で残し、上書きで失わない。テストあり）
     ├── SaveLocation          保存したもの（画像・GIF・動画）を置く場所の決まり（保存先の中を種類ごと・月ごとに分ける。テストあり）
     └── ViewHelpers           前に出ていなくても押せるビュー・マウスの追跡・角の丸い枠（framedBox）・ドラッグで窓を動かす所（WindowDragArea）
 
@@ -103,3 +104,4 @@ PinshotTests/       画面に関係ない処理のテスト（make test）
 - 浮かせた画像やツールバーは、クリックしても前面を奪わないパネル（`OverlayPanel`）で作る。アプリ全体を前に出すと、ほかの浮かせた画像まで前に出てしまうため
 - カーソル（`HoverRole`）・キーの番号（`KeyCode`）・画面に収める位置（`ScreenGeometry`）・背景の描き方（`ExportDecoration`）・ダイアログ（`AppAlert`）は、部品ごとに直接書かず、共通の部品を使う
 - テスト（`PinshotTests/`）は、アプリを起動せずに動く。画面に関係ないソースを、テストのターゲットに直接入れている（`project.yml`）
+- 保存する形（書き込みの種類・項目の名前）を変えると、前の版が残したものを読めなくなる。`StoredFormatTests` に、いまの版が書いた JSON を決まった文字列で持っているので、形を変えるときは前の形を読み替えて引き継ぎ、そのテストの JSON は書き換えない（新しい形のテストを足す）。浮かせていた画像の形を前の版で読めないように変えたら、`SavedPinSession.currentVersion` を増やす
