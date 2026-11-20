@@ -34,7 +34,7 @@ enum CaptureMode: String, CaseIterable, Identifiable {
         case .region: "ドラッグで範囲を選択"
         case .window: "撮りたいウィンドウをクリック"
         case .screen: "撮りたい画面をクリック"
-        case .record: "ドラッグで録画する範囲を選ぶ（クリックでウィンドウ、何もない所で画面全体）"
+        case .record: "ドラッグで範囲、クリックでウィンドウ・画面全体を録画"
         }
     }
 
@@ -56,6 +56,15 @@ final class CaptureOptions: ObservableObject {
     init(mode: CaptureMode, timer: Int) {
         self.mode = mode
         self.timer = timer
+    }
+
+    /// space で範囲 ⇄ ウィンドウを切り替えられるか（録画は、クリックでウィンドウを選べるので切り替えない）
+    var togglesWithSpace: Bool { mode != .record }
+
+    /// space：範囲 ⇄ ウィンドウを切り替える（画面全体からはウィンドウへ。録画のときは何もしない）
+    func toggleRegionAndWindow() {
+        guard togglesWithSpace else { return }
+        mode = mode == .window ? .region : .window
     }
 
     /// タイマーを なし → 3 → 5 → 10 → なし の順に切り替える

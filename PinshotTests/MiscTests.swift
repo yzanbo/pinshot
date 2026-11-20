@@ -141,3 +141,30 @@ final class ToolGroupTests: XCTestCase {
         }
     }
 }
+
+/// 範囲を選ぶ画面で選んでいるもの（モード・タイマー・録画でウィンドウだけを選ぶか）
+@MainActor
+final class CaptureOptionsTests: XCTestCase {
+    func testTimerCycles() {
+        let options = CaptureOptions(mode: .region, timer: 0)
+        let seen = (0..<4).map { _ in
+            options.cycleTimer()
+            return options.timer
+        }
+        XCTAssertEqual(seen, [3, 5, 10, 0])
+    }
+
+    /// space は範囲 ⇄ ウィンドウ。録画のときは切り替えない（クリックでウィンドウを選べるため）
+    func testSpaceTogglesRegionAndWindowExceptRecording() {
+        let options = CaptureOptions(mode: .region, timer: 0)
+        options.toggleRegionAndWindow()
+        XCTAssertEqual(options.mode, .window)
+        options.toggleRegionAndWindow()
+        XCTAssertEqual(options.mode, .region)
+
+        options.mode = .record
+        XCTAssertFalse(options.togglesWithSpace)
+        options.toggleRegionAndWindow()
+        XCTAssertEqual(options.mode, .record)
+    }
+}

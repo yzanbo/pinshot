@@ -158,8 +158,8 @@ final class SelectionController {
             case KeyCode.escape:
                 self.finish(nil)
                 return nil
-            case KeyCode.space: // 範囲 ⇄ ウィンドウ
-                self.options.mode = self.options.mode == .window ? .region : .window
+            case KeyCode.space: // 範囲 ⇄ ウィンドウ（録画のときは切り替えない）
+                self.options.toggleRegionAndWindow()
                 return nil
             default:
                 return event

@@ -41,9 +41,17 @@ struct CaptureModeBar: View {
                 BarButton(symbol: "xmark", title: "キャンセル", isSelected: false, exitCursor: exitCursor, action: cancel)
             }
 
-            Text("\(options.mode.hint)　・　space で範囲 ⇄ ウィンドウ　・　esc でキャンセル")
-                .font(.system(size: 11))
-                .foregroundStyle(.white.opacity(0.75))
+            // 案内の文は、ボタンの段の幅に収める（モードによって文の長さが違っても、バーの幅が変わらないように。
+            // 1 行の高さだけを取り、文はその上に重ねる。入りきらないときは少し小さくする）
+            Color.clear
+                .frame(height: 14)
+                .overlay {
+                    Text(hintText)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.white.opacity(0.75))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
@@ -56,6 +64,13 @@ struct CaptureModeBar: View {
                 .strokeBorder(Color.white.opacity(0.15))
         )
         .fixedSize()
+    }
+
+    /// 下の案内（space で切り替えられないとき（録画）は、space の案内を出さない）
+    private var hintText: String {
+        options.togglesWithSpace
+            ? "\(options.mode.hint)　・　space で範囲 ⇄ ウィンドウ　・　esc でキャンセル"
+            : "\(options.mode.hint)　・　esc でキャンセル"
     }
 
     /// まとまりの間の縦の線
