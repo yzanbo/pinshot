@@ -98,21 +98,12 @@ final class CaptureHistory: ObservableObject {
         NSImage(contentsOf: thumbnailURL(for: entry)) ?? NSImage(contentsOf: imageURL(for: entry))
     }
 
-    /// メニューに出す小さな縮小画像（高さ 24pt）
-    func menuThumbnail(for entry: CaptureHistoryEntry) -> NSImage? {
-        guard let image = thumbnailImage(for: entry) else { return nil }
-        let height: CGFloat = 24
-        let width = min(48, max(12, height * entry.pointSize.width / max(entry.pointSize.height, 1)))
-        image.size = NSSize(width: width, height: height)
-        return image
-    }
-
     /// 画像を読む（浮かせる・コピーするとき）
     func loadImage(for entry: CaptureHistoryEntry) -> CGImage? {
         CGImage.load(contentsOf: imageURL(for: entry))
     }
 
-    // MARK: - 浮かせる・コピーする（一覧・メニューバーから）
+    // MARK: - 浮かせる・コピーする（一覧から）
 
     /// マウスのある画面の真ん中に浮かせる（2 枚以上は、少しずつずらして重ねる）。
     /// もう浮いている画像は、増やさずに前に出す。読めない画像は音で知らせる
