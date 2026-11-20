@@ -29,19 +29,28 @@ Pinshot/
 │   ├── PinPanel・PinAppearance  画像のウィンドウ、画像の不透明度と拡大率（操作バーとツールバーで同じ値を見る）
 │   ├── PinToolbarController  編集ツールバーのウィンドウ（出す・置く場所・説明のポップアップ）
 │   ├── PinCanvasView(+◯◯)    画像と書き込みの表示と操作。役割ごとにファイルを分けている
-│   │                         （+Cursor・+Mouse・+Keyboard・+Selection・+History・+Text・+Outside）
+│   │                         （+Cursor・+Mouse・+Keyboard・+Selection・+History・+Text・+TextRecognition・+TextMark・+Outside）
 │   ├── PinAccessory          部品を画像の外に出す子ウィンドウ（閉じるボタンと操作バーはいつも。ほかは画像が小さくて中に入らないとき）
 │   ├── PinBackdropView       画像のまわりの背景（余白・影）
 │   ├── QuickActionBar・PinCloseButton  画像の下の操作バーと選んだ書き込みのバー、左上の外の閉じるボタン
 │   ├── HUDView・HintBubble   「コピーしました」などのお知らせ、ツールバーの説明のポップアップ
+│   ├── TextScanOverlay・RecognizedTextPopover  文字を読み取っている間・読み取ったあとの見た目と、読み取った文字の吹き出し（直してコピーし直せる）
 │   └── ResizeEdges           端のドラッグで大きさを変える計算（テストあり）
-├── History/        撮った画像の履歴
-│   ├── CaptureHistoryEntry   履歴の 1 枚と、残し方（期間・枚数）・日付ごとのまとめ方・表示の文字の決まり（テストあり）
-│   ├── CaptureHistory        履歴の保存と読み込み（~/Library/Application Support/Pinshot/History に PNG・縮小画像・一覧の JSON）
-│   └── CaptureHistoryWindowController・CaptureHistoryViewModel・CaptureHistoryView   一覧のウィンドウ（複数選択・浮かせる・コピー・保存・消す）
+├── History/        撮った画像と読み取った文字の履歴
+│   ├── CaptureHistoryEntry   履歴の 1 枚と、残し方（期間・数）・日付ごとのまとめ方・表示の文字の決まり（テストあり）。期間と日付は文字の履歴にも使う
+│   ├── CaptureHistory        画像の履歴の保存と読み込み（~/Library/Application Support/Pinshot/History に PNG・縮小画像・一覧の JSON）
+│   ├── TextHistoryEntry・TextHistory  読み取った文字の履歴の 1 件と決まり（同じ文字はまとめる・探す。テストあり）と、その保存（同じフォルダに texts.json と、読み取った範囲の画像）
+│   ├── ListSelection         一覧の選び方（クリック・⌘・shift・⌘A・矢印）。画像と文字の一覧で同じ（テストあり）
+│   ├── CaptureHistoryWindowController・HistoryWindowView  履歴のウィンドウ（キー操作の振り分け・すべて消す前の確認）と、その中身（上の「画像 / 文字」の切り替え・表示方法・探す欄）
+│   ├── CaptureHistoryViewModel・CaptureHistoryView  画像の一覧（複数選択・浮かせる・コピー・保存・消す）
+│   ├── TextHistoryViewModel・TextHistoryView  文字の一覧と右の全文の欄（探す・複数選択・コピー・消す・直す・読み取った画像を浮かせる）
+│   ├── HistoryComponents     画像と文字の一覧で同じ部品（日付の見出し・空のときの案内・小さな画像・行の背景・乗せたときのボタン・下の帯）
+│   └── HistoryNotice         一覧の下に出す短い知らせ（「コピーしました」など）
 ├── Editor/         書き込みのデータ、描画、書き出し
 │   ├── Annotation・AnnotationStyles・Tool・ToolGroup・RGBAColor   書き込みのデータ（Windows 版と形式をそろえる）と、ツールの組
 │   ├── AnnotationRenderer・ImageEffects・ImageExporter 描画・モザイクとぼかし・書き出し
+│   ├── TextRecognizer        文字の読み取り（Vision）と、読み取った文字を読む順に並べる決まり（テストあり）
+│   ├── TextMarkLayout        文字マーカーを、ドラッグした所の文字に合わせて行ごとの四角にする決まりと、その形（テストあり）
 │   ├── AnnotationDocument    1 枚の画像の編集データ（書き込み・トリミング・元に戻す履歴）。変えるときは必ずここを通す
 │   ├── EditHandle            選んだ書き込みのつまみ（形を直す）
 │   ├── EditorState・EditorStyle・StylePreset・EditHistory  編集の状態・スタイルの保存・元に戻す
@@ -61,12 +70,13 @@ Pinshot/
     ├── AppAlert              確かめる・知らせるダイアログ（アプリのアイコン・ウィンドウのシート）
     ├── ScreenGeometry        画面の座標の変換・部品を画面に収める位置・ツールバーと操作バーを画像の下に置く位置（テストあり）
     ├── Permissions           画面収録・アクセシビリティの許可
-    ├── GraphicsHelpers       画像の描き先を作る・画像のファイルを読む
+    ├── GraphicsHelpers       画像の描き先を作る・画像のファイルを読む（読んだ時点で展開する。あとでファイルが消えても描ける）・縮める
+    ├── EditableText          直せる文字の欄（右クリックは、短い日本語のメニューと、呼ぶ側が足す項目）
     ├── HoverCursor           部品の種類（押せる・動かせる・操作できない）で決めるカーソル
     ├── KeyCode・PercentText  キーの番号の名前、「80%」の表示
     ├── ImageSaver            PNG を設定に合わせて保存する（浮かせた画像と履歴から使う）
     ├── AppFolders            アプリのデータを置くフォルダ（履歴・浮かせていた画像）
-    └── ViewHelpers           前に出ていなくても押せるビュー・マウスの追跡
+    └── ViewHelpers           前に出ていなくても押せるビュー・マウスの追跡・角の丸い枠（framedBox）
 
 PinshotTests/       画面に関係ない処理のテスト（make test）
 ```
