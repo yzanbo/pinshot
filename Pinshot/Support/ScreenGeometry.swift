@@ -9,11 +9,6 @@ enum ScreenGeometry {
     /// メインの画面（原点のある画面）の高さ
     private static var primaryHeight: CGFloat { NSScreen.screens.first?.frame.height ?? 0 }
 
-    /// AppKit の点 → Quartz の点
-    static func quartzPoint(_ point: NSPoint) -> CGPoint {
-        CGPoint(x: point.x, y: primaryHeight - point.y)
-    }
-
     /// Quartz の四角 → AppKit の四角
     static func appKitRect(fromQuartz rect: CGRect) -> NSRect {
         NSRect(x: rect.minX, y: primaryHeight - rect.maxY, width: rect.width, height: rect.height)

@@ -157,7 +157,7 @@ final class RecordingController {
 
     /// 録画している範囲を、外側の赤い点線で示す（範囲の内側には描かないので写らない）
     private func showBorder() {
-        border = CaptureOutline.show(around: rect, color: .systemRed)
+        border = CaptureOutline.show(around: rect)
     }
 
     /// 操作パネルを、枠の下 → 上 → 枠の中の下の順に、画面に収まる場所へ置く（ドラッグで動かせる）

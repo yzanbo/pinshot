@@ -39,9 +39,6 @@ protocol SettingsOption: CaseIterable, Identifiable, Hashable {
 extension AppearanceMode: SettingsOption {}
 extension CloseButtonMode: SettingsOption {}
 extension SaveMode: SettingsOption {}
-extension ExportBackground: SettingsOption {}
-extension ExportPadding: SettingsOption {}
-extension ExportCorner: SettingsOption {}
 extension HistoryPeriod: SettingsOption {}
 extension ShareLinkFormat: SettingsOption {}
 extension HistoryLimit: SettingsOption {}

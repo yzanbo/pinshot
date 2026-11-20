@@ -19,7 +19,7 @@ final class UploadRulesTests: XCTestCase {
     }
 
     func testCapabilitiesAccepts() {
-        let capabilities = UploadCapabilities(uploadsMovies: false, providesDirectURL: true, canDelete: true, maxFileBytes: 100)
+        let capabilities = UploadCapabilities(uploadsMovies: false, canDelete: true, maxFileBytes: 100)
         XCTAssertTrue(capabilities.accepts(.image, bytes: 100))
         XCTAssertFalse(capabilities.accepts(.image, bytes: 101))
         XCTAssertFalse(capabilities.accepts(.movie, bytes: 1))

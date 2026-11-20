@@ -3,22 +3,22 @@ import AppKit
 extension PinController {
     // MARK: - コピー・保存
 
-    /// 書き出す画像（書き込み・トリミングを反映し、設定によっては背景を付ける）
-    func exportImage(forceBackground: Bool = false) -> (image: CGImage, pointSize: CGSize)? {
+    /// 書き出す画像（書き込み・トリミングを反映し、背景を付けている画像は背景も付ける）
+    func exportImage() -> (image: CGImage, pointSize: CGSize)? {
         canvas.commitPendingText()
         guard let image = canvas.renderedImage() else { return nil }
         var decoration = state.backdropDecoration
-        decoration.isEnabled = showsBackdrop || forceBackground
+        decoration.isEnabled = showsBackdrop
         if decoration.isEnabled, let decorated = ImageExporter.decorate(image, pointSize: canvas.contentSize, with: decoration) {
             return decorated
         }
         return (image, canvas.contentSize)
     }
 
-    func copyToPasteboard(withBackground: Bool = false) {
-        guard let output = exportImage(forceBackground: withBackground) else { return }
+    func copyToPasteboard() {
+        guard let output = exportImage() else { return }
         ImageExporter.writeToPasteboard(output.image, pointSize: output.pointSize)
-        canvas.showHUD(withBackground ? "背景付きでコピーしました" : "コピーしました")
+        canvas.showHUD("コピーしました")
     }
 
     // MARK: - 文字の読み取り

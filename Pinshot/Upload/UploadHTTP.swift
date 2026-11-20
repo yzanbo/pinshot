@@ -28,17 +28,6 @@ enum UploadHTTP {
         return try check(data, response, for: destination)
     }
 
-    /// file を本文にして送る（録画など、メモリに読み込まないもの）
-    static func upload(
-        _ request: URLRequest,
-        file: URL,
-        for destination: UploadDestinationID,
-        progress: UploadProgress? = nil
-    ) async throws -> Data {
-        let (data, response) = try await session.upload(for: request, fromFile: file, delegate: progress.map(ProgressDelegate.init))
-        return try check(data, response, for: destination)
-    }
-
     /// 送った割合を知らせる
     private final class ProgressDelegate: NSObject, URLSessionTaskDelegate {
         let progress: UploadProgress

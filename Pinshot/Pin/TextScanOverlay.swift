@@ -9,7 +9,6 @@ final class TextScanOverlay: NSView {
     private let dim = CAShapeLayer()
     private let border = CAShapeLayer()
     private let band = CAGradientLayer()
-    private var region: NSRect = .zero
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -29,7 +28,6 @@ final class TextScanOverlay: NSView {
     /// 読み取りを始めた（region はこのビューの座標）
     func startScanning(in region: NSRect) {
         guard let root = layer else { return }
-        self.region = region
 
         let outside = CGMutablePath()
         outside.addRect(bounds)

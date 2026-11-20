@@ -19,8 +19,6 @@ enum UploadDestinationID: String, Codable, CaseIterable, Identifiable {
 struct UploadCapabilities: Equatable {
     /// 動画（MP4）を上げられるか
     var uploadsMovies: Bool
-    /// 画像そのものの URL（貼るとその場で画像が出る URL）を出せるか
-    var providesDirectURL: Bool
     /// 上げたものを Pinshot から消せるか
     var canDelete: Bool
     /// 1 つのファイルの大きさの上限（バイト。分からなければ nil）
@@ -34,32 +32,18 @@ struct UploadCapabilities: Equatable {
     }
 }
 
-/// 上げるものの中身（小さい画像はメモリのまま、録画などの大きいものはファイルのまま渡す）
-enum UploadPayload {
-    case data(Data)
-    case file(URL)
-
-    /// 中身の大きさ（バイト。読めなければ 0）
-    var byteCount: Int64 {
-        switch self {
-        case .data(let data):
-            return Int64(data.count)
-        case .file(let url):
-            let size = (try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0
-            return Int64(size)
-        }
-    }
-}
-
 /// 上げている途中の進み具合（送った割合 0〜1。裏の列から呼ぶ）
 typealias UploadProgress = @Sendable (Double) -> Void
 
-/// 上げるもの 1 つ
+/// 上げるもの 1 つ（中身はメモリのまま渡す。録画などの大きいものを上げるときは、ファイルのまま送る形を足す）
 struct UploadItem {
-    var payload: UploadPayload
+    var data: Data
     /// 保存先に付けるファイル名（拡張子付き）
     var fileName: String
     var kind: ExportKind
+
+    /// 中身の大きさ（バイト）
+    var byteCount: Int64 { Int64(data.count) }
 }
 
 /// 保存先に上げたファイル（あとで共有リンクを作る・消すときに使う）

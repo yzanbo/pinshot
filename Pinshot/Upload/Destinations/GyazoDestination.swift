@@ -10,7 +10,6 @@ final class GyazoDestination: UploadDestination {
     let capabilities = UploadCapabilities(
         // 動画を API で上げられるかは資料に書かれていないので、上げない
         uploadsMovies: false,
-        providesDirectURL: true,
         canDelete: true,
         // 大きさの上限は資料に書かれていない
         maxFileBytes: nil
@@ -71,15 +70,10 @@ final class GyazoDestination: UploadDestination {
     func upload(_ item: UploadItem, progress: @escaping UploadProgress) async throws -> RemoteFile {
         guard let token = currentToken else { throw UploadError.notSignedIn(id) }
         guard item.kind != .movie else { throw UploadError.unsupportedKind(id, item.kind) }
-        let data: Data
-        switch item.payload {
-        case .data(let bytes): data = bytes
-        case .file(let url): data = try Data(contentsOf: url)
-        }
         var form = MultipartForm()
         form.addField(name: "access_policy", value: "anyone")
         form.addField(name: "app", value: "Pinshot")
-        form.addFile(name: "imagedata", fileName: item.fileName, mimeType: item.kind.mimeType, data: data)
+        form.addFile(name: "imagedata", fileName: item.fileName, mimeType: item.kind.mimeType, data: item.data)
 
         var request = URLRequest(url: URL(string: "https://upload.gyazo.com/api/upload")!)
         request.httpMethod = "POST"

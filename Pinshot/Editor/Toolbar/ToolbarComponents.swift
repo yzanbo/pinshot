@@ -34,7 +34,6 @@ enum ToolbarMetrics {
     static let groupCorner: CGFloat = 7
     static let segmentCorner: CGFloat = 5
     static let labelFont = Font.system(size: 11)
-    static let buttonFont = Font.system(size: 12, weight: .semibold)
     /// 選んでいるもの：濃いアクセントカラーの背景に白（macOS のセグメントボタンと同じ。薄い青に青だと読みにくいため）
     static let selectedFill = Color.accentColor
     static let selectedForeground = Color.white

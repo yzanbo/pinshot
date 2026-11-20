@@ -32,7 +32,7 @@ final class UploadCenter {
                 notify(.finished("画像を用意できませんでした"))
                 return
             }
-            let item = UploadItem(payload: .data(data), fileName: UploadRules.fileName(kind: .image, date: Date()), kind: .image)
+            let item = UploadItem(data: data, fileName: UploadRules.fileName(kind: .image, date: Date()), kind: .image)
             await run(item, thumbnail: image, automatic: automatic, notify: notify)
         }
     }
@@ -59,7 +59,7 @@ final class UploadCenter {
             AppAlert.inform(UploadError.unsupportedKind(destination.id, item.kind).localizedDescription)
             return
         }
-        guard destination.capabilities.accepts(item.kind, bytes: item.payload.byteCount) else {
+        guard destination.capabilities.accepts(item.kind, bytes: item.byteCount) else {
             notify(.finished("上げられませんでした"))
             AppAlert.inform(UploadError.tooLarge(destination.id).localizedDescription)
             return
