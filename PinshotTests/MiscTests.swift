@@ -104,3 +104,20 @@ final class ImageExporterTests: XCTestCase {
         XCTAssertEqual(ImageExporter.uniqueURL(in: folder, fileName: "Pinshot.png").lastPathComponent, "Pinshot 3.png")
     }
 }
+
+/// 画像のファイルを読む
+final class ImageLoadingTests: XCTestCase {
+    /// 読んだあとにファイルを消しても、画像は空にならない（文字の履歴から浮かせた画像を、もう一度読み取ると、
+    /// 同じ文字の履歴をまとめるときに元のファイルを消すため、浮かせた画像が見えなくなっていた）
+    func testLoadedImageSurvivesFileDeletion() throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString).png")
+        let original = TestImages.make(width: 8, height: 8) { _, _ in 200 }
+        let png = try XCTUnwrap(ImageExporter.pngData(original, pointSize: CGSize(width: 8, height: 8)))
+        try png.write(to: url)
+        let loaded = try XCTUnwrap(CGImage.load(contentsOf: url))
+        try FileManager.default.removeItem(at: url)
+        let pixels = TestImages.pixels(of: loaded)
+        XCTAssertEqual(pixels.first, 200, "ファイルを消したあとも、読んだ画像を描ける")
+        XCTAssertEqual(pixels[3], 255, "透明になっていない")
+    }
+}

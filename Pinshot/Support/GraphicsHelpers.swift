@@ -20,9 +20,19 @@ extension CGContext {
 
 extension CGImage {
     /// 画像のファイル（PNG など）を読む。読めなければ nil
+    /// 読んだ時点で展開しておく（後回しにすると、描くときにファイルから読み直すので、
+    /// 履歴をまとめる・消すなどでファイルがなくなったあとに描くと、画像が空になる）
     static func load(contentsOf url: URL) -> CGImage? {
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
-        return CGImageSourceCreateImageAtIndex(source, 0, nil)
+        return CGImageSourceCreateImageAtIndex(source, 0, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary)
+    }
+
+    /// size（ピクセル）に描き直した画像（履歴の縮小画像など）
+    func scaled(to size: CGSize) -> CGImage? {
+        guard let ctx = CGContext.makeRGBA(width: Int(size.width), height: Int(size.height), space: rgbColorSpace) else { return nil }
+        ctx.interpolationQuality = .high
+        ctx.draw(self, in: CGRect(origin: .zero, size: size))
+        return ctx.makeImage()
     }
 
     /// RGB の画像なら、その色空間（グレーなどのときは nil。描き先を作るときに sRGB に倒す）
