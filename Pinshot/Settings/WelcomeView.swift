@@ -92,7 +92,7 @@ struct WelcomeView: View {
                 symbol: "rectangle.dashed.badge.record",
                 title: "画面収録",
                 badge: permission.granted ? .granted : .required,
-                detail: "画面を撮るのに必要です。撮った画像は Mac の中だけで扱い、ネットには送りません。",
+                detail: "画面を撮るのに必要です。撮った画像は Mac の中に置きます。ネットに送るのは、共有リンク（設定の「共有」）で上げたときだけです。",
                 actionTitle: permission.granted ? nil : "許可する…",
                 action: { permission.request() }
             ) {
