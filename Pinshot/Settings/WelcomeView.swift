@@ -3,15 +3,17 @@ import SwiftUI
 
 /// 初めて起動したとき・メニューの「使い方と許可…」・画面収録の許可がないときに出す案内
 @MainActor
-final class WelcomeWindowController: NSObject {
+final class WelcomeWindowController: NSObject, NSWindowDelegate {
     static let shared = WelcomeWindowController()
 
     private var window: NSWindow?
     private var hosting: NSHostingView<WelcomeView>?
-    private let permission = PermissionModel()
+    private let permission = PermissionModel.shared
 
     /// firstLaunch: 初めての起動のとき（見出しを「ようこそ」にする）
     func show(firstLaunch: Bool = false) {
+        // 窓を出している間だけ、許可の状態を確かめ直す（閉じたら windowWillClose でやめる）
+        if window?.isVisible != true { permission.startWatching() }
         let view = WelcomeView(
             settings: AppSettings.shared,
             permission: permission,
@@ -34,6 +36,7 @@ final class WelcomeWindowController: NSObject {
             window.isMovableByWindowBackground = true
             window.contentView = hosting
             window.isReleasedWhenClosed = false
+            window.delegate = self
             window.center()
             self.window = window
             self.hosting = hosting
@@ -44,6 +47,10 @@ final class WelcomeWindowController: NSObject {
         if let window { DockIcon.show(for: window) }
         NSApp.activate()
         window?.makeKeyAndOrderFront(nil)
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        permission.stopWatching()
     }
 }
 

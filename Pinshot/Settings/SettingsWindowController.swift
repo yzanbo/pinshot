@@ -15,6 +15,8 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
     /// 設定のウィンドウを出す。tab を渡すと、その名前のタブを開く
     func show(tab: String? = nil) {
+        // 窓を出している間だけ、許可の状態を確かめ直す（閉じたら windowWillClose でやめる）
+        if window?.isVisible != true { PermissionModel.shared.startWatching() }
         if window == nil {
             let settings = AppSettings.shared
             let tabs = SettingsTabViewController()
@@ -22,7 +24,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             tabs.addTabViewItem(makeTab("一般", symbol: "gearshape", view: GeneralSettingsView(
                 settings: settings,
                 loginItem: LoginItemModel(),
-                permission: PermissionModel()
+                permission: .shared
             )))
             tabs.addTabViewItem(makeTab("画像", symbol: "photo.on.rectangle", view: PinSettingsView(settings: settings)))
             tabs.addTabViewItem(makeTab("保存", symbol: "square.and.arrow.down", view: ExportSettingsView(settings: settings)))
@@ -68,6 +70,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         // 記録の途中で閉じたら、記録をやめる（キーの横取りも止める）
         shortcutRecorder?.stop()
+        PermissionModel.shared.stopWatching()
     }
 
     func windowDidResignKey(_ notification: Notification) {

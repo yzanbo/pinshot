@@ -63,20 +63,37 @@ enum AccessibilityPermission {
 
 // MARK: - 設定・案内の画面に出す状態
 
-/// 画面収録・アクセシビリティの許可の状態（1 秒ごとに確かめ直す）
+/// 画面収録・アクセシビリティの許可の状態（出している間だけ、1 秒ごとに確かめ直す）。
+/// 設定と使い方の画面で同じものを使う（「許可する…」を押したかも、どちらの画面にも出すため）
 @MainActor
 final class PermissionModel: ObservableObject {
+    static let shared = PermissionModel()
+
     /// 画面収録（画面を撮るのに必要）
     @Published private(set) var granted = ScreenPermission.isGranted
     @Published private(set) var requested = false
     /// アクセシビリティ（メニューを開いている間のショートカットに使う）
     @Published private(set) var accessibilityGranted = AccessibilityPermission.isGranted
     private var timer: AnyCancellable?
+    /// 許可の状態を出している窓の数（0 になったら、確かめ直すのをやめる）
+    private var watchers = 0
 
-    init() {
+    private init() {}
+
+    /// 許可の状態を出す窓を開いた（閉じたら stopWatching を呼ぶ）。出している間だけ、1 秒ごとに確かめ直す
+    func startWatching() {
+        watchers += 1
+        refresh()
+        guard timer == nil else { return }
         timer = Timer.publish(every: 1, on: .main, in: .common)
             .autoconnect()
             .sink { [weak self] _ in self?.refresh() }
+    }
+
+    /// 許可の状態を出す窓を閉じた
+    func stopWatching() {
+        watchers = max(0, watchers - 1)
+        if watchers == 0 { timer = nil }
     }
 
     private func refresh() {
