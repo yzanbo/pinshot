@@ -23,7 +23,7 @@ Pinshot/
 │   ├── ScreenRecorder        画面を受け取って MP4 に書く（ScreenCaptureKit の SCStream → AVAssetWriter）
 │   ├── RecordingController   録画を始める・止める入口（赤い点線の枠・操作パネル・上限）
 │   ├── RecordingStore        アプリの中に残す録画（期間と数で古いものを削除・本数と容量）
-│   ├── RecordingPlayer       録画を浮かせてくり返し再生する窓（コピー・MP4 / GIF で保存・Finder で表示）
+│   ├── RecordingPlayer       録画を浮かせてくり返し再生する窓（見た目は浮かせた画像にそろえる：左上の外の ×・下の操作バーと左端の ✙。再生・一時停止・位置のつまみ・コピー・MP4 / GIF で保存・Finder で表示）
 │   ├── GIFExporter           録画から GIF を作る（テストあり）
 │   └── CaptureOutline        録画している範囲の外側の赤い点線の枠（録画には写らない）
 ├── Pin/            最前面に浮かぶウィンドウと、画像の表示・操作

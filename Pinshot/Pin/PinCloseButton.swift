@@ -5,8 +5,10 @@ import AppKit
 final class PinCloseButton: NSView {
     var onClick: (() -> Void)?
 
-    /// 乗せたときの説明（toolTip は Pinshot が前面にないと出ないので、HoverHints で出す）
-    private static let hint = "閉じる（⌘W）：書き込みごと閉じる。メニューの「閉じた画像を戻す」で戻せる"
+    /// 乗せたときの説明（toolTip は Pinshot が前面にないと出ないので、HoverHints で出す）。録画の窓などでは差し替える
+    var hint = "閉じる（⌘W）：書き込みごと閉じる。メニューの「閉じた画像を戻す」で戻せる" {
+        didSet { setAccessibilityHelp(hint) }
+    }
 
     private var isHovering = false
     private var isPressed = false
@@ -18,7 +20,7 @@ final class PinCloseButton: NSView {
         super.init(frame: frameRect)
         setAccessibilityRole(.button)
         setAccessibilityLabel("閉じる")
-        setAccessibilityHelp(Self.hint)
+        setAccessibilityHelp(hint)
     }
 
     @available(*, unavailable)
@@ -42,13 +44,13 @@ final class PinCloseButton: NSView {
         isHovering = true
         HoverRole.pressable.cursor.set()
         needsDisplay = true
-        HoverHints.shared.showOverWindowUnderMouse(Self.hint)
+        HoverHints.shared.showOverWindowUnderMouse(hint)
     }
 
     override func mouseExited(with event: NSEvent) {
         isHovering = false
         needsDisplay = true
-        HoverHints.shared.end(Self.hint)
+        HoverHints.shared.end(hint)
     }
 
     override func mouseDown(with event: NSEvent) {

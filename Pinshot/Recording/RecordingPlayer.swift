@@ -1,9 +1,11 @@
 import AppKit
 import AVKit
+import Combine
 import SwiftUI
 
 /// 録画を浮かせて、くり返し再生する窓（画像を浮かせるのと同じく、ほかのウィンドウより前に出す）。
-/// 下のバーから、コピー（ファイルとして貼り付けられる）・MP4 で保存・GIF で保存・Finder で表示・閉じる、ができる
+/// 見た目は浮かせた画像にそろえる：動画の左上の外側に閉じるボタン（×）、動画の下に操作バー（黒い半透明の台）。
+/// 操作バーから、再生・一時停止・好きな所へ動かす、コピー（ファイルとして貼り付けられる）・MP4 で保存・GIF で保存・Finder で表示、ができる
 @MainActor
 final class RecordingPlayer: NSObject, NSWindowDelegate {
     /// 開いている窓（閉じたら手放す）
@@ -32,16 +34,21 @@ final class RecordingPlayer: NSObject, NSWindowDelegate {
         let visible = (screen ?? NSScreen.main)?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
         let zoom = min(1, visible.width * 0.7 / max(pointSize.width, 1), visible.height * 0.7 / max(pointSize.height, 1))
         let videoSize = NSSize(width: pointSize.width * zoom, height: pointSize.height * zoom)
-        let size = NSSize(width: max(videoSize.width, RecordingPlayerView.minWidth), height: videoSize.height + RecordingPlayerView.barHeight)
-        var origin = NSPoint(x: rect.midX - size.width / 2, y: rect.midY - size.height / 2)
+        // 窓の大きさは中身（動画・閉じるボタンの分の余白・操作バー）から決める（窓の背景は透明で、何もない所のクリックは下に通る）
+        let hosting = FirstMouseHostingView(rootView: RecordingPlayerView(model: model, videoSize: videoSize))
+        let size = hosting.fittingSize
+        // 動画を録画した範囲の真ん中に合わせる（閉じるボタンの分の余白を除いて考える）
+        let videoCenter = NSPoint(x: rect.midX, y: rect.midY)
+        var origin = NSPoint(
+            x: videoCenter.x - size.width / 2,
+            y: videoCenter.y - (size.height - RecordingPlayerView.closeInset) + videoSize.height / 2
+        )
         origin.x = min(max(origin.x, visible.minX + 8), visible.maxX - size.width - 8)
         origin.y = min(max(origin.y, visible.minY + 8), visible.maxY - size.height - 8)
 
-        panel = OverlayPanel(contentRect: NSRect(origin: origin, size: size), level: AppSettings.shared.alwaysOnTop ? .floating : .normal)
-        panel.isMovableByWindowBackground = true
+        panel = OverlayPanel(contentRect: NSRect(origin: origin, size: size), level: AppSettings.shared.alwaysOnTop ? .floating : .normal, hasShadow: false)
         super.init()
         model.close = { [weak self] in self?.panel.close() }
-        let hosting = FirstMouseHostingView(rootView: RecordingPlayerView(model: model, videoSize: videoSize))
         hosting.frame = NSRect(origin: .zero, size: size)
         hosting.autoresizingMask = [.width, .height]
         panel.contentView = hosting
@@ -49,8 +56,7 @@ final class RecordingPlayer: NSObject, NSWindowDelegate {
     }
 
     func windowWillClose(_ notification: Notification) {
-        model.player.pause()
-        model.cancelExport()
+        model.stop()
         Self.players.removeAll { $0 === self }
     }
 }
@@ -61,13 +67,26 @@ final class RecordingPlayerModel: ObservableObject {
     let url: URL
     let player: AVQueuePlayer
     private let looper: AVPlayerLooper
+    /// 再生しているか（開いたらすぐ再生し、最後まで行ったら頭に戻ってくり返す）
+    @Published private(set) var isPlaying = true
+    /// いまの位置と、録画の長さ（秒）
+    @Published private(set) var currentTime: Double = 0
+    @Published private(set) var duration: Double = 0
     /// GIF を作っている途中の進み具合（0〜1。作っていなければ nil）
     @Published private(set) var gifProgress: Double?
     /// 操作したあとの短い知らせ
     @Published private(set) var notice: String?
+    /// 動画にマウスを乗せているか（乗せている間は、浮かせた画像と同じく細い白い枠を出す）
+    @Published var isHoveringVideo = false
     var close: () -> Void = {}
     private var exportTask: Task<Void, Never>?
     private var noticeTask: Task<Void, Never>?
+    private var timeObserver: Any?
+    private var statusObserver: AnyCancellable?
+    /// 位置のつまみを動かしている間（いまの位置を、再生の位置で上書きしない）
+    private var isScrubbing = false
+    /// つまみを動かし始めたときに再生していたか（離したら、再生に戻す）
+    private var resumesAfterScrub = false
 
     init(url: URL) {
         self.url = url
@@ -75,7 +94,57 @@ final class RecordingPlayerModel: ObservableObject {
         player = AVQueuePlayer()
         player.isMuted = true
         looper = AVPlayerLooper(player: player, templateItem: item)
+        // 再生している位置を、操作バーの時間とつまみに出す（1 秒に 20 回）
+        timeObserver = player.addPeriodicTimeObserver(forInterval: CMTime(value: 1, timescale: 20), queue: .main) { [weak self] time in
+            MainActor.assumeIsolated {
+                guard let self, !self.isScrubbing else { return }
+                self.currentTime = time.seconds.isFinite ? max(0, time.seconds) : 0
+            }
+        }
+        statusObserver = player.publisher(for: \.timeControlStatus)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] status in self?.isPlaying = status != .paused }
+        Task { [weak self] in
+            let duration = try? await AVURLAsset(url: url).load(.duration)
+            guard let seconds = duration?.seconds, seconds.isFinite else { return }
+            self?.duration = seconds
+        }
         player.play()
+    }
+
+    // MARK: - 再生
+
+    /// 再生・一時停止を切り替える
+    func togglePlay() {
+        if isPlaying { player.pause() } else { player.play() }
+    }
+
+    /// 位置のつまみを動かし始めた（動かしている間は止めておく）
+    func beginScrub() {
+        isScrubbing = true
+        resumesAfterScrub = isPlaying
+        player.pause()
+    }
+
+    /// seconds の位置を出す（つまみを動かしている間、動かすたびに呼ぶ）
+    func scrub(to seconds: Double) {
+        currentTime = seconds
+        player.seek(to: CMTime(seconds: seconds, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
+    }
+
+    /// 位置のつまみを離した（動かし始める前に再生していたら、再生に戻す）
+    func endScrub() {
+        isScrubbing = false
+        if resumesAfterScrub { player.play() }
+    }
+
+    /// 窓を閉じたとき（再生・GIF 作り・位置の見張りを止める）
+    func stop() {
+        player.pause()
+        if let timeObserver { player.removeTimeObserver(timeObserver) }
+        timeObserver = nil
+        statusObserver = nil
+        exportTask?.cancel()
     }
 
     /// ファイルとしてクリップボードに入れる（Finder・チャットなどに貼り付けられる）
@@ -131,10 +200,6 @@ final class RecordingPlayerModel: ObservableObject {
         NSWorkspace.shared.activateFileViewerSelecting([url])
     }
 
-    func cancelExport() {
-        exportTask?.cancel()
-    }
-
     private func show(_ text: String) {
         notice = text
         noticeTask?.cancel()
@@ -146,100 +211,147 @@ final class RecordingPlayerModel: ObservableObject {
     }
 }
 
-/// 録画の窓の中身（上に動画、下に操作のバー）
+/// 録画の窓の中身。浮かせた画像と同じ見た目にする：動画の左上の外側に閉じるボタン（×）、
+/// 動画の下（間 6pt）に黒い半透明の台の操作バー、乗せている間は動画に細い白い枠、知らせは動画の真ん中
 private struct RecordingPlayerView: View {
-    static let barHeight: CGFloat = 40
-    static let minWidth: CGFloat = 420
+    /// 閉じるボタン（直径 20）を、丸の縁が動画の角にほぼ触れるところに出すための余白（浮かせた画像と同じ置き方）
+    static let closeInset: CGFloat = 18
+    /// 動画と操作バーの間（浮かせた画像と同じ）
+    static let barGap: CGFloat = 6
 
     @ObservedObject var model: RecordingPlayerModel
     let videoSize: NSSize
 
     var body: some View {
-        VStack(spacing: 0) {
-            PlayerLayerView(player: model.player)
-                .frame(width: videoSize.width, height: videoSize.height)
-                .frame(maxWidth: .infinity)
-                .background(Color.black)
-                // 動画の上をドラッグすると、窓ごと動く（動画の部品がマウスを受け取ってしまうため、上に重ねる）
-                .overlay(WindowDragArea().hoverRole(.movable))
-                .overlay(alignment: .bottom) { noticeView }
+        VStack(spacing: Self.barGap) {
+            video
             bar
         }
-        .background(Color.black.opacity(0.85))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.white.opacity(0.2)))
+        // 閉じるボタンを、動画の左上の外側に出す分の余白（左右は同じにして、操作バーを動画の真ん中にそろえる）
+        .padding(.top, Self.closeInset)
+        .padding(.horizontal, Self.closeInset)
     }
 
-    /// 下の操作のバー
-    private var bar: some View {
-        HStack(spacing: 4) {
-            barButton("doc.on.doc", help: "コピー（ファイルとして貼り付けられる）", action: model.copy)
-            barButton("square.and.arrow.down", help: "MP4 で保存", action: model.saveMovie)
-            if let progress = model.gifProgress {
-                ProgressView(value: progress)
-                    .progressViewStyle(.linear)
-                    .tint(.white)
-                    .frame(width: 70)
-                Text("GIF を作っています")
-                    .font(.caption)
-                    .foregroundStyle(.white.opacity(0.8))
-            } else {
-                Button(action: model.saveGIF) {
-                    Text("GIF で保存")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 8)
-                        .frame(height: 22)
-                        .background(Capsule().strokeBorder(Color.white.opacity(0.4)))
-                        .contentShape(Capsule())
-                }
-                .buttonStyle(.plain)
-                .hoverHint("GIF を作って保存（長い録画は、コマを減らして軽くする）")
-                .hoverRole()
+    /// 動画（上をドラッグすると窓ごと動く。乗せている間は細い白い枠）
+    private var video: some View {
+        PlayerLayerView(player: model.player)
+            .frame(width: videoSize.width, height: videoSize.height)
+            .background(Color.black)
+            // 浮かせた画像と同じく、動画にだけ影を付ける（操作バーには付けない）
+            .shadow(color: .black.opacity(0.35), radius: 6, y: 2)
+            // 動画の上をドラッグすると、窓ごと動く（動画の部品がマウスを受け取ってしまうため、上に重ねる）
+            .overlay(WindowDragArea().hoverRole(.movable))
+            .overlay(Rectangle().strokeBorder(Color.white.opacity(model.isHoveringVideo ? 0.8 : 0), lineWidth: 1))
+            .overlay { noticeView }
+            .overlay(alignment: .topLeading) {
+                RecordingCloseButton(action: model.close)
+                    .frame(width: 20, height: 20)
+                    .offset(x: -Self.closeInset, y: -Self.closeInset)
             }
-            barButton("folder", help: "Finder で表示", action: model.revealInFinder)
-            Spacer(minLength: 8)
-            // 動かすつまみ（バーの何もない所・動画の上をドラッグしても動く）
-            Image(systemName: "arrow.up.and.down.and.arrow.left.and.right")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.6))
-                .frame(width: 24, height: 24)
-                .overlay(WindowDragArea())
-                .hoverHint("ドラッグで動かす（動画の上やバーの何もない所をドラッグしても動く）")
-                .hoverRole(.movable)
-            barButton("xmark", help: "閉じる（録画は ~/Library/Application Support/Pinshot/Recordings に残る）", action: model.close)
-        }
-        .padding(.horizontal, 8)
-        .frame(height: Self.barHeight)
-        // バーの何もない所をドラッグしても、窓ごと動く（ボタンは、その上で押せる）
-        .background(WindowDragArea().hoverRole(.movable))
+            .onHover { model.isHoveringVideo = $0 }
     }
 
-    private func barButton(_ symbol: String, help: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: symbol)
-                .font(.system(size: 12, weight: .semibold))
+    /// 下の操作バー（浮かせた画像の操作バーと同じ台・同じボタン）。台の何もない所をドラッグしても、窓ごと動く
+    private var bar: some View {
+        HStack(spacing: 2) {
+            moveHandle
+            QuickActionDivider()
+            QuickActionButton(
+                symbol: model.isPlaying ? "pause.fill" : "play.fill",
+                help: model.isPlaying ? "一時停止" : "再生（最後まで行ったら、頭に戻ってくり返す）",
+                action: model.togglePlay
+            )
+            Text("\(RecordingRules.elapsedText(model.currentTime)) / \(RecordingRules.elapsedText(model.duration))")
+                .font(.system(size: 10, weight: .medium).monospacedDigit())
                 .foregroundStyle(.white)
-                .frame(width: 28, height: 24)
-                .contentShape(Rectangle())
+                .lineLimit(1)
+                // 長さが 10 分（上限）になっても、バーの幅が変わらないように
+                .frame(width: 80)
+            Slider(
+                value: Binding(get: { model.currentTime }, set: { model.scrub(to: $0) }),
+                in: 0...max(model.duration, 0.01),
+                onEditingChanged: { editing in editing ? model.beginScrub() : model.endScrub() }
+            )
+            .controlSize(.mini)
+            .tint(.white)
+            .frame(width: 120)
+            .padding(.horizontal, 4)
+            .hoverHint("ドラッグで、見たい所へ動かす")
+            .hoverRole()
+            QuickActionDivider()
+            QuickActionButton(symbol: "doc.on.doc", help: "コピー（ファイルとして貼り付けられる）", action: model.copy)
+            QuickActionButton(symbol: "square.and.arrow.down", help: "MP4 で保存", action: model.saveMovie)
+            gifButton
+            QuickActionButton(symbol: "folder", help: "Finder で表示", action: model.revealInFinder)
         }
-        .buttonStyle(.plain)
-        .hoverHint(help)
-        .hoverRole()
+        .quickActionBarBackground()
+        // 台の何もない所（縁まで）をドラッグしても、窓ごと動く（ボタン・つまみは、その上で押せる）
+        .background(WindowDragArea().clipShape(Capsule()).hoverRole(.movable))
     }
 
+    /// 動かすつまみ ✙（浮かせた画像の操作バーと同じく、左端に置く）。動画の上・バーの何もない所をドラッグしても動く
+    private var moveHandle: some View {
+        QuickActionMoveIcon()
+            .overlay(WindowDragArea())
+            .hoverHint("ドラッグで録画の窓を移動（動画の上やバーの何もない所をドラッグしても動く）")
+            .hoverRole(.movable)
+    }
+
+    /// GIF で保存（作っている間は、同じ幅に進み具合を出す。バーの幅が変わらないように）
+    @ViewBuilder
+    private var gifButton: some View {
+        if let progress = model.gifProgress {
+            ProgressView(value: progress)
+                .progressViewStyle(.linear)
+                .tint(.white)
+                .frame(width: 60)
+                .frame(width: 76, height: 22)
+                .hoverHint("GIF を作っています")
+        } else {
+            Button(action: model.saveGIF) {
+                Text("GIF で保存")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 8)
+                    .frame(width: 76, height: 22)
+                    .background(Capsule().strokeBorder(Color.white.opacity(0.4)))
+                    .contentShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .hoverHint("GIF を作って保存（長い録画は、コマを減らして軽くする）")
+            .hoverRole()
+        }
+    }
+
+    /// 操作したあとの短い知らせ（浮かせた画像のお知らせと同じく、動画の真ん中に出す）
     @ViewBuilder
     private var noticeView: some View {
         if let notice = model.notice {
             Text(notice)
-                .font(.callout.weight(.medium))
+                .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(.white)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(Capsule().fill(Color.black.opacity(0.7)))
-                .padding(.bottom, 10)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(RoundedRectangle(cornerRadius: 8).fill(Color.black.opacity(0.7)))
+                .allowsHitTesting(false)
                 .transition(.opacity)
         }
+    }
+}
+
+/// 閉じるボタン（浮かせた画像の左上の外側の × と同じ部品）
+private struct RecordingCloseButton: NSViewRepresentable {
+    let action: () -> Void
+
+    func makeNSView(context: Context) -> PinCloseButton {
+        let button = PinCloseButton(frame: NSRect(x: 0, y: 0, width: 20, height: 20))
+        button.hint = "閉じる（録画は ~/Library/Application Support/Pinshot/Recordings に残る）"
+        button.onClick = action
+        return button
+    }
+
+    func updateNSView(_ button: PinCloseButton, context: Context) {
+        button.onClick = action
     }
 }
 

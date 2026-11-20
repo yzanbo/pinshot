@@ -46,18 +46,12 @@ struct QuickActionBar: View {
             QuickActionButton(symbol: "ellipsis", help: "そのほかの操作", action: more)
             editButton
         }
-        .padding(3)
-        .background(Capsule().fill(Color.black.opacity(0.6)))
-        .overlay(Capsule().strokeBorder(Color.white.opacity(0.25)))
-        .fixedSize()
+        .quickActionBarBackground()
     }
 
     /// ドラッグで画像（ツールバーを切り離しているときはツールバー）を動かすつまみ
     private var moveHandle: some View {
-        Image(systemName: "arrow.up.and.down.and.arrow.left.and.right")
-            .font(.system(size: 11, weight: .semibold))
-            .foregroundStyle(.white.opacity(0.85))
-            .frame(width: 22, height: 22)
+        QuickActionMoveIcon()
             .contentShape(Rectangle())
             .gesture(
                 DragGesture(minimumDistance: 0, coordinateSpace: .global)
@@ -84,7 +78,32 @@ struct QuickActionBar: View {
         .hoverRole()
     }
 
-    private var divider: some View {
+    private var divider: some View { QuickActionDivider() }
+}
+
+extension View {
+    /// 操作バーの台（黒い半透明のカプセルに、細い白い縁）。浮かせた画像・選んだ書き込み・浮かせた録画のバーで同じ見た目にする
+    func quickActionBarBackground(opacity: Double = 0.6) -> some View {
+        padding(3)
+            .background(Capsule().fill(Color.black.opacity(opacity)))
+            .overlay(Capsule().strokeBorder(Color.white.opacity(0.25)))
+            .fixedSize()
+    }
+}
+
+/// 操作バーの左端の、動かすつまみ ✙ の見た目（ドラッグで何を動かすかは、置く側で決める）
+struct QuickActionMoveIcon: View {
+    var body: some View {
+        Image(systemName: "arrow.up.and.down.and.arrow.left.and.right")
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundStyle(.white.opacity(0.85))
+            .frame(width: 22, height: 22)
+    }
+}
+
+/// 操作バー（黒い半透明の台）の区切り線。浮かせた画像と、浮かせた録画のバーで同じ見た目にする
+struct QuickActionDivider: View {
+    var body: some View {
         Rectangle()
             .fill(Color.white.opacity(0.25))
             .frame(width: 1, height: 14)
@@ -92,7 +111,8 @@ struct QuickActionBar: View {
     }
 }
 
-private struct QuickActionButton: View {
+/// 操作バーのアイコンのボタン。浮かせた画像と、浮かせた録画のバーで同じ見た目にする
+struct QuickActionButton: View {
     let symbol: String
     let help: String
     let action: () -> Void
@@ -125,9 +145,6 @@ struct SelectionActionBar: View {
             QuickActionButton(symbol: "square.3.layers.3d.bottom.filled", help: "背面へ（⌘[）", action: sendBackward)
             QuickActionButton(symbol: "trash", help: "削除（delete）", action: delete)
         }
-        .padding(3)
-        .background(Capsule().fill(Color.black.opacity(0.7)))
-        .overlay(Capsule().strokeBorder(Color.white.opacity(0.25)))
-        .fixedSize()
+        .quickActionBarBackground(opacity: 0.7)
     }
 }
