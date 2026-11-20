@@ -91,15 +91,23 @@ final class SelectionController {
             .store(in: &cancellables)
     }
 
-    func begin() {
-        // アプリ全体は前に出さない（前に撮った画像まで前に出てしまうため）。範囲を選ぶ画面だけを前に出してキーにする。
-        // カーソルは、マウスが動くたびに十字を出し直して保つ
+    /// 撮った画面を、すべての画面に出し切る（まだキーにはしない）。
+    /// 開いていたメニューを閉じる前に呼ぶ。撮った画面が実際に映ってから閉じれば、メニューが一瞬消えて見えない
+    func presentScreens() {
         for window in windows {
             // 描き終えてから出す（出した瞬間に、描きかけの画面が見えないように）
             window.contentView?.layoutSubtreeIfNeeded()
             window.displayIfNeeded()
             window.orderFrontRegardless()
         }
+        // 描いた中身を、この場で画面に送る（ふつうは、この回の処理が終わってから送られる）
+        CATransaction.flush()
+    }
+
+    func begin() {
+        // アプリ全体は前に出さない（前に撮った画像まで前に出てしまうため）。範囲を選ぶ画面だけを前に出してキーにする。
+        // カーソルは、マウスが動くたびに十字を出し直して保つ
+        presentScreens()
         let mouse = NSEvent.mouseLocation
         for overlay in overlays {
             overlay.updatePointer(screenPoint: mouse)

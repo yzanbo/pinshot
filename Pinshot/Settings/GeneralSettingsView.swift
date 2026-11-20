@@ -42,7 +42,7 @@ struct GeneralSettingsView: View {
                 )
                 PermissionRow(
                     title: "アクセシビリティ",
-                    detail: "スクロールキャプチャで、スクロールする部分を見つけて自動でスクロールするのに使います。",
+                    detail: "スクロールキャプチャで自動でスクロールするのと、メニューを開いたままショートカットで撮るのに使います。",
                     isGranted: permission.accessibilityGranted,
                     request: { permission.requestAccessibility() }
                 )

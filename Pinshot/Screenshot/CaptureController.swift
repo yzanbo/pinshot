@@ -55,6 +55,15 @@ final class CaptureController {
                     }
                 }
                 self.selection = selection
+                // 撮った画面を先に映し切ってから、開いていたメニューを閉じ、範囲を選べる状態にする。
+                // 順番が逆だと、メニュー（ツールバーの ▾・ほかのアプリのメニューバーのメニュー）が一瞬消えて、また出たように見える
+                selection.presentScreens()
+                try? await Task.sleep(for: .milliseconds(30))
+                if OpenMenus.isAnyOpen {
+                    // 開いたままだと、macOS がメニューの操作だけを受け付けるので、範囲を選べない
+                    OpenMenus.closeAll()
+                    try? await Task.sleep(for: .milliseconds(30))
+                }
                 selection.begin()
             } catch {
                 isCapturing = false
@@ -157,10 +166,6 @@ final class CaptureController {
             WelcomeWindowController.shared.show()
             return
         }
-        let alert = NSAlert()
-        alert.messageText = "キャプチャできませんでした"
-        alert.informativeText = error.localizedDescription
-        NSApp.activate()
-        alert.runModal()
+        AppAlert.inform("キャプチャできませんでした", detail: error.localizedDescription)
     }
 }

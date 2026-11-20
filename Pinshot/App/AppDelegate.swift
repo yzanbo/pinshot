@@ -11,6 +11,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         captureWindow: { [weak self] in self?.captureController.captureWindow(id: $0) }
     ))
     private var hotKeys: [ShortcutAction: HotKey] = [:]
+    /// メニューを開いている間もショートカットを効かせる（アクセシビリティを許可しているとき）
+    private let keyTap = ShortcutKeyTap()
+    /// 操作ごとの、最後にショートカットで行った時刻（HotKey とキーの見張りの両方から届いても 1 回にする）
+    private var lastShortcutTimes: [ShortcutAction: Date] = [:]
     private let captureController = CaptureController()
     private let settings = AppSettings.shared
     private var cancellables = Set<AnyCancellable>()
@@ -33,7 +37,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         AppSupport.allowCursorChangesInBackground()
         OpenMenus.startObserving()
         statusMenu.install()
+        keyTap.onShortcut = { [weak self] action in self?.performFromShortcut(action) }
         registerHotKeys()
+        keyTap.start()
         // 撮った画像の履歴を読み、期間を過ぎたものを消す
         CaptureHistory.shared.pruneExpired()
 
@@ -85,16 +91,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if hotKey == nil { unavailable.insert(action) }
             statusMenu.showShortcut(shortcut, registered: hotKey != nil, for: action)
         }
+        // メニューを開いている間の見張りにも、同じショートカットを渡す（記録中・ほかのアプリが使っているものは除く）
+        keyTap.shortcuts = recording ? [:] : settings.shortcuts.filter { hotKeys[$0.key] != nil }
         // 登録できなかったものは、設定のショートカットの画面でも知らせる
         if !recording, settings.unavailableShortcuts != unavailable {
             settings.unavailableShortcuts = unavailable
         }
     }
 
-    /// ショートカットで押されたとき。メニュー（ツールバーの ▾ など）が開いていたら、先に閉じてから行う
-    /// （開いたままだと、範囲を選ぶ画面がメニューの下になって操作できない）
+    /// ショートカットで押されたとき。撮る操作はそのまま始める（開いているメニューは、画面を撮ったあとに閉じる）。
+    /// ほかの操作は、メニュー（ツールバーの ▾ など）が開いていたら、先に閉じてから行う
     private func performFromShortcut(_ action: ShortcutAction) {
-        guard OpenMenus.isAnyOpen else {
+        // HotKey とキーの見張りの両方から届いたときは、1 回だけ行う
+        let now = Date()
+        if let last = lastShortcutTimes[action], now.timeIntervalSince(last) < 0.5 { return }
+        lastShortcutTimes[action] = now
+        // 撮る操作は、メニューを開いたまま画面を撮り、撮り終えてからメニューを閉じる（開いたメニューも写るように）
+        guard OpenMenus.isAnyOpen, !ShortcutAction.captureActions.contains(action) else {
             perform(action)
             return
         }
