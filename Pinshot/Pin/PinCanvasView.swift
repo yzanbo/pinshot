@@ -11,6 +11,9 @@ import SwiftUI
 /// - `+Selection`: 選択と、色・大きさの反映、複製・重なり順
 /// - `+History`: 元に戻す・やり直す
 /// - `+Text`: 文字の入力
+/// - `+TextRecognition`: 文字の読み取り（範囲を選ぶ・読み取っている間の見た目・読み取った文字の吹き出し）
+/// - `+TextMark`: 文字マーカー（画像の文字の位置に合わせて引く）
+/// - `+Outside`: 画像の外に出す部品（閉じるボタン・操作バー・お知らせ・書き込みのバー）
 ///
 /// 書き込み・トリミング・元に戻す履歴は `document`（AnnotationDocument）が持つ。変えるときは必ず document のメソッドを通す
 final class PinCanvasView: NSView, NSTextFieldDelegate, NSDraggingSource {

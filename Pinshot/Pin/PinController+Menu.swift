@@ -3,7 +3,7 @@ import AppKit
 extension PinController {
     // MARK: - 右クリックメニュー
 
-    /// 右クリック（と操作バーの「…」）のメニュー。見出しで「編集・コピーと保存・履歴・文字の読み取り・見た目・置き方と表示」に分ける
+    /// 右クリック（と操作バーの「…」）のメニュー。見出しで「コピー・保存・文字の読み取り・見た目・置き方と表示」に分ける
     func makeContextMenu() -> NSMenu {
         let opacityPercent = Int((panel.alphaValue * 100).rounded())
         let symbol = MenuEntry.symbol

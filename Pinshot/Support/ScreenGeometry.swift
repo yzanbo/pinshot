@@ -3,7 +3,7 @@ import AppKit
 /// 画面の座標の変換と、位置から画面を探す処理。
 ///
 /// AppKit の座標は「メインの画面の左下が原点・上が正」、
-/// Quartz（CGWindow・アクセシビリティ・CGEvent）の座標は「メインの画面の左上が原点・下が正」
+/// Quartz（CGWindow のウィンドウの一覧）の座標は「メインの画面の左上が原点・下が正」
 @MainActor
 enum ScreenGeometry {
     /// メインの画面（原点のある画面）の高さ

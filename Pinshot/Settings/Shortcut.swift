@@ -36,7 +36,8 @@ enum ShortcutAction: String, CaseIterable, Identifiable {
     static let captureActions: [ShortcutAction] = [.captureRegion, .captureWindow, .captureScreen, .captureTimer]
     /// 録画（キャプチャとは分けて見せる）
     static let recordActions: [ShortcutAction] = [.recordScreen]
-    /// 画面を撮る・録る操作（メニューを開いたまま押したときは、メニューを閉じてから行う）
+    /// 画面を撮る・録る操作（メニューを開いたまま押したときは、メニューを閉じずに始める。開いたメニューも写るように。
+    /// ほかの操作は、メニューを閉じてから行う）
     static var screenActions: [ShortcutAction] { captureActions + recordActions }
     static let pinActions: [ShortcutAction] = [.pinClipboard, .restoreClosed, .bringAllToFront, .closeAll]
     static let historyActions: [ShortcutAction] = [.openHistory]
