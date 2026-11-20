@@ -4,7 +4,7 @@ import SwiftUI
 /// 浮かせた画像の中身。画像と書き込みを描き、マウス・キーの操作を受ける。
 ///
 /// 役割ごとにファイルを分けている（どれもこのクラスの extension）:
-/// - `PinCanvasView.swift`: 状態・座標の変換・× や操作バー・描画・書き出し
+/// - `PinCanvasView.swift`: 状態・座標の変換・× や操作バーを出すかどうか・描画・書き出し
 /// - `+Cursor`: カーソルの形
 /// - `+Mouse`: マウスの操作（描く・動かす・つまみ・トリミング・拡大縮小・ドラッグで書き出す）
 /// - `+Keyboard`: キーの操作
@@ -197,15 +197,14 @@ final class PinCanvasView: NSView, NSTextFieldDelegate, NSDraggingSource {
     /// 画面上の 1 ポイントが、画像の何ポイントにあたるか（拡大縮小のぶん）
     var scaleFactor: CGFloat { bounds.width / max(cropRect.width, 1) }
 
-    /// ビューの座標 → 画像の座標
-    func imagePoint(_ viewPoint: NSPoint, clamp: Bool = true) -> CGPoint {
-        var x = viewPoint.x / scaleFactor + cropRect.minX
-        var y = viewPoint.y / scaleFactor + cropRect.minY
-        if clamp {
-            x = min(max(x, cropRect.minX), cropRect.maxX)
-            y = min(max(y, cropRect.minY), cropRect.maxY)
-        }
-        return CGPoint(x: x, y: y)
+    /// ビューの座標 → 画像の座標（表示している範囲の中に収める）
+    func imagePoint(_ viewPoint: NSPoint) -> CGPoint {
+        let x = viewPoint.x / scaleFactor + cropRect.minX
+        let y = viewPoint.y / scaleFactor + cropRect.minY
+        return CGPoint(
+            x: min(max(x, cropRect.minX), cropRect.maxX),
+            y: min(max(y, cropRect.minY), cropRect.maxY)
+        )
     }
 
     func imagePoint(for event: NSEvent) -> CGPoint {
@@ -262,7 +261,7 @@ final class PinCanvasView: NSView, NSTextFieldDelegate, NSDraggingSource {
         // 閉じるボタン（×）：画像を隠さないよう、編集中かどうかに関係なく、画像の左上の外側に出す
         updateOutsideClose(visible: visible && !clickThrough, hideDelay: hideDelay)
 
-        // 操作バー：画像を隠さないよう、どんな大きさの画像でも画像の外（下。画面に入らなければ上）に出す
+        // 操作バー：画像を隠さないよう、どんな大きさの画像でも画像の外（下。下に余白がなければ画面のいちばん下）に出す
         let showsBar = settings.showsQuickActions && visible && !editing
         updateOutsideQuickBar(visible: showsBar && !clickThrough, hideDelay: hideDelay)
         updateSelectionBar()

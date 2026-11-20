@@ -150,7 +150,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .captureWindow: captureController.start(mode: .window)
         case .captureScreen: captureController.start(mode: .screen)
         case .captureScroll:
-            captureController.startScrollCapture()
+            captureController.start(mode: .scroll)
         case .captureTimer: captureController.start(mode: .region, timer: 5)
         case .pinClipboard:
             if !PinManager.shared.pinClipboardImage() { NSSound.beep() }

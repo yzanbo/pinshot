@@ -16,7 +16,6 @@ final class SelectionController {
     /// 十字にした直後に、毎フレーム出し直すタイマー（macOS があとからカーソルを戻しても、見えないうちに直す）
     private var cursorBurstTimer: Timer?
     private var cursorBurstEnd = Date.distantPast
-    /// 範囲選択の画面を出したときのマウスの位置（スクロールキャプチャで、見ていた場所を探すのに使う）
     private let options: CaptureOptions
     private let completion: (CaptureTarget?) -> Void
     private var finished = false
@@ -181,7 +180,6 @@ final class SelectionController {
         moveModeBar(to: window)
     }
 
-    /// 2 つ以上の画面があるときは、マウスのある画面にバーを移す
     /// マウスのある画面が変わったら、モードバーと十字・座標の表示をそちらへ移す（2 つ以上の画面のとき）
     private func followMouse() {
         guard !finished else { return }

@@ -39,7 +39,7 @@ enum ScreenPermission {
 
 // MARK: - アクセシビリティ
 
-/// アクセシビリティ（ほかのアプリにスクロール操作を送るのに必要）の許可
+/// アクセシビリティ（スクロールキャプチャの自動スクロールと、メニューを開いている間のショートカットに使う）の許可
 @MainActor
 enum AccessibilityPermission {
     static var isGranted: Bool { AXIsProcessTrusted() }
@@ -62,7 +62,7 @@ final class PermissionModel: ObservableObject {
     /// 画面収録（画面を撮るのに必要）
     @Published private(set) var granted = ScreenPermission.isGranted
     @Published private(set) var requested = false
-    /// アクセシビリティ（スクロールキャプチャで、スクロールする部分を見つけて自動でスクロールするのに必要）
+    /// アクセシビリティ（スクロールキャプチャの自動スクロールと、メニューを開いている間のショートカットに使う）
     @Published private(set) var accessibilityGranted = AccessibilityPermission.isGranted
     private var timer: AnyCancellable?
 

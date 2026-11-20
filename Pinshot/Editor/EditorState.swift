@@ -72,7 +72,7 @@ final class EditorState: ObservableObject {
     @Published var isDetached: Bool {
         didSet { defaults.set(isDetached, forKey: Key.isDetached) }
     }
-    /// ツールバーの下に説明を出す
+    /// ボタンにマウスを乗せたら、説明のポップアップを出す
     @Published var showsHints: Bool {
         didSet { defaults.set(showsHints, forKey: Key.showsHints) }
     }
@@ -103,7 +103,7 @@ final class EditorState: ObservableObject {
     @Published var backdropDecoration: ExportDecoration
     /// まだこの画像の背景を触っていなければ、設定の変更に追従する
     private(set) var backdropFollowsSettings = true
-    /// 短く表示するとき、組のボタンに出すツール（最後に使ったもの）
+    /// 組のボタン（図形・描く・隠す など）に出すツール（その組で最後に使ったもの）
     @Published var lastToolInGroup: [ToolGroup: Tool] = [:]
 
     init() {

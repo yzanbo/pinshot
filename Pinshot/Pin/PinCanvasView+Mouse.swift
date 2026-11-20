@@ -167,7 +167,7 @@ extension PinCanvasView {
     override func mouseUp(with event: NSEvent) {
         if edgeResize != nil {
             edgeResize = nil
-            refreshCursor()
+            updateCursor()
             return
         }
 

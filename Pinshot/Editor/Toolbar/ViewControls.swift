@@ -12,7 +12,7 @@ struct ViewControls: View {
 
     @ObservedObject var appearance: PinAppearance
     let style: Style
-    /// ツールバーのときは、ボタンに乗せたときの説明をツールバーの説明の欄に出す（操作バーはヘルプのタグ）
+    /// ツールバーのときは、ボタンに乗せたときの説明をツールバーの説明のポップアップに出す（操作バーはヘルプのタグ）
     var editorState: EditorState?
     var setOpacity: (Double) -> Void
     var setZoom: (Double) -> Void
@@ -84,7 +84,7 @@ struct ViewControls: View {
 }
 
 private extension View {
-    /// ツールバーではツールバーの説明の欄に、操作バーではヘルプのタグに説明を出す
+    /// ツールバーでは説明のポップアップに、操作バーではヘルプのタグに説明を出す
     @ViewBuilder
     func describe(_ text: String, state: EditorState?) -> some View {
         if let state {

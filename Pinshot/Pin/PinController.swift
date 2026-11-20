@@ -140,7 +140,7 @@ final class PinController: NSObject, NSWindowDelegate {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.canvas.fontSizeDidChange() }
             .store(in: &cancellables)
-        // ツールバーの大きさが変わったら（説明の行など）並べ直す
+        // ツールバーの大きさが変わったら（オプションの行が増えた・減ったなど）並べ直す
         state.objectWillChange
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.toolbar.fitSize() }

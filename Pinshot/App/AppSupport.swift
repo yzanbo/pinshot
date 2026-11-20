@@ -46,7 +46,7 @@ enum AppSupport {
 
 /// ⌘Q で終了する。ただし浮かせた画像がキーのとき（撮った直後など）は終了しない。
 /// メニューバーには前のアプリ（Safari など）が出ているので、そのアプリを終了するつもりで押すことが多く、
-/// 終了すると浮かせた画像と「閉じた画像」の履歴がすべて消えてしまうため
+/// Pinshot が終了して、浮かせた画像が画面から消えてしまうため（戻す設定なら次の起動で戻るが、いま見ていたものは消える）
 @MainActor
 final class QuitShortcut: NSObject {
     static let shared = QuitShortcut()

@@ -1,23 +1,37 @@
 import AppKit
 
-/// 画像の上に置く押せるボタンの土台（マウスを乗せると指のカーソル・押した見た目）
-class PinButtonView: NSView {
+/// 浮かせた画像の左上の外側に出す、閉じるボタン（×）。
+/// マウスを乗せると指のカーソルになり、乗せた・押したときは背景が濃くなる
+final class PinCloseButton: NSView {
     var onClick: (() -> Void)?
-    /// マウスを乗せた（true）・離した（false）とき
-    var onHoverChange: ((Bool) -> Void)?
 
-    fileprivate(set) var isHovering = false
-    fileprivate(set) var isPressed = false
+    private var isHovering = false
+    private var isPressed = false
+
+    /// 押した・乗せたときの背景の濃さ
+    private var backgroundAlpha: CGFloat { isPressed ? 0.95 : (isHovering ? 0.85 : 0.6) }
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        toolTip = "閉じる（⌘W）：書き込みごと閉じる。メニューの「閉じた画像を戻す」で戻せる"
+        setAccessibilityRole(.button)
+        setAccessibilityLabel("閉じる")
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
 
     override var isFlipped: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    // MARK: - マウス
 
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
         resetTrackingArea([.mouseEnteredAndExited, .mouseMoved, .cursorUpdate])
     }
 
-    // 下の画像もカーソルを変えようとするので、マウスが動くたびに指のカーソルにし直す
+    // ほかのカーソル処理に上書きされないよう、マウスが動くたびに指のカーソルにし直す
     override func cursorUpdate(with event: NSEvent) { HoverRole.pressable.cursor.set() }
     override func mouseMoved(with event: NSEvent) { HoverRole.pressable.cursor.set() }
 
@@ -25,13 +39,11 @@ class PinButtonView: NSView {
         isHovering = true
         HoverRole.pressable.cursor.set()
         needsDisplay = true
-        onHoverChange?(true)
     }
 
     override func mouseExited(with event: NSEvent) {
         isHovering = false
         needsDisplay = true
-        onHoverChange?(false)
     }
 
     override func mouseDown(with event: NSEvent) {
@@ -48,21 +60,7 @@ class PinButtonView: NSView {
         }
     }
 
-    /// 押した・乗せたときの背景の濃さ
-    var backgroundAlpha: CGFloat { isPressed ? 0.95 : (isHovering ? 0.85 : 0.6) }
-}
-
-/// 浮かせた画像の左上の外側に出す、閉じるボタン（×）
-final class PinCloseButton: PinButtonView {
-    override init(frame frameRect: NSRect) {
-        super.init(frame: frameRect)
-        toolTip = "閉じる（⌘W）：書き込みごと閉じる。メニューの「閉じた画像を戻す」で戻せる"
-        setAccessibilityRole(.button)
-        setAccessibilityLabel("閉じる")
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+    // MARK: - 描画
 
     override func draw(_ dirtyRect: NSRect) {
         let circle = bounds.insetBy(dx: 1, dy: 1)

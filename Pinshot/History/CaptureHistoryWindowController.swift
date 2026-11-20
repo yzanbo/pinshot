@@ -50,15 +50,14 @@ final class CaptureHistoryWindowController: NSObject, NSWindowDelegate {
         keyMonitor = nil
     }
 
-    /// すべての履歴を消す前に確かめる（開いているウィンドウ（履歴・設定）のシートで出す）
-    static func confirmRemoveAll(over window: NSWindow? = nil) {
+    /// すべての履歴を消す前に確かめる（前にあるウィンドウ（履歴・設定）のシートで出す）
+    static func confirmRemoveAll() {
         let history = CaptureHistory.shared
         guard !history.entries.isEmpty else { return }
         AppAlert.confirm(
             "撮った画像の履歴をすべて消しますか？",
             detail: "\(history.entries.count) 枚の画像を消します。元に戻せません（浮かせている画像は消えません）。",
-            confirmTitle: "すべて消す",
-            in: window
+            confirmTitle: "すべて消す"
         ) {
             history.removeAll()
         }

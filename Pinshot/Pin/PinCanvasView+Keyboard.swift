@@ -20,7 +20,7 @@ extension PinCanvasView {
             if state.isEditing {
                 if !event.isARepeat {
                     isSpaceHeld = true
-                    refreshCursor()
+                    updateCursor()
                 }
                 return
             }
@@ -68,7 +68,7 @@ extension PinCanvasView {
     override func keyUp(with event: NSEvent) {
         if event.keyCode == 49, isSpaceHeld {
             isSpaceHeld = false
-            refreshCursor()
+            updateCursor()
             return
         }
         super.keyUp(with: event)
@@ -79,7 +79,7 @@ extension PinCanvasView {
     func releaseHeldKeys() {
         guard isSpaceHeld else { return }
         isSpaceHeld = false
-        refreshCursor()
+        updateCursor()
     }
 
     override func resignFirstResponder() -> Bool {

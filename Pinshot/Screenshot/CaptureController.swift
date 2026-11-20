@@ -7,14 +7,8 @@ final class CaptureController {
     private var selection: SelectionController?
     private var isCapturing = false
 
-    /// スクロールキャプチャ：撮るウィンドウをクリックで選んでもらう（マウスを乗せると、撮るスクロール領域を枠で示す）。
-    /// ドラッグで範囲を選ぶこともできる
-    func startScrollCapture() {
-        guard !ScrollCaptureController.shared.isRunning else { return }
-        start(mode: .scroll)
-    }
-
-    /// 範囲選択の画面を出してキャプチャを始める
+    /// 範囲選択の画面を出してキャプチャを始める。
+    /// スクロールのモードでは、撮るウィンドウをクリックで選んでもらう（マウスを乗せると、撮るスクロール領域を枠で示す。ドラッグで範囲も選べる）
     func start(mode: CaptureMode = .region, timer: Int = 0) {
         // スクロールキャプチャの間に範囲を選ぶ画面を出すと、送ったスクロールをその画面が受けてしまう
         guard !isCapturing, !ScrollCaptureController.shared.isRunning else { return }

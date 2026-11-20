@@ -1,7 +1,7 @@
 import ServiceManagement
 import SwiftUI
 
-/// 一般（キャプチャ・許可・起動・このアプリについて）
+/// 一般（見た目・キャプチャ・許可・起動・このアプリについて）
 struct GeneralSettingsView: View {
     @ObservedObject var settings: AppSettings
     @ObservedObject var loginItem: LoginItemModel

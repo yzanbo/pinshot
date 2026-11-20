@@ -186,7 +186,6 @@ final class SelectionView: NSView {
             return hoveredWindow?.rect
         case .region:
             if let rect = selectionRect, rect.width > 0, rect.height > 0 { return rect }
-            // シンプルな表示では、マウスの下のウィンドウを囲まない（クリックすればウィンドウの範囲を撮れる）
             // クリックではウィンドウを撮らないので、マウスの下のウィンドウは囲まない
             return nil
         case .window:

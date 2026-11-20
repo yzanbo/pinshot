@@ -335,7 +335,7 @@ struct ToolButton: View {
 // MARK: - 説明とカーソル
 
 extension View {
-    /// マウスを乗せている間、ツールバーの下の説明を差し替え、部品の種類（role）に合ったカーソルにする
+    /// マウスを乗せている間、説明のポップアップの中身を差し替え、部品の種類（role）に合ったカーソルにする
     func hint(_ text: String, state: EditorState, role: HoverRole = .pressable) -> some View {
         self
             .onHover { hovering in

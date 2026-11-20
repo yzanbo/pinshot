@@ -177,8 +177,6 @@ struct AnnotationDocument {
 
     // MARK: - 終わったときに 1 回だけ積む変更（ドラッグ・文字の直し）
 
-    var isChanging: Bool { changeStart != nil }
-
     /// 変更を始める（いまの状態を覚える）。前の変更が終わっていなければ、それは確定する
     mutating func beginChange() {
         endChange(keep: true)

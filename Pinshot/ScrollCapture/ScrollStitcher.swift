@@ -56,11 +56,6 @@ struct FrameSignature: Equatable {
         self.rows = rows
         self.uniform = uniform
     }
-
-    init(rows: [UInt64], uniform: [Bool]) {
-        self.rows = rows
-        self.uniform = uniform
-    }
 }
 
 enum ScrollStitcher {

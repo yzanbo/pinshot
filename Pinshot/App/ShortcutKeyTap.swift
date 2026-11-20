@@ -17,8 +17,6 @@ final class ShortcutKeyTap {
     private var source: CFRunLoopSource?
     private var retryTimer: Timer?
 
-    var isInstalled: Bool { tap != nil }
-
     /// アクセシビリティを許可していれば、キーを見始める。まだなら、許可されるまで数秒ごとに試す
     func start() {
         guard tap == nil else { return }

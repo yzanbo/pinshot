@@ -12,13 +12,7 @@ extension PinCanvasView {
 
     func resizeEdges(at point: NSPoint) -> ResizeEdges {
         guard canResize else { return [] }
-        let zone = edgeZone
-        var edges: ResizeEdges = []
-        if point.x < zone { edges.insert(.left) }
-        if point.x > bounds.width - zone { edges.insert(.right) }
-        if point.y < zone { edges.insert(.top) }
-        if point.y > bounds.height - zone { edges.insert(.bottom) }
-        return edges
+        return ResizeEdges.at(point, in: bounds, zone: edgeZone, flipped: true)
     }
 
     /// マウスの位置・押しているキー・ツールに合ったカーソルにする
@@ -34,9 +28,7 @@ extension PinCanvasView {
         let viewPoint = convert(window.mouseLocationOutsideOfEventStream, from: nil)
         guard bounds.contains(viewPoint) else { return }
         // 書き込みのバーの上は、そのボタンがカーソルを決める
-        for subview in [selectionBar].compactMap({ $0 }) where !subview.isHidden && subview.frame.contains(viewPoint) {
-            return
-        }
+        if let selectionBar, !selectionBar.isHidden, selectionBar.frame.contains(viewPoint) { return }
         cursor(at: viewPoint).set()
     }
 
@@ -44,12 +36,12 @@ extension PinCanvasView {
         if state.isEditing, let handle = handle(at: viewPoint) {
             switch handle {
             case .arrowStart, .arrowEnd: return .crosshair
-            case .rect(let edges): return resizeCursor(for: edges)
+            case .rect(let edges): return edges.cursor
             }
         }
         let edges = resizeEdges(at: viewPoint)
         if !edges.isEmpty {
-            return resizeCursor(for: edges)
+            return edges.cursor
         }
         let flags = NSEvent.modifierFlags
         if !state.isEditing {
@@ -77,20 +69,12 @@ extension PinCanvasView {
         // カーソルは updateCursor で、マウスの位置に合わせて選ぶ
     }
 
-    private func resizeCursor(for edges: ResizeEdges) -> NSCursor {
-        edges.cursor
-    }
-
-    func refreshCursor() {
-        updateCursor()
-    }
-
     /// ツールが変わったとき
     func toolDidChange() {
         if state.tool != .select {
             selectedID = nil
         }
-        refreshCursor()
+        updateCursor()
         needsDisplay = true
     }
 }

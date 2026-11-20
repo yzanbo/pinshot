@@ -5,8 +5,6 @@ import AppKit
 @MainActor
 final class PinAccessory {
     enum Placement {
-        /// 画像の左（上下の真ん中）。入らなければ右
-        case left
         /// 画像の下（画面に見えている部分の左右の真ん中）。画像の下に余白がなければ、画面のいちばん下（画像に重ねる）
         case below
         /// 画像の上（左右の真ん中）。入らなければ下
@@ -105,9 +103,6 @@ final class PinAccessory {
         let visible = ScreenGeometry.screen(intersecting: frame)?.visibleFrame ?? frame
         var origin: NSPoint
         switch placement {
-        case .left:
-            origin = NSPoint(x: frame.minX - gap - size.width, y: frame.midY - size.height / 2)
-            if origin.x < visible.minX { origin.x = frame.maxX + gap }
         case .below:
             // 画像の下に余白がなければ、上へは回さず、画面のいちばん下に出す（編集のツールバーと同じ決まり）
             origin = ScreenGeometry.originBelow(frame, size: size, gap: gap, in: visible)
@@ -126,7 +121,7 @@ final class PinAccessory {
                 origin.x = origin.x < frame.minX ? frame.minX - gap - size.width : frame.maxX + gap
             }
         }
-        if placement != .left, placement != .topLeftOutside {
+        if placement != .topLeftOutside {
             // 左右は画面の中に収める
             origin.x = min(max(origin.x, visible.minX + 4), visible.maxX - size.width - 4)
         }

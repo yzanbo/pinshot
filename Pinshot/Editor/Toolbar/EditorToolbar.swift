@@ -140,7 +140,7 @@ struct EditorToolbar: View {
             )
     }
 
-    /// ツールバーの表示（短く・縦向き・切り離し・説明）
+    /// ツールバーの表示（画像から切り離す・乗せたときの説明を出す）
     private var layoutMenu: some View {
         ToolbarIconButton(state: state, symbol: "slider.horizontal.3", hint: "ツールバーの表示（切り離し・説明）") {
             PopupMenu.popUp([

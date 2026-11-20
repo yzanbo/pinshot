@@ -1,7 +1,7 @@
 import AppKit
 import Combine
 
-/// 閉じるボタン（×）の出し方
+/// 閉じるボタン（×）と操作バーの出し方
 enum CloseButtonMode: String, CaseIterable, Identifiable {
     case always
     case hover
@@ -182,7 +182,7 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(alwaysOnTop, forKey: Key.alwaysOnTop) }
     }
 
-    /// マウスを乗せたら、編集・コピー・保存のバーを出す
+    /// 画像の下に操作バーを出す（いつ出すかは closeButtonMode に従う。オフなら、編集するまで画像の下に何も出さない）
     @Published var showsQuickActions: Bool {
         didSet { defaults.set(showsQuickActions, forKey: Key.showsQuickActions) }
     }
