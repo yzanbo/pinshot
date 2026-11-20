@@ -121,9 +121,7 @@ final class PinToolbarController {
         guard let toolbar = toolbarPanel, force || !state.isDetached else { return }
         let frame = pinPanel.frame
         let size = toolbar.frame.size
-        let screen = ScreenGeometry.screen(containing: NSPoint(x: frame.midX, y: frame.midY), orMain: false)
-            ?? pinPanel.screen ?? NSScreen.main
-        let visible = screen?.visibleFrame ?? frame
+        let visible = ScreenGeometry.screen(forPartsOf: frame)?.visibleFrame ?? frame
         toolbar.setFrameOrigin(ScreenGeometry.originBelow(frame, size: size, gap: 6, in: visible))
     }
 

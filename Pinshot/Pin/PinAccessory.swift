@@ -100,7 +100,8 @@ final class PinAccessory {
 
     private func place(around frame: NSRect) {
         let size = panel.frame.size
-        let visible = ScreenGeometry.screen(intersecting: frame)?.visibleFrame ?? frame
+        // 編集ツールバーと同じ画面に置く（画像が画面の境目にあっても、操作バーとツールバーの位置がずれないように）
+        let visible = ScreenGeometry.screen(forPartsOf: frame)?.visibleFrame ?? frame
         var origin: NSPoint
         switch placement {
         case .below:

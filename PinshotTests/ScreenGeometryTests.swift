@@ -55,3 +55,25 @@ final class FirstFittingOriginTests: XCTestCase {
         XCTAssertEqual(origin, NSPoint(x: 784, y: 16))
     }
 }
+
+/// 画像のまわりの部品（ツールバー・操作バー）を置く画面
+final class PartsScreenTests: XCTestCase {
+    private let left = NSRect(x: 0, y: 0, width: 1000, height: 800)
+    private let right = NSRect(x: 1000, y: 0, width: 1000, height: 800)
+
+    func testUsesScreenWithImageCenter() {
+        // 画像の大部分が右の画面（真ん中も右）。重なっている画面の一覧では左が先でも、右に置く
+        let image = NSRect(x: 900, y: 300, width: 400, height: 200)
+        XCTAssertEqual(ScreenGeometry.screenIndex(forPartsOf: image, in: [left, right]), 1)
+    }
+
+    func testFallsBackToIntersectingScreenWhenCenterIsOutside() {
+        // 真ん中がどの画面にもない（画面の下へはみ出させた）
+        let image = NSRect(x: 100, y: -300, width: 400, height: 400)
+        XCTAssertEqual(ScreenGeometry.screenIndex(forPartsOf: image, in: [left, right]), 0)
+    }
+
+    func testNoScreen() {
+        XCTAssertNil(ScreenGeometry.screenIndex(forPartsOf: NSRect(x: 5000, y: 5000, width: 10, height: 10), in: [left, right]))
+    }
+}

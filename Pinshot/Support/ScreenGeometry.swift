@@ -51,4 +51,19 @@ enum ScreenGeometry {
     static func screen(intersecting rect: NSRect, orMain: Bool = true) -> NSScreen? {
         NSScreen.screens.first { $0.frame.intersects(rect) } ?? (orMain ? NSScreen.main : nil)
     }
+
+    /// 画像 frame のまわりの部品（編集ツールバー・操作バー・閉じるボタン・お知らせ）を置く画面。
+    /// 画像が 2 つの画面の境目にあっても、ツールバーと操作バーが同じ画面に出るよう、決まりをここにそろえる
+    /// （編集に入る前と後で、同じ場所に同じバーを出すため）。見つからなければメインの画面
+    static func screen(forPartsOf frame: NSRect) -> NSScreen? {
+        let screens = NSScreen.screens
+        return screenIndex(forPartsOf: frame, in: screens.map(\.frame)).map { screens[$0] } ?? NSScreen.main
+    }
+
+    /// screens（画面の枠）のうち、frame のまわりの部品を置く画面の番号。
+    /// 画像の真ん中がある画面、なければ（画面の外へ動かしたなど）重なっている画面
+    nonisolated static func screenIndex(forPartsOf frame: NSRect, in screens: [NSRect]) -> Int? {
+        let center = NSPoint(x: frame.midX, y: frame.midY)
+        return screens.firstIndex { $0.contains(center) } ?? screens.firstIndex { $0.intersects(frame) }
+    }
 }
