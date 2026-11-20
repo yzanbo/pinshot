@@ -5,11 +5,7 @@ import Combine
 @MainActor
 /// 起動と、グローバルショートカットの登録
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    private lazy var statusMenu = StatusMenuController(actions: .init(
-        perform: { [weak self] in self?.perform($0) },
-        captureWithTimer: { [weak self] in self?.captureController.start(mode: .region, timer: $0) },
-        captureWindow: { [weak self] in self?.captureController.captureWindow(id: $0) }
-    ))
+    private let statusMenu = StatusMenuController()
     private var hotKeys: [ShortcutAction: HotKey] = [:]
     /// メニューを開いている間もショートカットを効かせる（アクセシビリティを許可しているとき）
     private let keyTap = ShortcutKeyTap()
@@ -17,7 +13,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var lastShortcutTimes: [ShortcutAction: Date] = [:]
     /// 終了の合図（killall など）を受けて、ふつうに終了する（浮かせている画像を保存してから止まる）
     private var terminateSignal: DispatchSourceSignal?
-    private let captureController = CaptureController()
     private let settings = AppSettings.shared
     private var cancellables = Set<AnyCancellable>()
 
@@ -137,35 +132,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         lastShortcutTimes[action] = now
         // 撮る操作は、メニューを開いたまま画面を撮り、撮り終えてからメニューを閉じる（開いたメニューも写るように）
         guard OpenMenus.isAnyOpen, !ShortcutAction.screenActions.contains(action) else {
-            perform(action)
+            AppActions.shared.perform(action)
             return
         }
         OpenMenus.closeAll()
         // メニューが閉じ終わってから始める
-        DispatchQueue.main.async { [weak self] in
-            self?.perform(action)
-        }
-    }
-
-    private func perform(_ action: ShortcutAction) {
-        switch action {
-        case .captureRegion: captureController.start(mode: .region)
-        case .captureWindow: captureController.start(mode: .window)
-        case .captureScreen: captureController.start(mode: .screen)
-        case .captureTimer: captureController.start(mode: .region, timer: CaptureOptions.shortcutTimerSeconds)
-        case .recordScreen:
-            // 録画中なら止める（メニュー・ショートカットのどちらからも）
-            if RecordingController.shared.isRecording {
-                RecordingController.shared.stop()
-            } else {
-                captureController.start(mode: .record)
-            }
-        case .pinClipboard:
-            if !PinManager.shared.pinClipboardImage() { NSSound.beep() }
-        case .openHistory: CaptureHistoryWindowController.shared.show()
-        case .restoreClosed: PinManager.shared.restoreLastClosed()
-        case .bringAllToFront: PinManager.shared.bringAllToFront()
-        case .closeAll: PinManager.shared.closeAll()
+        DispatchQueue.main.async {
+            AppActions.shared.perform(action)
         }
     }
 }

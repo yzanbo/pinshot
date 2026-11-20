@@ -3,15 +3,6 @@ import AppKit
 /// メニューバーのアイコンと、押したときのメニュー
 @MainActor
 final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
-    /// メニューから頼む操作
-    struct Actions {
-        var perform: (ShortcutAction) -> Void
-        /// 何秒後に撮るか
-        var captureWithTimer: (Int) -> Void
-        var captureWindow: (CGWindowID) -> Void
-    }
-
-    private let actions: Actions
     private var statusItem: NSStatusItem?
     private var statusMenu: NSMenu?
     private var windowListMenu: NSMenu?
@@ -33,10 +24,6 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
     private var textHistoryMenu: NSMenu?
     /// 「読み取った文字 ▸」に並べる数
     private let recentTextCount = 10
-
-    init(actions: Actions) {
-        self.actions = actions
-    }
 
     // MARK: - メニューを作る
 
@@ -273,15 +260,15 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
 
     @objc private func performActionItem(_ sender: NSMenuItem) {
         guard let action = action(of: sender) else { return }
-        actions.perform(action)
+        AppActions.shared.perform(action)
     }
 
     @objc private func captureWithTimer(_ sender: NSMenuItem) {
-        actions.captureWithTimer(sender.tag)
+        AppActions.shared.captureWithTimer(sender.tag)
     }
 
     @objc private func captureListedWindow(_ sender: NSMenuItem) {
-        actions.captureWindow(CGWindowID(sender.tag))
+        AppActions.shared.captureWindow(id: CGWindowID(sender.tag))
     }
 
     @objc private func copyTextHistoryItem(_ sender: NSMenuItem) {
