@@ -13,6 +13,8 @@ struct CaptureModeBar: View {
         VStack(spacing: 8) {
             HStack(spacing: 4) {
                 ForEach(CaptureMode.allCases) { mode in
+                    // 録画は、キャプチャ（静止画）と分けて見せる
+                    if mode == .record { separator }
                     BarButton(
                         symbol: mode.symbolName,
                         title: mode.label,
@@ -23,10 +25,7 @@ struct CaptureModeBar: View {
                     }
                 }
 
-                Rectangle()
-                    .fill(Color.white.opacity(0.2))
-                    .frame(width: 1, height: 36)
-                    .padding(.horizontal, 4)
+                separator
 
                 // メニューは全画面の膜の下に隠れてしまうので、押すたびに切り替える
                 BarButton(
@@ -57,6 +56,14 @@ struct CaptureModeBar: View {
                 .strokeBorder(Color.white.opacity(0.15))
         )
         .fixedSize()
+    }
+
+    /// まとまりの間の縦の線
+    private var separator: some View {
+        Rectangle()
+            .fill(Color.white.opacity(0.2))
+            .frame(width: 1, height: 36)
+            .padding(.horizontal, 4)
     }
 }
 

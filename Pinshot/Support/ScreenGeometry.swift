@@ -32,6 +32,15 @@ enum ScreenGeometry {
         min(max(x, visible.minX + edgeMargin), visible.maxX - width - edgeMargin)
     }
 
+    /// 操作パネルなどを置く位置。candidates の中で、size が visible に収まる最初の位置
+    /// （どれも収まらなければ visible の右下）。横は、画面の端から edgeGap あける
+    nonisolated static func firstFittingOrigin(_ candidates: [NSPoint], size: NSSize, in visible: NSRect, edgeGap: CGFloat = 8) -> NSPoint {
+        var origin = candidates.first { visible.contains(NSRect(origin: $0, size: size)) }
+            ?? NSPoint(x: visible.maxX - size.width - 16, y: visible.minY + 16)
+        origin.x = min(max(origin.x, visible.minX + edgeGap), visible.maxX - size.width - edgeGap)
+        return origin
+    }
+
     /// 画像（frame）の下に、size の部品（ツールバー・操作バー）を置く位置。
     /// 左右は、画像のうち画面（visible）に見えている部分の真ん中にし、画面の中に収める。
     /// 画像の下に余白がないとき（画面の下の方へ動かした・拡大したなど）は、上へは回さず、画面のいちばん下（edgeGap 上）に置く

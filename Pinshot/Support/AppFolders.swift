@@ -13,4 +13,7 @@ enum AppFolders {
 
     /// 浮かせていた画像（終了・再起動のあとに戻す）
     static var pins: URL { root.appendingPathComponent("Pins", isDirectory: true) }
+
+    /// 画面の録画（新しいものから 20 本を残す）
+    static var recordings: URL { root.appendingPathComponent("Recordings", isDirectory: true) }
 }

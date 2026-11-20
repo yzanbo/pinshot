@@ -11,6 +11,9 @@ struct ShortcutSettingsView: View {
             Section("キャプチャ") {
                 rows(for: ShortcutAction.captureActions)
             }
+            Section("録画") {
+                rows(for: ShortcutAction.recordActions)
+            }
             Section("浮かせた画像") {
                 rows(for: ShortcutAction.pinActions)
             }

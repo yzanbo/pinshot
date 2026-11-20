@@ -6,6 +6,8 @@ enum CaptureMode: String, CaseIterable, Identifiable {
     case window
     case screen
     case scroll
+    /// 画面の録画（範囲・ウィンドウ・画面全体）
+    case record
 
     var id: String { rawValue }
 
@@ -15,6 +17,7 @@ enum CaptureMode: String, CaseIterable, Identifiable {
         case .window: "ウィンドウ"
         case .screen: "画面全体"
         case .scroll: "スクロール"
+        case .record: "録画"
         }
     }
 
@@ -24,6 +27,7 @@ enum CaptureMode: String, CaseIterable, Identifiable {
         case .window: "macwindow"
         case .screen: "display"
         case .scroll: "arrow.down.doc"
+        case .record: "record.circle"
         }
     }
 
@@ -34,11 +38,12 @@ enum CaptureMode: String, CaseIterable, Identifiable {
         case .window: "撮りたいウィンドウをクリック"
         case .screen: "撮りたい画面をクリック"
         case .scroll: "撮りたいウィンドウのスクロールする部分をクリック（ドラッグで範囲を選ぶこともできる）"
+        case .record: "ドラッグで録画する範囲を選ぶ（クリックでウィンドウ、何もない所で画面全体）"
         }
     }
 
     /// ドラッグで範囲を選ぶモードか
-    var selectsRegion: Bool { self == .region || self == .scroll }
+    var selectsRegion: Bool { self == .region || self == .scroll || self == .record }
 }
 
 /// 範囲選択の画面で選んでいるキャプチャの種類とタイマー
@@ -88,4 +93,6 @@ enum CaptureTarget {
     /// スクロールしながら撮る範囲（スクリーン座標）。
     /// window と point があるときは、クリックしたウィンドウの、その場所のスクロール領域を撮る（rect は見つからなかったときの範囲）
     case scroll(screen: NSScreen, rect: NSRect, window: WindowInfo?, point: NSPoint?)
+    /// 録画する範囲（スクリーン座標。ウィンドウ・画面全体を選んだときも、その範囲）
+    case record(screen: NSScreen, rect: NSRect)
 }

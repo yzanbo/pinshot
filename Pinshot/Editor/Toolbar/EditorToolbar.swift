@@ -31,6 +31,8 @@ struct EditorToolbar: View {
     @ObservedObject var state: EditorState
     /// 画像の不透明度・拡大率（操作バーと同じものを見る）
     @ObservedObject var appearance: PinAppearance
+    /// 背景の初期設定（「次の画像にも使う」が押してあるか見るため）
+    @ObservedObject var settings = AppSettings.shared
     let actions: ToolbarActions
 
     var body: some View {
@@ -277,6 +279,27 @@ struct EditorToolbar: View {
                 }
             }
         }
+        // いまの背景（付けない・付ける・見た目）を、これから浮かせる画像の初期設定にする（設定の画面には背景の項目を置かない）
+        let current = currentBackdrop
+        let isDefault = settings.exportDecoration == current
+        OptionSection(label: "初期設定") {
+            SegmentButton(
+                state: state,
+                symbol: isDefault ? "checkmark" : "arrow.down.to.line",
+                text: isDefault ? "次の画像にも使う（いまの初期設定）" : "次の画像にも使う",
+                hint: "この背景（なし / 付ける・色・余白・角・影）を、これから浮かせる画像にも最初から使う",
+                isSelected: isDefault
+            ) {
+                settings.exportDecoration = current
+            }
+        }
+    }
+
+    /// この画像のいまの背景（付けているかも含めて）
+    private var currentBackdrop: ExportDecoration {
+        var decoration = state.backdropDecoration
+        decoration.isEnabled = state.backdropShown
+        return decoration
     }
 
     /// いまのツール（入力中の文字・選んだ書き込み）のオプション

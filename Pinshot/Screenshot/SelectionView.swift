@@ -201,6 +201,11 @@ final class SelectionView: NSView {
             if let rect = selectionRect, rect.width > 0, rect.height > 0 { return rect }
             // クリックではウィンドウを撮らないので、マウスの下のウィンドウは囲まない
             return nil
+        case .record:
+            if let rect = selectionRect, rect.width > 0, rect.height > 0 { return rect }
+            // クリックで録画するもの（マウスの下のウィンドウ。なければ画面全体）を、いつも枠で示す
+            guard start == nil, pointer != nil else { return nil }
+            return hoveredWindow?.rect.intersection(bounds) ?? bounds
         case .window:
             return hoveredWindow?.rect
         case .screen:
@@ -218,7 +223,11 @@ final class SelectionView: NSView {
             return AccessibilityPermission.isGranted
                 ? "スクロール領域を探しています…（見つからなければウィンドウ全体）"
                 : "クリックでウィンドウ全体（ドラッグで範囲）"
-        case .region, .scroll:
+        case .record where selectionRect == nil:
+            return hoveredWindow == nil
+                ? "クリックで画面全体を録画　\(Int(rect.width)) × \(Int(rect.height))"
+                : "クリックでこのウィンドウを録画　\(Int(rect.width)) × \(Int(rect.height))"
+        case .region, .scroll, .record:
             return "\(Int(rect.width)) × \(Int(rect.height))"
         case .window:
             return hoveredWindow?.info.displayName
@@ -232,7 +241,7 @@ final class SelectionView: NSView {
         var rects: [NSRect] = []
         if let rect = highlightRect {
             rects.append(rect.insetBy(dx: -4, dy: -4))
-            if !isSimple || mode == .scroll, let label = highlightLabel {
+            if !isSimple || mode == .scroll || mode == .record, let label = highlightLabel {
                 rects.append(labelRect(label, for: rect).insetBy(dx: -2, dy: -2))
             }
         }
@@ -332,6 +341,18 @@ final class SelectionView: NSView {
             } else {
                 onSelect?(.region(screen: shot.screen, rect: screenRect))
             }
+
+        case .record:
+            // ドラッグしたときはその範囲、クリックしたときはマウスの下のウィンドウ（なければ画面全体）
+            let dragged = selectionRect.map { $0.width >= 4 && $0.height >= 4 } ?? false
+            let rect = ((dragged ? selectionRect : nil) ?? hoveredWindow?.rect ?? bounds).intersection(bounds).integral
+            guard rect.width >= 8, rect.height >= 8, let window else {
+                start = nil
+                current = nil
+                refresh()
+                return
+            }
+            onSelect?(.record(screen: shot.screen, rect: window.convertToScreen(convert(rect, to: nil))))
 
         case .window:
             guard let hovered = hoveredWindow else { return }

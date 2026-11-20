@@ -20,7 +20,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
                 permission: PermissionModel()
             )))
             tabs.addTabViewItem(makeTab("画像", symbol: "photo.on.rectangle", view: PinSettingsView(settings: settings)))
-            tabs.addTabViewItem(makeTab("書き出し", symbol: "square.and.arrow.up", view: ExportSettingsView(settings: settings)))
+            tabs.addTabViewItem(makeTab("保存", symbol: "square.and.arrow.down", view: ExportSettingsView(settings: settings)))
             tabs.addTabViewItem(makeTab("履歴", symbol: "clock.arrow.circlepath", view: HistorySettingsView(settings: settings)))
             let recorder = ShortcutRecorderModel(settings: settings)
             tabs.addTabViewItem(makeTab("ショートカット", symbol: "keyboard", view: ShortcutSettingsView(

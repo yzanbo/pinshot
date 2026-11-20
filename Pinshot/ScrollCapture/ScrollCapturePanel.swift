@@ -16,17 +16,6 @@ final class ScrollCaptureModel: ObservableObject {
     var cancel: () -> Void = {}
 }
 
-/// 撮っている範囲の外側に描く点線の枠
-final class ScrollBorderView: NSView {
-    override func draw(_ dirtyRect: NSRect) {
-        let path = NSBezierPath(rect: bounds.insetBy(dx: 1.5, dy: 1.5))
-        path.lineWidth = 3
-        path.setLineDash([8, 5], count: 2, phase: 0)
-        NSColor.controlAccentColor.setStroke()
-        path.stroke()
-    }
-}
-
 /// スクロールキャプチャ中の操作パネル
 struct ScrollCapturePanelView: View {
     @ObservedObject var model: ScrollCaptureModel

@@ -37,13 +37,13 @@ extension SelectionView {
                 border.lineWidth = 1
                 border.stroke()
             } else {
-                // ウィンドウ・画面はアクセントカラーの枠で示す
-                NSColor.controlAccentColor.setStroke()
+                // ウィンドウ・画面はアクセントカラーの枠で示す（録画は、録画中の枠と同じ赤）
+                (mode == .record ? NSColor.systemRed : NSColor.controlAccentColor).setStroke()
                 let border = NSBezierPath(rect: highlight.insetBy(dx: 1.5, dy: 1.5))
                 border.lineWidth = 3
                 border.stroke()
             }
-            if !isSimple || mode == .scroll, let label = highlightLabel {
+            if !isSimple || mode == .scroll || mode == .record, let label = highlightLabel {
                 drawLabel(label, in: labelRect(label, for: highlight))
             }
         }

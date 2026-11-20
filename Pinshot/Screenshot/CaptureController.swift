@@ -10,8 +10,12 @@ final class CaptureController {
     /// 範囲選択の画面を出してキャプチャを始める。
     /// スクロールのモードでは、撮るウィンドウをクリックで選んでもらう（マウスを乗せると、撮るスクロール領域を枠で示す。ドラッグで範囲も選べる）
     func start(mode: CaptureMode = .region, timer: Int = 0) {
-        // スクロールキャプチャの間に範囲を選ぶ画面を出すと、送ったスクロールをその画面が受けてしまう
-        guard !isCapturing, !ScrollCaptureController.shared.isRunning else { return }
+        // スクロールキャプチャの間に範囲を選ぶ画面を出すと、送ったスクロールをその画面が受けてしまう。
+        // 録画の間は、範囲を選ぶ画面まで録画に写ってしまうので、撮らない
+        guard !isCapturing, !ScrollCaptureController.shared.isRunning, !RecordingController.shared.isRecording else {
+            if RecordingController.shared.isRecording { NSSound.beep() }
+            return
+        }
         isCapturing = true
         let windows = WindowList.visibleWindows()
 
@@ -68,7 +72,7 @@ final class CaptureController {
 
     /// 一覧から選んだウィンドウを、範囲選択の画面を出さずに撮る
     func captureWindow(id: CGWindowID) {
-        guard !isCapturing, !ScrollCaptureController.shared.isRunning else { return }
+        guard !isCapturing, !ScrollCaptureController.shared.isRunning, !RecordingController.shared.isRecording else { return }
         guard let info = WindowList.visibleWindows().first(where: { $0.id == id }) else {
             NSSound.beep()
             return
@@ -121,6 +125,10 @@ final class CaptureController {
                 // スクロールしながら撮る（終わったら浮かせる）
                 ScrollCaptureController.shared.start(screen: target, rect: clipped, window: window, scrollPoint: point)
 
+            case .record(let screen, let rect):
+                // 録画を始める（止めたら浮かせて再生する）
+                RecordingController.shared.start(screen: screen, rect: rect)
+
             case .screen(let screen):
                 guard let shot = try await shot(of: screen, shots: shots, fresh: timer > 0, content: content) else { return }
                 // 画面全体は大きいので、半分の大きさで画面の真ん中に浮かせる
@@ -148,7 +156,7 @@ final class CaptureController {
 
     private func screen(of target: CaptureTarget) -> NSScreen? {
         switch target {
-        case .region(let screen, _), .screen(let screen), .scroll(let screen, _, _, _):
+        case .region(let screen, _), .screen(let screen), .scroll(let screen, _, _, _), .record(let screen, _):
             return screen
         case .window(let info):
             return ScreenGeometry.screen(intersecting: info.frame, orMain: false)

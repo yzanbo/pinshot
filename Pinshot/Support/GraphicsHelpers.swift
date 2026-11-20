@@ -18,6 +18,15 @@ extension CGContext {
     }
 }
 
+extension CGSize {
+    /// 長い辺を maxSide に収めた大きさ（元より大きくはしない。1 未満にはしない。整数に丸める）
+    func fittingLongestSide(_ maxSide: CGFloat) -> CGSize {
+        let longest = max(width, height, 1)
+        let scale = min(1, maxSide / longest)
+        return CGSize(width: max(1, (width * scale).rounded()), height: max(1, (height * scale).rounded()))
+    }
+}
+
 extension CGImage {
     /// 画像のファイル（PNG など）を読む。読めなければ nil
     /// 読んだ時点で展開しておく（後回しにすると、描くときにファイルから読み直すので、

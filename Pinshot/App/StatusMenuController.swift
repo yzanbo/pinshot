@@ -83,6 +83,13 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
         menu.addItem(windowListItem)
         windowListMenu = windowList
 
+        // 録画（キャプチャとは分ける。録画中は「録画を止める」になる）
+        menu.addItem(.separator())
+        menu.addItem(.sectionHeader(title: "録画"))
+        for action in ShortcutAction.recordActions {
+            addActionItem(action, to: menu)
+        }
+
         // 撮った画像の履歴（見出しに枚数を出す。最近撮った画像は並べない。見るのは履歴のウィンドウ）
         menu.addItem(.separator())
         let historyHeader = NSMenuItem.sectionHeader(title: "撮った画像の履歴")
@@ -142,6 +149,22 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
         item.target = action == nil ? nil : self
         item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
         return item
+    }
+
+    /// 録画を始めた・止めたとき。録画中は、メニューバーのアイコンを赤い ● にし、「画面を録画」を「録画を止める」にする
+    func setRecording(_ recording: Bool) {
+        if recording {
+            let image = NSImage(systemSymbolName: "record.circle.fill", accessibilityDescription: "Pinshot（録画中）")?
+                .withSymbolConfiguration(.init(paletteColors: [.systemRed]))
+            statusItem?.button?.image = image
+            statusItem?.button?.toolTip = "Pinshot（録画中。押して「録画を止める」）"
+        } else {
+            statusItem?.button?.image = NSImage(systemSymbolName: "camera.viewfinder", accessibilityDescription: "Pinshot")
+            statusItem?.button?.toolTip = "Pinshot"
+        }
+        guard let item = actionItems[.recordScreen] else { return }
+        item.title = recording ? "録画を止める" : (actionTitles[.recordScreen] ?? ShortcutAction.recordScreen.label)
+        item.image = NSImage(systemSymbolName: recording ? "stop.circle" : ShortcutAction.recordScreen.symbolName, accessibilityDescription: nil)
     }
 
     /// メニューを開くたびに、いまの状態（許可・浮かせている画像の数・クリック透過）に合わせる
@@ -215,10 +238,16 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
 
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
         switch menuItem.action {
+        case #selector(captureWithTimer(_:)), #selector(captureListedWindow(_:)):
+            return !RecordingController.shared.isRecording
         case #selector(releaseClickThrough):
             return PinManager.shared.hasClickThroughPins
         case #selector(performActionItem(_:)):
             guard let action = action(of: menuItem) else { return true }
+            // 録画している間は、録画に写ってしまうので撮らない（「録画を止める」は押せる）
+            if RecordingController.shared.isRecording, ShortcutAction.captureActions.contains(action) {
+                return false
+            }
             switch action {
             case .pinClipboard: return NSImage.canInit(with: .general)
             case .restoreClosed: return PinManager.shared.canRestore

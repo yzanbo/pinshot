@@ -117,7 +117,7 @@ final class TextHistory: ObservableObject {
         let folder = folder
         io.async { [weak self] in
             let pixelSize = CGSize(width: image.width, height: image.height)
-            let size = CaptureHistoryRules.thumbnailSize(for: pixelSize, maxSide: Self.maxImageSide)
+            let size = pixelSize.fittingLongestSide(Self.maxImageSide)
             let stored = size == pixelSize ? image : (image.scaled(to: size) ?? image)
             guard let png = ImageExporter.pngData(stored, pointSize: pointSize) else { return }
             try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)

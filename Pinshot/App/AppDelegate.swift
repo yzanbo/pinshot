@@ -39,11 +39,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         AppSupport.allowCursorChangesInBackground()
         OpenMenus.startObserving()
         statusMenu.install()
+        // 録画を始めた・止めたら、メニューバーのアイコンと「画面を録画」の項目を変える
+        RecordingController.shared.onStateChange = { [weak self] recording in self?.statusMenu.setRecording(recording) }
         keyTap.onShortcut = { [weak self] action in self?.performFromShortcut(action) }
         registerHotKeys()
         keyTap.start()
-        // 撮った画像の履歴を読む（読むときに、期間を過ぎたものを消す）
+        // 撮った画像の履歴を読む（読むときに、期間を過ぎたものを消す）。録画も、期間・数から外れたものを削除する
         _ = CaptureHistory.shared
+        _ = RecordingStore.shared
+        // 保存先のフォルダ（初期設定は ~/Pictures/Pinshot）がなければ作る
+        AppSettings.shared.prepareSaveFolder()
         // 前に浮かせていた画像を戻し、動いている間もときどき保存する
         PinManager.shared.restoreSession()
         PinManager.shared.startAutosave()
@@ -123,7 +128,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let last = lastShortcutTimes[action], now.timeIntervalSince(last) < 0.5 { return }
         lastShortcutTimes[action] = now
         // 撮る操作は、メニューを開いたまま画面を撮り、撮り終えてからメニューを閉じる（開いたメニューも写るように）
-        guard OpenMenus.isAnyOpen, !ShortcutAction.captureActions.contains(action) else {
+        guard OpenMenus.isAnyOpen, !ShortcutAction.screenActions.contains(action) else {
             perform(action)
             return
         }
@@ -141,6 +146,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .captureScreen: captureController.start(mode: .screen)
         case .captureScroll: captureController.start(mode: .scroll)
         case .captureTimer: captureController.start(mode: .region, timer: CaptureOptions.shortcutTimerSeconds)
+        case .recordScreen:
+            // 録画中なら止める（メニュー・ショートカットのどちらからも）
+            if RecordingController.shared.isRecording {
+                RecordingController.shared.stop()
+            } else {
+                captureController.start(mode: .record)
+            }
         case .pinClipboard:
             if !PinManager.shared.pinClipboardImage() { NSSound.beep() }
         case .openHistory: CaptureHistoryWindowController.shared.show()

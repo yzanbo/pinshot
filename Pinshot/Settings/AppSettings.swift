@@ -73,6 +73,10 @@ final class AppSettings: ObservableObject {
         static let annotationShadow = "settings.annotationShadow"
         static let saveMode = "settings.saveMode"
         static let saveFolder = "settings.saveFolder"
+        static let separatesSaveFoldersByKind = "settings.separatesSaveFoldersByKind"
+        static let separatesSaveFoldersByMonth = "settings.separatesSaveFoldersByMonth"
+        static let recordingPeriod = "settings.recordingPeriod"
+        static let recordingLimit = "settings.recordingLimit"
         static let showsQuickActions = "settings.showsQuickActions"
         static let alwaysOnTop = "settings.alwaysOnTop"
         static let detailedCaptureUI = "settings.detailedCaptureUI"
@@ -235,8 +239,49 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(saveMode.rawValue, forKey: Key.saveMode) }
     }
 
+    /// 保存先（親）。保存したもの（画像・GIF・動画）は、この中に置く
     @Published var saveFolder: URL {
         didSet { defaults.set(saveFolder.path, forKey: Key.saveFolder) }
+    }
+
+    /// 保存先の中を、種類ごとのフォルダ（画像 / GIF / 動画）に分ける
+    @Published var separatesSaveFoldersByKind: Bool {
+        didSet { defaults.set(separatesSaveFoldersByKind, forKey: Key.separatesSaveFoldersByKind) }
+    }
+
+    /// 保存先の中を、月ごとのフォルダ（2026-11 など）に分ける
+    @Published var separatesSaveFoldersByMonth: Bool {
+        didSet { defaults.set(separatesSaveFoldersByMonth, forKey: Key.separatesSaveFoldersByMonth) }
+    }
+
+    /// 保存先の初期設定（「ピクチャ」フォルダの中の Pinshot。~/Pictures/Pinshot）
+    static var defaultSaveFolder: URL {
+        let pictures = FileManager.default.urls(for: .picturesDirectory, in: .userDomainMask).first
+            ?? URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true).appendingPathComponent("Pictures", isDirectory: true)
+        return pictures.appendingPathComponent("Pinshot", isDirectory: true)
+    }
+
+    /// 保存先のフォルダを作る（なければ。起動したとき・保存するとき・Finder で開くときに呼ぶ）。作った（ある）フォルダを返す
+    @discardableResult
+    func prepareSaveFolder(for kind: ExportKind? = nil) -> URL {
+        let folder = kind.map { saveFolder(for: $0) } ?? saveFolder
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        return folder
+    }
+
+    /// kind を保存するフォルダ（保存先の中を、設定に合わせて種類ごと・月ごとに分ける）
+    func saveFolder(for kind: ExportKind, date: Date = Date()) -> URL {
+        SaveLocation.folder(base: saveFolder, kind: kind, byKind: separatesSaveFoldersByKind, byMonth: separatesSaveFoldersByMonth, date: date)
+    }
+
+    /// 録画をアプリの中に残す期間
+    @Published var recordingPeriod: HistoryPeriod {
+        didSet { defaults.set(recordingPeriod.rawValue, forKey: Key.recordingPeriod) }
+    }
+
+    /// 録画をアプリの中に残す数の上限
+    @Published var recordingLimit: RecordingLimit {
+        didSet { defaults.set(recordingLimit.rawValue, forKey: Key.recordingLimit) }
     }
 
     /// ショートカットを記録している操作（記録中は、すべてのショートカットを止める）
@@ -286,11 +331,14 @@ final class AppSettings: ObservableObject {
         defaultOpacity = defaults.object(forKey: Key.defaultOpacity) as? Double ?? 1
         annotationShadow = defaults.bool(Key.annotationShadow, default: true)
         saveMode = defaults.option(Key.saveMode, default: .ask)
+        separatesSaveFoldersByKind = defaults.bool(Key.separatesSaveFoldersByKind, default: false)
+        separatesSaveFoldersByMonth = defaults.bool(Key.separatesSaveFoldersByMonth, default: false)
+        recordingPeriod = defaults.option(Key.recordingPeriod, default: .month)
+        recordingLimit = defaults.option(Key.recordingLimit, default: .twenty)
         if let path = defaults.string(forKey: Key.saveFolder) {
             saveFolder = URL(fileURLWithPath: path, isDirectory: true)
         } else {
-            saveFolder = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first
-                ?? URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)
+            saveFolder = Self.defaultSaveFolder
         }
     }
 }

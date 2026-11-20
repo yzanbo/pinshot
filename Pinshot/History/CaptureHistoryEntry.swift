@@ -115,12 +115,7 @@ enum CaptureHistoryRules {
 
     /// 縮小画像の大きさ（ピクセル）。長い辺を maxSide に収め、元より大きくはしない
     static func thumbnailSize(for pixelSize: CGSize, maxSide: CGFloat = 480) -> CGSize {
-        let longest = max(pixelSize.width, pixelSize.height, 1)
-        let scale = min(1, maxSide / longest)
-        return CGSize(
-            width: max(1, (pixelSize.width * scale).rounded()),
-            height: max(1, (pixelSize.height * scale).rounded())
-        )
+        pixelSize.fittingLongestSide(maxSide)
     }
 
     /// 一覧で日付ごとにまとめる（新しい日から。日の中も新しい順）

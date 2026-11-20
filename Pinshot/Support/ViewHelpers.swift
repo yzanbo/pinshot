@@ -28,3 +28,21 @@ extension View {
             .overlay(RoundedRectangle(cornerRadius: cornerRadius).strokeBorder(Color.primary.opacity(0.12)))
     }
 }
+
+/// ドラッグすると、置いたウィンドウごと動かせる所（SwiftUI の部品の上では、ウィンドウの背景のドラッグで動かす設定が効かないため）。
+/// 乗せると手のカーソル、動かしている間はつかんだ手にする
+struct WindowDragArea: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { DragView() }
+    func updateNSView(_ nsView: NSView, context: Context) {}
+
+    private final class DragView: NSView {
+        // 前に出ていない窓でも、1 回のドラッグで動かせるようにする
+        override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+        override func mouseDown(with event: NSEvent) {
+            HoverRole.movable.draggingCursor.set()
+            window?.performDrag(with: event)
+            HoverRole.movable.cursor.set()
+        }
+    }
+}

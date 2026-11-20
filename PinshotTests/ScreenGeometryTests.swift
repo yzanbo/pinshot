@@ -38,3 +38,20 @@ final class ScreenGeometryTests: XCTestCase {
         XCTAssertEqual(origin.x, 1000 - 200 - 4)
     }
 }
+
+/// 操作パネルを置く位置
+final class FirstFittingOriginTests: XCTestCase {
+    private let visible = NSRect(x: 0, y: 0, width: 1000, height: 800)
+    private let size = NSSize(width: 200, height: 50)
+
+    func testPicksFirstCandidateThatFits() {
+        // 1 つ目は画面の下にはみ出すので、2 つ目にする
+        let origin = ScreenGeometry.firstFittingOrigin([NSPoint(x: 100, y: -20), NSPoint(x: 100, y: 300)], size: size, in: visible)
+        XCTAssertEqual(origin, NSPoint(x: 100, y: 300))
+    }
+
+    func testFallsBackToBottomRight() {
+        let origin = ScreenGeometry.firstFittingOrigin([NSPoint(x: 900, y: -100)], size: size, in: visible)
+        XCTAssertEqual(origin, NSPoint(x: 784, y: 16))
+    }
+}

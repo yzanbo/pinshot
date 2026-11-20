@@ -126,9 +126,6 @@ enum ImageExporter {
 
     /// 「Pinshot 日付 時刻.png」の名前（date は撮った・保存した日時）
     static func fileName(for date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "yyyy-MM-dd HH.mm.ss"
-        return "Pinshot \(formatter.string(from: date)).png"
+        SaveLocation.fileName(prefix: "Pinshot", date: date, extension: ExportKind.image.fileExtension)
     }
 }

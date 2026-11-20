@@ -55,7 +55,7 @@ final class ShortcutTests: XCTestCase {
     }
 
     func testMenuGroupsCoverEveryActionOnce() {
-        let grouped = ShortcutAction.captureActions + ShortcutAction.pinActions + ShortcutAction.historyActions
+        let grouped = ShortcutAction.captureActions + ShortcutAction.recordActions + ShortcutAction.pinActions + ShortcutAction.historyActions
         XCTAssertEqual(Set(grouped), Set(ShortcutAction.allCases))
         XCTAssertEqual(grouped.count, ShortcutAction.allCases.count)
     }

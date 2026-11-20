@@ -347,18 +347,7 @@ final class ScrollCaptureSession {
 
     /// 撮っている範囲を、外側の点線で示す（範囲の内側には描かないので写らない）
     private func showBorder() {
-        let frame = rect.insetBy(dx: -4, dy: -4)
-        let window = NSWindow(contentRect: frame, styleMask: .borderless, backing: .buffered, defer: false)
-        window.isOpaque = false
-        window.backgroundColor = .clear
-        window.hasShadow = false
-        window.ignoresMouseEvents = true
-        window.level = .statusBar
-        window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
-        window.isReleasedWhenClosed = false
-        window.contentView = ScrollBorderView(frame: NSRect(origin: .zero, size: frame.size))
-        window.orderFrontRegardless()
-        border = window
+        border = CaptureOutline.show(around: rect, color: .controlAccentColor)
     }
 
     private func showPanel() {
@@ -374,9 +363,7 @@ final class ScrollCaptureSession {
             NSPoint(x: rect.maxX + gap, y: rect.midY - size.height / 2),
             NSPoint(x: rect.minX - gap - size.width, y: rect.midY - size.height / 2),
         ]
-        var origin = candidates.first { visible.contains(NSRect(origin: $0, size: size)) }
-            ?? NSPoint(x: visible.maxX - size.width - 16, y: visible.minY + 16)
-        origin.x = min(max(origin.x, visible.minX + 8), visible.maxX - size.width - 8)
+        let origin = ScreenGeometry.firstFittingOrigin(candidates, size: size, in: visible)
 
         let panel = KeyableOverlayPanel(contentRect: NSRect(origin: origin, size: size), level: .statusBar)
         panel.isMovableByWindowBackground = true

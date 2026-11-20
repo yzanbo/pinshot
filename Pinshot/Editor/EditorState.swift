@@ -100,7 +100,7 @@ final class EditorState: ObservableObject {
     /// 前に測った 1 行目の幅（新しい画像のツールバーを、最初から正しい幅で並べるため）
     private static var lastToolbarRowWidth: CGFloat = 0
 
-    /// この画像に背景を付けるか・背景の見た目（画像ごと。初期値は設定の「保存」タブの背景）
+    /// この画像に背景を付けるか・背景の見た目（画像ごと。初期値は背景の初期設定。ツールバーの「次の画像にも使う」で決める）
     @Published var backdropShown: Bool
     /// ツールバーの 2 行目に、背景のオプション（付ける・外す・色・余白・角の丸み・影）を出しているか
     @Published var showsBackdropOptions = false
