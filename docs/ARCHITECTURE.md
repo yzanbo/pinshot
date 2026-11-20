@@ -19,7 +19,7 @@ Pinshot/
 │   ├── PinToolbarController  編集ツールバーのウィンドウ（出す・置く場所・説明のポップアップ）
 │   ├── PinCanvasView(+◯◯)    画像と書き込みの表示と操作。役割ごとにファイルを分けている
 │   │                         （+Cursor・+Mouse・+Keyboard・+Selection・+History・+Text・+Outside）
-│   ├── PinAccessory          画像がとても小さいとき、中に入らない部品を画像の外に出す子ウィンドウ
+│   ├── PinAccessory          部品を画像の外に出す子ウィンドウ（操作バーはいつも。ほかは画像が小さくて中に入らないとき）
 │   └── PinBackdropView・QuickActionBar・HUDView・HintBubble など   画像のまわりの部品
 ├── Editor/         書き込みのデータ、描画、書き出し
 │   ├── Annotation・AnnotationStyles・Tool・RGBAColor   書き込みのデータ（Windows 版と形式をそろえる）

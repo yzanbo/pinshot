@@ -52,7 +52,7 @@ final class AnnotationTests: XCTestCase {
             color: .red,
             lineWidth: 0
         )
-        guard case .text(let runs, _, _) = text.withFontSize(20).shape else { return XCTFail() }
+        guard case .text(let runs, _, _, _) = text.withFontSize(20).shape else { return XCTFail() }
         XCTAssertEqual(runs.map(\.fontSize), [20, 10])
         // 文字以外は変わらない
         XCTAssertEqual(arrow.withFontSize(30), arrow)
@@ -63,6 +63,38 @@ final class AnnotationTests: XCTestCase {
         let two = Annotation.textSize([TextRun(text: "メモ\n2 行目", fontSize: 20)])
         XCTAssertGreaterThan(two.height, one.height * 1.8)
         XCTAssertEqual(Annotation.plainText([TextRun(text: "a\nb", fontSize: 20)]), "a\nb")
+    }
+
+    func testWrappedTextStaysWithinWidth() {
+        let runs = [TextRun(text: "長い文字は、折り返す幅に届いたら下の行に回り込む", fontSize: 20)]
+        let single = Annotation.textSize(runs)
+        let wrapped = Annotation.textSize(runs, width: 100)
+        XCTAssertLessThanOrEqual(wrapped.width, 100)
+        XCTAssertGreaterThan(wrapped.height, single.height * 2)
+        // 折り返す幅は、動かしても大きさを変えても保つ
+        let text = Annotation(shape: .text(runs: runs, origin: .zero, style: TextStyle(), width: 100), color: .red, lineWidth: 0)
+        guard case .text(_, _, _, let width) = text.translated(by: CGVector(dx: 3, dy: 3)).withFontSize(30).shape else { return XCTFail() }
+        XCTAssertEqual(width, 100)
+        XCTAssertLessThanOrEqual(text.bounds.width, 100)
+    }
+
+    func testFontFamilyFallsBackToSystemFont() {
+        XCTAssertEqual(Annotation.textFont(size: 20, family: "存在しないフォント"), NSFont.boldSystemFont(ofSize: 20))
+        let helvetica = Annotation.textFont(size: 20, family: "Helvetica")
+        XCTAssertEqual(helvetica.familyName, "Helvetica")
+        XCTAssertTrue(NSFontManager.shared.traits(of: helvetica).contains(.boldFontMask))
+    }
+
+    func testStylesWithoutFontFamilyStillDecode() throws {
+        // フォントを選べるようになる前に保存したスタイルも読める
+        let text = try JSONDecoder().decode(TextStyle.self, from: Data(#"{"decoration":"label","outline":0}"#.utf8))
+        XCTAssertEqual(text.decoration, .label)
+        XCTAssertNil(text.fontFamily)
+        let counter = try JSONDecoder().decode(CounterStyle.self, from: Data(#"{"design":"plain","format":"number"}"#.utf8))
+        XCTAssertNil(counter.fontFamily)
+        var style = TextStyle()
+        style.fontFamily = "Helvetica"
+        XCTAssertEqual(try JSONDecoder().decode(TextStyle.self, from: JSONEncoder().encode(style)), style)
     }
 
     func testTranslated() {

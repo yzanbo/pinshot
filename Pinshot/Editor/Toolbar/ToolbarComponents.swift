@@ -18,8 +18,15 @@ enum ToolbarMetrics {
     static let dividerPadding: CGFloat = 6
     /// ツールバーの外側の余白
     static let toolbarPadding = EdgeInsets(top: 6, leading: 10, bottom: 7, trailing: 10)
-    /// 2 行目の左の余白（ツールの列の先頭にそろえる）
-    static var optionsIndent: CGFloat { handleWidth + itemSpacing * 2 + 1 + dividerPadding * 2 }
+    /// 2 行目（オプション）の吹き出し：内側の余白・先の三角・色。
+    /// 色を付けると中の文字や選択肢が読みにくくなるので、台は無彩色で少しだけ明るさを変える（ライト・ダークどちらでも）
+    static let trayPadding = EdgeInsets(top: 6, leading: 6, bottom: 6, trailing: 8)
+    static let trayNotch = CGSize(width: 16, height: 7)
+    static let trayCorner: CGFloat = 8
+    static let trayFill = Color.primary.opacity(0.07)
+    static let trayBorder = Color.primary.opacity(0.16)
+    /// 1 行目と 2 行目をまとめた座標（吹き出しの先の位置を測る）
+    static let rowsSpace = "toolbarRows"
     static let cellCorner: CGFloat = 6
     static let iconFont = Font.system(size: 13, weight: .medium)
     static let swatchSize: CGFloat = 16
@@ -36,6 +43,56 @@ enum ToolbarMetrics {
 }
 
 // MARK: - 並べ方
+
+/// 2 行目の吹き出しの先を向ける、1 行目のボタンの中心（横の位置）
+struct OptionsAnchorKey: PreferenceKey {
+    static let defaultValue: CGFloat? = nil
+    static func reduce(value: inout CGFloat?, nextValue: () -> CGFloat?) {
+        value = nextValue() ?? value
+    }
+}
+
+extension View {
+    /// isActive のとき、このボタンの中心を、2 行目の吹き出しの先の位置として伝える
+    func optionsAnchor(isActive: Bool) -> some View {
+        background(
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: OptionsAnchorKey.self,
+                    value: isActive ? proxy.frame(in: .named(ToolbarMetrics.rowsSpace)).midX : nil
+                )
+            }
+        )
+    }
+}
+
+/// 上に三角の先が出た角丸の四角（吹き出し）。notchX が nil なら先を出さない
+struct CalloutShape: Shape {
+    var notchX: CGFloat?
+    var notch: CGSize
+    var corner: CGFloat
+
+    func path(in rect: CGRect) -> Path {
+        let body = CGRect(x: rect.minX, y: rect.minY + notch.height, width: rect.width, height: rect.height - notch.height)
+        let r = min(corner, body.height / 2, body.width / 2)
+        var path = Path()
+        path.move(to: CGPoint(x: body.minX + r, y: body.minY))
+        if let notchX {
+            // 角の丸みにかからない範囲に収める
+            let half = notch.width / 2
+            let x = min(max(rect.minX + notchX, body.minX + r + half), body.maxX - r - half)
+            path.addLine(to: CGPoint(x: x - half, y: body.minY))
+            path.addLine(to: CGPoint(x: x, y: rect.minY))
+            path.addLine(to: CGPoint(x: x + half, y: body.minY))
+        }
+        path.addArc(tangent1End: CGPoint(x: body.maxX, y: body.minY), tangent2End: CGPoint(x: body.maxX, y: body.maxY), radius: r)
+        path.addArc(tangent1End: CGPoint(x: body.maxX, y: body.maxY), tangent2End: CGPoint(x: body.minX, y: body.maxY), radius: r)
+        path.addArc(tangent1End: CGPoint(x: body.minX, y: body.maxY), tangent2End: CGPoint(x: body.minX, y: body.minY), radius: r)
+        path.addArc(tangent1End: CGPoint(x: body.minX, y: body.minY), tangent2End: CGPoint(x: body.maxX, y: body.minY), radius: r)
+        path.closeSubpath()
+        return path
+    }
+}
 
 /// 1 行目の幅を、2 行目に伝える
 struct ToolbarRowWidthKey: PreferenceKey {

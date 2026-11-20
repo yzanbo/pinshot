@@ -24,6 +24,17 @@ enum ScreenGeometry {
         NSScreen.screens.first { $0.frame.contains(point) } ?? (orMain ? NSScreen.main : nil)
     }
 
+    /// 画像（frame）の下に、size の部品（ツールバー・操作バー）を置く位置。
+    /// 左右は、画像のうち画面（visible）に見えている部分の真ん中にし、画面の中に収める。
+    /// 画像の下に余白がないとき（画面の下の方へ動かした・拡大したなど）は、上へは回さず、画面のいちばん下（edgeGap 上）に置く
+    nonisolated static func originBelow(_ frame: NSRect, size: NSSize, gap: CGFloat, in visible: NSRect, edgeGap: CGFloat = 8) -> NSPoint {
+        let shown = frame.intersection(visible)
+        let midX = shown.isNull ? frame.midX : shown.midX
+        let x = min(max(midX - size.width / 2, visible.minX + 4), visible.maxX - size.width - 4)
+        let y = max(frame.minY - gap - size.height, visible.minY + edgeGap)
+        return NSPoint(x: x.rounded(), y: y.rounded())
+    }
+
     /// rect（AppKit のスクリーン座標）と重なる画面。orMain なら、見つからないときはメインの画面
     static func screen(intersecting rect: NSRect, orMain: Bool = true) -> NSScreen? {
         NSScreen.screens.first { $0.frame.intersects(rect) } ?? (orMain ? NSScreen.main : nil)

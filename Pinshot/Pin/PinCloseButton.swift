@@ -56,9 +56,9 @@ class PinButtonView: NSView {
 final class PinCloseButton: PinButtonView {
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
-        toolTip = "閉じる（⌘W）"
+        toolTip = "画像を捨てる（⌘W）：メニューの「閉じた画像を戻す」で戻せる"
         setAccessibilityRole(.button)
-        setAccessibilityLabel("閉じる")
+        setAccessibilityLabel("画像を捨てる")
     }
 
     @available(*, unavailable)
@@ -73,16 +73,17 @@ final class PinCloseButton: PinButtonView {
         ring.lineWidth = 1
         ring.stroke()
 
-        // ×
-        let inset = bounds.width * 0.33
-        let cross = NSBezierPath()
-        cross.move(to: NSPoint(x: bounds.minX + inset, y: bounds.minY + inset))
-        cross.line(to: NSPoint(x: bounds.maxX - inset, y: bounds.maxY - inset))
-        cross.move(to: NSPoint(x: bounds.maxX - inset, y: bounds.minY + inset))
-        cross.line(to: NSPoint(x: bounds.minX + inset, y: bounds.maxY - inset))
-        cross.lineWidth = 1.6
-        cross.lineCapStyle = .round
-        NSColor.white.setStroke()
-        cross.stroke()
+        // ゴミ箱（編集モードのツールバー・操作バーの捨てるボタンと同じ絵）
+        let config = NSImage.SymbolConfiguration(pointSize: bounds.width * 0.48, weight: .semibold)
+            .applying(NSImage.SymbolConfiguration(paletteColors: [.white]))
+        guard let symbol = NSImage(systemSymbolName: "trash", accessibilityDescription: nil)?
+            .withSymbolConfiguration(config) else { return }
+        let size = symbol.size
+        symbol.draw(in: NSRect(
+            x: bounds.midX - size.width / 2,
+            y: bounds.midY - size.height / 2,
+            width: size.width,
+            height: size.height
+        ))
     }
 }

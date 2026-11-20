@@ -8,7 +8,8 @@ struct Annotation: Codable, Identifiable, Equatable {
         case arrow(from: CGPoint, to: CGPoint, style: ArrowStyle)
         case pen([CGPoint])
         case highlight([CGPoint])
-        case text(runs: [TextRun], origin: CGPoint, style: TextStyle)
+        /// width: 折り返す幅（画像のポイント）。nil なら折り返さない（改行したところだけで行を分ける）
+        case text(runs: [TextRun], origin: CGPoint, style: TextStyle, width: CGFloat? = nil)
         case counter(Int, center: CGPoint, radius: CGFloat, style: CounterStyle)
         case mosaic(CGRect)
         case blur(CGRect)
@@ -78,7 +79,7 @@ struct Annotation: Codable, Identifiable, Equatable {
             return hypot(to.x - from.x, to.y - from.y) > 4
         case .pen(let points), .highlight(let points):
             return points.count > 1
-        case .text(let runs, _, _):
+        case .text(let runs, _, _, _):
             return !Annotation.plainText(runs).isEmpty
         case .counter:
             return true
@@ -87,8 +88,28 @@ struct Annotation: Codable, Identifiable, Equatable {
 }
 
 extension Annotation {
-    static func textFont(size: CGFloat) -> NSFont {
-        .boldSystemFont(ofSize: size)
+    /// 文字のフォント。family（フォントのファミリー名）があればその太字（なければふつうの太さ）、
+    /// nil か Mac に入っていないときは、システムの太字にする
+    static func textFont(size: CGFloat, family: String? = nil) -> NSFont {
+        if let family, let font = font(family: family, size: size) { return font }
+        return .boldSystemFont(ofSize: size)
+    }
+
+    /// family の太字。太字がないフォントは、ふつうの太さにする
+    static func font(family: String, size: CGFloat) -> NSFont? {
+        let manager = NSFontManager.shared
+        let bold = manager.font(withFamily: family, traits: .boldFontMask, weight: 9, size: size)
+        if let bold, manager.traits(of: bold).contains(.boldFontMask) { return bold }
+        return manager.font(withFamily: family, traits: [], weight: 5, size: size) ?? bold
+    }
+
+    /// 折り返して描く・測るときの決まり（入力欄・書き込み・書き出しで同じ所で行が分かれるよう、ここにそろえる）
+    static let wrappingOptions: NSString.DrawingOptions = [.usesLineFragmentOrigin, .usesFontLeading]
+
+    /// text を width の幅で折り返したときの大きさ（切り上げ）
+    static func wrappedSize(of text: NSAttributedString, width: CGFloat) -> CGSize {
+        let rect = text.boundingRect(with: CGSize(width: width, height: .greatestFiniteMagnitude), options: wrappingOptions)
+        return CGSize(width: ceil(rect.width), height: ceil(rect.height))
     }
 
     static func plainText(_ runs: [TextRun]) -> String {
@@ -96,20 +117,22 @@ extension Annotation {
     }
 
     /// 文字の部分を、表示用の文字列にする（scale は画面の拡大率）
-    static func attributedText(_ runs: [TextRun], color: NSColor, scale: CGFloat = 1) -> NSAttributedString {
+    static func attributedText(_ runs: [TextRun], color: NSColor, scale: CGFloat = 1, family: String? = nil) -> NSAttributedString {
         let result = NSMutableAttributedString()
         for run in runs {
             result.append(NSAttributedString(string: run.text, attributes: [
-                .font: textFont(size: run.fontSize * scale),
+                .font: textFont(size: run.fontSize * scale, family: family),
                 .foregroundColor: color,
             ]))
         }
         return result
     }
 
-    /// 文字そのものの大きさ（枠線・ラベルの余白は含まない）
-    static func textSize(_ runs: [TextRun]) -> CGSize {
-        attributedText(runs, color: .black).size()
+    /// 文字そのものの大きさ（枠線・ラベルの余白は含まない）。width があれば、その幅で折り返したときの大きさ
+    static func textSize(_ runs: [TextRun], width: CGFloat? = nil, family: String? = nil) -> CGSize {
+        let text = attributedText(runs, color: .black, family: family)
+        guard let width else { return text.size() }
+        return wrappedSize(of: text, width: width)
     }
 
     /// 文字のうち、いちばん大きい文字の大きさ
@@ -134,8 +157,8 @@ extension Annotation {
             guard let first = points.first else { return .zero }
             let box = points.reduce(CGRect(origin: first, size: .zero)) { $0.union(CGRect(origin: $1, size: .zero)) }
             return isHighlight ? box.insetBy(dx: -lineWidth / 2, dy: -lineWidth / 2) : box
-        case .text(let runs, let origin, let style):
-            let rect = CGRect(origin: origin, size: Annotation.textSize(runs))
+        case .text(let runs, let origin, let style, let width):
+            let rect = CGRect(origin: origin, size: Annotation.textSize(runs, width: width, family: style.fontFamily))
             let maxSize = Annotation.maxFontSize(runs)
             switch style.decoration {
             case .none: return rect
@@ -203,7 +226,7 @@ extension Annotation {
         case .arrow(let from, let to, let style): moved.shape = .arrow(from: move(from), to: move(to), style: style)
         case .pen(let points): moved.shape = .pen(points.map(move))
         case .highlight(let points): moved.shape = .highlight(points.map(move))
-        case .text(let runs, let origin, let style): moved.shape = .text(runs: runs, origin: move(origin), style: style)
+        case .text(let runs, let origin, let style, let width): moved.shape = .text(runs: runs, origin: move(origin), style: style, width: width)
         case .counter(let number, let center, let radius, let style):
             moved.shape = .counter(number, center: move(center), radius: radius, style: style)
         }
@@ -238,9 +261,9 @@ extension Annotation {
             if aspects.contains(.counter) {
                 copy.shape = .counter(number, center: center, radius: style.counterSize.radius, style: style.counter)
             }
-        case .text(let runs, let origin, _):
+        case .text(let runs, let origin, _, let width):
             // 文字の大きさは、文字の大きさの欄で変える（withFontSize）
-            if aspects.contains(.text) { copy.shape = .text(runs: runs, origin: origin, style: style.text) }
+            if aspects.contains(.text) { copy.shape = .text(runs: runs, origin: origin, style: style.text, width: width) }
         default:
             break
         }
@@ -249,7 +272,7 @@ extension Annotation {
 
     /// いちばん大きい文字が size になるよう、部分ごとの大きさの比率を保って拡大・縮小した書き込み（文字以外は変わらない）
     func withFontSize(_ size: CGFloat) -> Annotation {
-        guard case .text(let runs, let origin, let style) = shape else { return self }
+        guard case .text(let runs, let origin, let style, let width) = shape else { return self }
         let current = Annotation.maxFontSize(runs)
         guard current > 0, abs(current - size) > 0.01 else { return self }
         let ratio = size / current
@@ -258,7 +281,7 @@ extension Annotation {
             let newSize = ((run.fontSize * ratio) * 2).rounded() / 2
             return TextRun(text: run.text, fontSize: min(max(newSize, FontSizes.range.lowerBound), FontSizes.range.upperBound))
         }
-        copy.shape = .text(runs: scaled, origin: origin, style: style)
+        copy.shape = .text(runs: scaled, origin: origin, style: style, width: width)
         return copy
     }
 }

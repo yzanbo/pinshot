@@ -12,7 +12,7 @@ extension PinCanvasView {
         state.opacity = Double(annotation.color.a)
         state.setLineWidth(annotation.lineWidth, for: annotation.tool)
         switch annotation.shape {
-        case .text(let runs, _, let style):
+        case .text(let runs, _, let style, _):
             setFontSizeSilently(Annotation.maxFontSize(runs))
             state.textStyle = style
         case .counter(_, _, let radius, let style):
@@ -33,12 +33,23 @@ extension PinCanvasView {
     func applyStyleToSelection(aspects: StyleAspects = .all) {
         if let field = textField {
             textColor = state.drawColor
+            let familyChanged = textStyle.fontFamily != state.textStyle.fontFamily
             textStyle = state.textStyle
-            if let editor = field.currentEditor() as? NSTextView {
-                let whole = NSRange(location: 0, length: (editor.string as NSString).length)
-                editor.textStorage?.addAttribute(.foregroundColor, value: textColor.nsColor, range: whole)
+            if let editor = field.currentEditor() as? NSTextView, let storage = editor.textStorage {
+                let whole = NSRange(location: 0, length: storage.length)
+                storage.beginEditing()
+                storage.addAttribute(.foregroundColor, value: textColor.nsColor, range: whole)
+                if familyChanged {
+                    // フォントを変えたら、部分ごとの大きさは保ったまま、全体のフォントを入れ替える
+                    storage.enumerateAttribute(.font, in: whole) { value, range, _ in
+                        let size = (value as? NSFont)?.pointSize ?? textFontSize * scaleFactor
+                        storage.addAttribute(.font, value: Annotation.textFont(size: size, family: textStyle.fontFamily), range: range)
+                    }
+                }
+                storage.endEditing()
                 editor.typingAttributes = typingAttributes(size: textFontSize)
             }
+            if familyChanged { resizeTextField(field) }
             return
         }
         let style = state.style
@@ -68,7 +79,7 @@ extension PinCanvasView {
             if let editor = field.currentEditor() as? NSTextView {
                 let range = editor.selectedRange()
                 if range.length > 0 {
-                    editor.textStorage?.addAttribute(.font, value: Annotation.textFont(size: size * scaleFactor), range: range)
+                    editor.textStorage?.addAttribute(.font, value: inputFont(size: size), range: range)
                 }
                 editor.typingAttributes = typingAttributes(size: size)
             }

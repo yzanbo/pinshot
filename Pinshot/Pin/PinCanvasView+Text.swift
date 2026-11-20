@@ -1,5 +1,14 @@
 import AppKit
 
+/// 文字の入力欄（NSTextField）の、文字のまわりの余白。
+/// 左右は枠の内側 2pt ずつ＋行の余白 5pt ずつ、上下は 2pt ずつ。文字の左端は枠の左端から 2pt 右
+enum TextFieldInsets {
+    static let horizontal: CGFloat = 14
+    static let vertical: CGFloat = 4
+    static let leading: CGFloat = 2
+    static let top: CGFloat = 2
+}
+
 extension PinCanvasView {
     // MARK: - 文字の入力
 
@@ -19,21 +28,24 @@ extension PinCanvasView {
         field.focusRingType = .none
         // 1 つの文字の中で、部分ごとに大きさを変えられるようにする
         field.allowsEditingTextAttributes = true
-        field.font = Annotation.textFont(size: textFontSize * scaleFactor)
+        field.font = inputFont(size: textFontSize)
         field.textColor = color.nsColor
         field.placeholderString = "文字を入力"
-        // shift + return で改行できるよう、複数行にする（自動では折り返さない）
+        // shift + return で改行できるよう、複数行にする。
+        // 枠は文字に合わせて横に伸ばし、画像の右端に届いたら折り返して下に伸ばす（resizeTextField）
         field.usesSingleLineMode = false
         field.maximumNumberOfLines = 0
-        field.cell?.wraps = false
-        field.cell?.isScrollable = true
+        field.cell?.wraps = true
+        field.cell?.isScrollable = false
+        field.lineBreakMode = .byWordWrapping
         field.delegate = self
+        textWrapWidth = nil
         if !runs.isEmpty {
-            field.attributedStringValue = Annotation.attributedText(runs, color: color.nsColor, scale: scaleFactor)
+            field.attributedStringValue = Annotation.attributedText(runs, color: color.nsColor, scale: scaleFactor, family: style.fontFamily)
         }
         let origin = viewRect(CGRect(origin: point, size: .zero)).origin
-        // テキストフィールドは文字の左に約 2pt の余白があるので、そのぶん左にずらす
-        field.frame.origin = NSPoint(x: origin.x - 2, y: origin.y)
+        // テキストフィールドは文字の左に余白があるので、そのぶん左にずらす
+        field.frame.origin = NSPoint(x: origin.x - TextFieldInsets.leading, y: origin.y)
 
         addSubview(field, positioned: .below, relativeTo: closeButton)
         textField = field
@@ -58,6 +70,21 @@ extension PinCanvasView {
                 queue: .main
             ) { [weak self] _ in
                 Task { @MainActor in self?.syncFontSizeWithCursor() }
+            }
+            // 全角の変換中（まだ確定していない文字）も、打つたびに枠を伸ばす。
+            // 変換中の文字は controlTextDidChange が来ないので、文字の入れ物の変化を見る
+            if let storage = editor.textStorage {
+                textStorageObserver = NotificationCenter.default.addObserver(
+                    forName: NSTextStorage.didProcessEditingNotification,
+                    object: storage,
+                    queue: .main
+                ) { [weak self] _ in
+                    // 文字の入れ物を直している最中に枠を変えないよう、次の回にずらす
+                    DispatchQueue.main.async {
+                        guard let self, let field = self.textField else { return }
+                        self.resizeTextField(field)
+                    }
+                }
             }
             syncFontSizeWithCursor()
         }
@@ -89,7 +116,12 @@ extension PinCanvasView {
     }
 
     func typingAttributes(size: CGFloat) -> [NSAttributedString.Key: Any] {
-        [.font: Annotation.textFont(size: size * scaleFactor), .foregroundColor: textColor.nsColor]
+        [.font: inputFont(size: size), .foregroundColor: textColor.nsColor]
+    }
+
+    /// 入力中の文字のフォント（size は画像のポイント。画面の拡大率を掛ける）
+    func inputFont(size: CGFloat) -> NSFont {
+        Annotation.textFont(size: size * scaleFactor, family: textStyle.fontFamily)
     }
 
     /// 入力中の文字に合わせて、テキストフィールドの大きさを変える
@@ -100,21 +132,36 @@ extension PinCanvasView {
         } else {
             content = field.attributedStringValue
         }
-        let typingFont = Annotation.textFont(size: textFontSize * scaleFactor)
-        var size = content.size()
-        size.height = max(size.height, NSLayoutManager().defaultLineHeight(for: typingFont))
+        let typingFont = inputFont(size: textFontSize)
+        let lineHeight = NSLayoutManager().defaultLineHeight(for: typingFont)
         // 空のときは、案内の文字が入る幅にする
         let minWidth = content.length == 0
             ? ("文字を入力" as NSString).size(withAttributes: [.font: typingFont]).width
             : 20
-        field.frame.size = NSSize(width: ceil(max(size.width, minWidth)) + 14, height: ceil(size.height) + 4)
+        let padX = TextFieldInsets.horizontal
+        let padY = TextFieldInsets.vertical
+        let natural = content.size()
+        let naturalWidth = ceil(max(natural.width, minWidth)) + padX
+        // 画像の右端までの幅（1 文字は入る幅より狭くはしない）
+        let available = max(bounds.width - field.frame.minX, ceil(typingFont.pointSize) + padX + 2)
+        if naturalWidth + 1 <= available {
+            // 右端に届かないうちは、文字に合わせて横に伸ばす（1pt は、打った文字がはみ出して折り返さないためのゆとり）
+            textWrapWidth = nil
+            field.frame.size = NSSize(width: naturalWidth + 1, height: ceil(max(natural.height, lineHeight)) + padY)
+        } else {
+            // 右端に届いたら、その幅で折り返して下に伸ばす
+            let textWidth = available - padX
+            let wrapped = Annotation.wrappedSize(of: content, width: textWidth)
+            textWrapWidth = textWidth / max(scaleFactor, 0.01)
+            field.frame.size = NSSize(width: available, height: max(wrapped.height, ceil(lineHeight)) + padY)
+        }
         // 入力中の文字を囲む点線を、大きさに合わせて描き直す
         needsDisplay = true
     }
 
     /// 書いた文字を直す。caretAt（ウィンドウの座標）を渡すと、そこに入力カーソルを置く
     func beginReEdit(at index: Int, caretAt caret: NSPoint? = nil) {
-        guard case .text(let runs, let origin, let style) = annotations[index].shape else { return }
+        guard case .text(let runs, let origin, let style, _) = annotations[index].shape else { return }
         // 直している間は元の文字を描かない（取り出しておき、確定したら同じ位置に戻す。やめたら元に戻す）
         document.beginChange()
         let original = document.takeOut(at: index)
@@ -167,16 +214,17 @@ extension PinCanvasView {
             textEndingClickTimestamp = event.timestamp
         }
         let runs = Self.runs(from: field.attributedStringValue, scale: scaleFactor, fallbackSize: textFontSize)
-        if let selectionObserver {
-            NotificationCenter.default.removeObserver(selectionObserver)
+        for observer in [selectionObserver, textStorageObserver].compactMap({ $0 }) {
+            NotificationCenter.default.removeObserver(observer)
         }
         selectionObserver = nil
+        textStorageObserver = nil
         textField = nil
         field.removeFromSuperview()
         state.isEditingText = false
 
         let newAnnotation = Annotation(
-            shape: .text(runs: runs, origin: textOrigin, style: textStyle),
+            shape: .text(runs: runs, origin: textOrigin, style: textStyle, width: textWrapWidth),
             color: textColor,
             lineWidth: 0
         )

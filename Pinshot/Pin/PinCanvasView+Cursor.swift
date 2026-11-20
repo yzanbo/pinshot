@@ -23,11 +23,16 @@ extension PinCanvasView {
 
     /// マウスの位置・押しているキー・ツールに合ったカーソルにする
     func updateCursor() {
+        // ツールバーのつまみで画像を動かしている間は、画像の上でもつかんだ手のままにする
+        if controller?.isMovingWithToolbarHandle == true {
+            NSCursor.closedHand.set()
+            return
+        }
         guard let window, edgeResize == nil, moveStart == nil, dragStart == nil, handleDrag == nil else { return }
         let viewPoint = convert(window.mouseLocationOutsideOfEventStream, from: nil)
         guard bounds.contains(viewPoint) else { return }
-        // × ボタン・操作バーの上は、それぞれのボタンがカーソルを決める
-        for subview in [closeButton, quickBar, selectionBar].compactMap({ $0 }) where !subview.isHidden && subview.frame.contains(viewPoint) {
+        // 捨てるボタン・書き込みのバーの上は、それぞれのボタンがカーソルを決める
+        for subview in [closeButton, selectionBar].compactMap({ $0 }) where !subview.isHidden && subview.frame.contains(viewPoint) {
             return
         }
         cursor(at: viewPoint).set()

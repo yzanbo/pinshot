@@ -76,6 +76,10 @@ final class PinCanvasView: NSView, NSTextFieldDelegate, NSDraggingSource {
     /// ツールバーの文字の大きさを、表示を合わせるためだけに変えた回数（その通知では文字を変えない）
     var silentFontSizeChanges = 0
     var selectionObserver: Any?
+    /// 入力中の文字が変わったこと（全角の変換中も含む）を知る
+    var textStorageObserver: Any?
+    /// 入力中の文字を折り返す幅（画像のポイント）。画像の右端まで届かないうちは nil
+    var textWrapWidth: CGFloat?
     var textCancelled = false
     /// クリックで文字の入力が終わったときの、そのクリックの時刻（同じクリックで新しく描き始めないため）
     var textEndingClickTimestamp: TimeInterval?
@@ -95,10 +99,9 @@ final class PinCanvasView: NSView, NSTextFieldDelegate, NSDraggingSource {
     private var isHovering = false
     let closeButton = PinCloseButton(frame: NSRect(x: 6, y: 6, width: 20, height: 20))
     private let hud = HUDView(frame: .zero)
-    var quickBar: FirstMouseHostingView<QuickActionBar>?
     var selectionBar: NSView?
 
-    // 画像がとても小さく、中に入らない部品を、画像の外に出すウィンドウ（PinCanvasView+Outside.swift）
+    // 画像の外に出す部品のウィンドウ（PinCanvasView+Outside.swift）。操作バーはいつも外（下）に出す
     var outsideClose: PinAccessory?
     var outsideQuickBar: PinAccessory?
     var outsideHUD: PinAccessory?
@@ -120,18 +123,6 @@ final class PinCanvasView: NSView, NSTextFieldDelegate, NSDraggingSource {
 
         addSubview(hud)
         updateChrome()
-    }
-
-    /// マウスを乗せたときの操作バー（コントローラーをつないだあとに作る）
-    private func makeQuickBarIfNeeded() {
-        guard quickBar == nil, let controller else { return }
-        let bar = FirstMouseHostingView(rootView: makeQuickActionBar(appearance: controller.appearance))
-        bar.frame.size = bar.fittingSize
-        // 下の真ん中に固定（flipped なので上の余白を伸ばす）
-        bar.autoresizingMask = [.minXMargin, .maxXMargin, .minYMargin]
-        bar.isHidden = true
-        addSubview(bar, positioned: .below, relativeTo: hud)
-        quickBar = bar
     }
 
     /// 選んだ書き込みの上に、複製・前面・背面・削除のバーを出す（動かしている間・文字の入力中は隠す）
@@ -175,37 +166,22 @@ final class PinCanvasView: NSView, NSTextFieldDelegate, NSDraggingSource {
         bar.isHidden = false
     }
 
+    /// 操作バー（いつも画像の外の下に出す。PinCanvasView+Outside.swift）
     func makeQuickActionBar(appearance: PinAppearance) -> QuickActionBar {
         QuickActionBar(
             appearance: appearance,
             edit: { [weak self] in self?.controller?.setEditing(true) },
             setOpacity: { [weak self] value in self?.controller?.setOpacity(CGFloat(value)) },
+            setZoom: { [weak self] value in self?.controller?.setZoom(CGFloat(value)) },
             copy: { [weak self] in self?.controller?.copyToPasteboard() },
             save: { [weak self] in self?.controller?.save() },
-            more: { [weak self] in self?.showContextMenuFromQuickBar() }
+            more: { [weak self] in
+                // 「…」のメニューは、マウスの位置に開く
+                guard let menu = self?.controller?.makeContextMenu() else { return }
+                menu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
+            },
+            close: { [weak self] in self?.controller?.close() }
         )
-    }
-
-    /// 操作バーの大きさ（一度だけ測る）
-    static let quickBarSize: NSSize = NSHostingView(rootView: QuickActionBar(
-        appearance: PinAppearance(opacity: 1),
-        edit: {}, setOpacity: { _ in }, copy: {}, save: {}, more: {}
-    )).fittingSize
-
-    private func layoutQuickBar() {
-        guard let bar = quickBar else { return }
-        let size = bar.frame.size
-        // 低い画像では下の余白を詰める（それでも入らなければ上下の真ん中）
-        let bottom = min(8, max(0, (bounds.height - size.height) / 2))
-        bar.frame.origin = NSPoint(
-            x: ((bounds.width - size.width) / 2).rounded(),
-            y: (bounds.height - size.height - bottom).rounded()
-        )
-    }
-
-    private func showContextMenuFromQuickBar() {
-        guard let bar = quickBar, let menu = controller?.makeContextMenu() else { return }
-        menu.popUp(positioning: nil, at: NSPoint(x: bar.frame.maxX - 20, y: bar.frame.minY), in: self)
     }
 
     @available(*, unavailable)
@@ -273,9 +249,9 @@ final class PinCanvasView: NSView, NSTextFieldDelegate, NSDraggingSource {
         return annotations.lastIndex { $0.hitTest(point, tolerance: tolerance) }
     }
 
-    // MARK: - 見た目（× ボタン・枠・HUD）
+    // MARK: - 見た目（捨てるボタン・枠・HUD）
 
-    /// ×・編集ボタン・操作バーの表示を、設定・マウスの位置・編集中かどうかに合わせる
+    /// 捨てるボタン・操作バーの表示を、設定・マウスの位置・編集中かどうかに合わせる
     func updateChrome() {
         // マウスを乗せたときだけ出す設定では、画像の外に出した部品の上にマウスがあるときも「乗せている」とみなす
         let hovering = isHovering || isHoveringOutsideParts
@@ -289,20 +265,16 @@ final class PinCanvasView: NSView, NSTextFieldDelegate, NSDraggingSource {
         // 画像の外の部品は、マウスを乗せたときだけ出す設定では、画像から部品へマウスを動かす間に消えないよう、少し待って隠す
         let hideDelay: TimeInterval = settings.closeButtonMode == .hover ? 0.6 : 0
 
-        // ×：中に入らないほど小さいときは、画像の左に出す
+        // 捨てるボタン（ゴミ箱）は操作バーの右端に入れる。操作バーを出さない設定のときだけ、左上に単独で出す
+        // （中に入らないほど小さいときは、画像の左に出す）
+        let showsStandaloneClose = visible && !editing && !settings.showsQuickActions
         let closeFits = bounds.width >= 44 && bounds.height >= 32
-        closeButton.isHidden = !(visible && closeFits && !editing)
-        updateOutsideClose(visible: visible && !closeFits && !editing && !clickThrough, hideDelay: hideDelay)
+        closeButton.isHidden = !(showsStandaloneClose && closeFits)
+        updateOutsideClose(visible: showsStandaloneClose && !closeFits && !clickThrough, hideDelay: hideDelay)
 
-        // 操作バー：画像の中に入りきらなくなったら、小さくせずに画像の下（外）に出す
-        if settings.showsQuickActions { makeQuickBarIfNeeded() }
+        // 操作バー：画像を隠さないよう、どんな大きさの画像でも画像の外（下。画面に入らなければ上）に出す
         let showsBar = settings.showsQuickActions && visible && !editing
-        let barFits = quickBarFitsInside
-        if let bar = quickBar {
-            bar.isHidden = !(showsBar && barFits)
-            layoutQuickBar()
-        }
-        updateOutsideQuickBar(visible: showsBar && !barFits && !clickThrough, hideDelay: hideDelay)
+        updateOutsideQuickBar(visible: showsBar && !clickThrough, hideDelay: hideDelay)
         updateSelectionBar()
         needsDisplay = true
     }
@@ -428,7 +400,12 @@ final class PinCanvasView: NSView, NSTextFieldDelegate, NSDraggingSource {
     /// 入力欄の中の、文字の部分（入力欄は、左に約 2pt・右に 14pt・上下に 2pt の余白を持つ）
     private func textRect(of field: NSTextField) -> NSRect {
         let frame = field.frame
-        return NSRect(x: frame.minX + 2, y: frame.minY + 2, width: max(frame.width - 14, 1), height: max(frame.height - 4, 1))
+        return NSRect(
+            x: frame.minX + TextFieldInsets.leading,
+            y: frame.minY + TextFieldInsets.top,
+            width: max(frame.width - TextFieldInsets.horizontal, 1),
+            height: max(frame.height - TextFieldInsets.vertical, 1)
+        )
     }
 
     /// トリミングする範囲の外を暗くする

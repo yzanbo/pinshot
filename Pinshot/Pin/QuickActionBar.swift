@@ -5,53 +5,45 @@ import SwiftUI
 @MainActor
 final class PinAppearance: ObservableObject {
     @Published var opacity: Double
+    /// 表示の拡大率（1 が実寸）
+    @Published var zoom: Double
 
-    init(opacity: Double) {
+    init(opacity: Double, zoom: Double = 1) {
         self.opacity = opacity
+        self.zoom = zoom
     }
 }
 
-/// 浮かせた画像の下側に出す、よく使う操作のバー（編集・不透明度・コピー・保存・そのほか）。
-/// 画像の中に入りきらないときは、小さくせずに、そのまま画像の外（下）に出す
+/// 浮かせた画像の下側に出す、よく使う操作のバー（不透明度・拡大率・コピー・保存・そのほか・編集・捨てる）。
+/// 並びは編集モードのツールバー（… 不透明度・拡大率 | コピー・保存 | 表示 完了 ゴミ箱）とそろえ、
+/// 「…」を表示のメニュー、「編集」を「完了」、ゴミ箱をゴミ箱と同じ位置に置く（編集に入る前と後で、同じ場所に同じ役割のボタンがある）。
+/// 画像を隠さないよう、いつも画像の外（下）に出す（PinCanvasView+Outside.swift）
 struct QuickActionBar: View {
     @ObservedObject var appearance: PinAppearance
     var edit: () -> Void
     var setOpacity: (Double) -> Void
+    var setZoom: (Double) -> Void
     var copy: () -> Void
     var save: () -> Void
     var more: () -> Void
+    /// 画像を捨てる（閉じる。メニューの「閉じた画像を戻す」で戻せる）
+    var close: () -> Void
 
     private static let editHelp = "編集する（ダブルクリック・⌘E でも入れる）"
 
     var body: some View {
         HStack(spacing: 2) {
-            editButton
-            divider
-            // 画像の不透明度（ドラッグで変える）
-            HStack(spacing: 4) {
-                Image(systemName: "circle.lefthalf.filled")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.white)
-                Slider(
-                    value: Binding(get: { appearance.opacity }, set: { setOpacity($0) }),
-                    in: 0.1...1
-                )
-                .controlSize(.mini)
-                .frame(width: 64)
-                .tint(.white)
-                Text("\(Int((appearance.opacity * 100).rounded()))%")
-                    .font(.system(size: 10, weight: .medium).monospacedDigit())
-                    .foregroundStyle(.white)
-                    .frame(width: 30, alignment: .trailing)
-            }
-            .padding(.leading, 6)
-            .help("画像の不透明度（⌘ か ⌥ を押しながらスクロールしても変えられる）")
-            .hoverCursor(.arrow)
+            // 画像の不透明度と表示の拡大率（編集モードのツールバーにも、同じ位置に同じ形で出す）
+            ViewControls(appearance: appearance, style: .onDark, setOpacity: setOpacity, setZoom: setZoom)
+                .padding(.leading, 2)
 
             divider
             QuickActionButton(symbol: "doc.on.doc", help: "コピー（⌘C）", action: copy)
             QuickActionButton(symbol: "square.and.arrow.down", help: "保存（⌘S）", action: save)
+            divider
             QuickActionButton(symbol: "ellipsis", help: "そのほかの操作", action: more)
+            editButton
+            QuickActionButton(symbol: "trash", help: "画像を捨てる（⌘W）：メニューの「閉じた画像を戻す」で戻せる", action: close)
         }
         .padding(3)
         .background(Capsule().fill(Color.black.opacity(0.6)))
@@ -59,7 +51,7 @@ struct QuickActionBar: View {
         .fixedSize()
     }
 
-    /// 編集モードに入るボタン（左端に置き、文字も付けて分かりやすくする）
+    /// 編集モードに入るボタン（文字も付けて分かりやすくする。編集モードの「完了」と同じ位置・形）
     private var editButton: some View {
         Button(action: edit) {
             Label("編集", systemImage: "pencil")

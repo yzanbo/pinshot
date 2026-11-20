@@ -108,8 +108,8 @@ enum AnnotationRenderer {
             ctx.addLines(between: points)
             ctx.strokePath()
 
-        case .text(let runs, let origin, let style):
-            drawText(runs, origin: origin, style: style, color: annotation.color, in: ctx)
+        case .text(let runs, let origin, let style, let width):
+            drawText(runs, origin: origin, width: width, style: style, color: annotation.color, in: ctx)
 
         case .mosaic(let rect):
             // 画像全体をモザイクにした画像を、選んだ範囲だけ切り抜いて重ねる
@@ -228,7 +228,9 @@ enum AnnotationRenderer {
             fontScale = label.length >= 2 ? 1.4 : 1.7
         }
 
-        let font = NSFont.monospacedDigitSystemFont(ofSize: radius * fontScale, weight: .heavy)
+        // フォントを選んでいれば、その太字にする（なければ、数字の幅がそろうシステムのフォント）
+        let font = style.fontFamily.flatMap { Annotation.font(family: $0, size: radius * fontScale) }
+            ?? NSFont.monospacedDigitSystemFont(ofSize: radius * fontScale, weight: .heavy)
         if style.design == .plain {
             // 数字だけのときは、背景に埋もれないよう縁取りする
             let outline: [NSAttributedString.Key: Any] = [
@@ -249,6 +251,7 @@ enum AnnotationRenderer {
     private static func drawText(
         _ runs: [TextRun],
         origin: CGPoint,
+        width: CGFloat?,
         style: TextStyle,
         color: RGBAColor,
         in ctx: CGContext
@@ -263,17 +266,17 @@ enum AnnotationRenderer {
         case .whiteOutline, .blackOutline:
             // 先に太い縁を描き、その上に文字を重ねる
             let outlineColor: NSColor = decoration == .whiteOutline ? .white : .black
-            let outlined = NSMutableAttributedString(attributedString: Annotation.attributedText(runs, color: color.nsColor))
+            let outlined = NSMutableAttributedString(attributedString: Annotation.attributedText(runs, color: color.nsColor, family: style.fontFamily))
             let full = NSRange(location: 0, length: outlined.length)
             outlined.addAttribute(.strokeColor, value: outlineColor, range: full)
             outlined.addAttribute(.strokeWidth, value: style.outline.strokePercent, range: full)
             ctx.saveGState()
             ctx.setLineJoin(.round)
-            outlined.draw(at: origin)
+            draw(outlined, at: origin, width: width)
             ctx.restoreGState()
         case .label:
             // 文字の色の角丸の背景に、見やすい色の文字を載せる
-            let size = Annotation.textSize(runs)
+            let size = Annotation.textSize(runs, width: width, family: style.fontFamily)
             let padding = Annotation.labelPadding(fontSize: maxSize)
             let box = CGRect(origin: origin, size: size).insetBy(dx: -padding.width, dy: -padding.height)
             let corner = min(box.height / 2, maxSize * 0.35)
@@ -283,7 +286,20 @@ enum AnnotationRenderer {
             fillColor = color.isLight ? .black : .white
         }
 
-        Annotation.attributedText(runs, color: fillColor).draw(at: origin)
+        draw(Annotation.attributedText(runs, color: fillColor, family: style.fontFamily), at: origin, width: width)
+    }
+
+    /// 文字を描く。width があれば、その幅で折り返す（入力欄と同じ所で行が分かれる）
+    private static func draw(_ text: NSAttributedString, at origin: CGPoint, width: CGFloat?) {
+        guard let width else {
+            text.draw(at: origin)
+            return
+        }
+        text.draw(
+            with: CGRect(origin: origin, size: CGSize(width: width, height: .greatestFiniteMagnitude)),
+            options: Annotation.wrappingOptions,
+            context: nil
+        )
     }
 
     /// 矢印（始点・終点のそれぞれに、三角か山形の矢じり。どちらもなければ線）

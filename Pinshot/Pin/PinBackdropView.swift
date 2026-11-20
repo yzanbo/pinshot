@@ -86,11 +86,17 @@ final class PinBackdropView: NSView {
     }
 
     override func mouseMoved(with event: NSEvent) {
-        cursor(at: convert(event.locationInWindow, from: nil))?.set()
+        backdropCursor(at: convert(event.locationInWindow, from: nil))?.set()
     }
 
     override func cursorUpdate(with event: NSEvent) {
-        cursor(at: convert(event.locationInWindow, from: nil))?.set()
+        backdropCursor(at: convert(event.locationInWindow, from: nil))?.set()
+    }
+
+    /// ツールバーのつまみで画像を動かしている間は、つかんだ手のままにする
+    private func backdropCursor(at point: NSPoint) -> NSCursor? {
+        if controller?.isMovingWithToolbarHandle == true { return .closedHand }
+        return cursor(at: point)
     }
 
     override func mouseDown(with event: NSEvent) {

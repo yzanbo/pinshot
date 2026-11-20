@@ -87,6 +87,8 @@ final class EditorState: ObservableObject {
     @Published var nextCounterNumber = 1
     /// ツールバーのボタンにマウスを乗せているときの説明
     @Published var hoverHint: String?
+    /// ツールバーの 2 行目（吹き出し）の先を向ける、1 行目のボタンの中心（横の位置）
+    @Published var optionsAnchorX: CGFloat?
     /// ツールバーの 1 行目の幅（2 行目はこの幅で折り返す）
     @Published var toolbarRowWidth: CGFloat = EditorState.lastToolbarRowWidth {
         didSet { if toolbarRowWidth > 0 { EditorState.lastToolbarRowWidth = toolbarRowWidth } }

@@ -25,9 +25,9 @@ final class PinToolbarController {
 
     // MARK: - 出す・隠す
 
-    func show(actions: ToolbarActions) {
+    func show(actions: ToolbarActions, appearance: PinAppearance) {
         guard toolbarPanel == nil else { return }
-        let hosting = FirstMouseHostingView(rootView: EditorToolbar(state: state, actions: actions))
+        let hosting = FirstMouseHostingView(rootView: EditorToolbar(state: state, appearance: appearance, actions: actions))
         let size = hosting.fittingSize
         let toolbar = ToolbarPanel(contentRect: NSRect(origin: .zero, size: size))
         toolbar.level = pinPanel.level
@@ -113,7 +113,8 @@ final class PinToolbarController {
         }
     }
 
-    /// ツールバーを画像の下に置く。画面からはみ出すときは上、それも無理なら画像の内側に置く
+    /// ツールバーをいつも画像の下に置く。画像の下に余白がないとき（ドラッグで下へ動かした・拡大したなど）は、
+    /// 上へは回さず、画面のいちばん下に出す（画像に重ねる）。左右は、画像のうち画面に見えている部分の真ん中
     /// （切り離しているときは動かさない。force のときだけ置き直す）
     func layout(force: Bool = false) {
         guard let toolbar = toolbarPanel, force || !state.isDetached else { return }
@@ -122,19 +123,7 @@ final class PinToolbarController {
         let screen = ScreenGeometry.screen(containing: NSPoint(x: frame.midX, y: frame.midY), orMain: false)
             ?? pinPanel.screen ?? NSScreen.main
         let visible = screen?.visibleFrame ?? frame
-        let gap: CGFloat = 8
-
-        var x = frame.midX - size.width / 2
-        x = min(max(x, visible.minX + 4), visible.maxX - size.width - 4)
-
-        var y = frame.minY - size.height - gap
-        if y < visible.minY {
-            y = frame.maxY + gap
-        }
-        if y + size.height > visible.maxY {
-            y = max(frame.minY + gap, visible.minY + gap)
-        }
-        toolbar.setFrameOrigin(NSPoint(x: x, y: y))
+        toolbar.setFrameOrigin(ScreenGeometry.originBelow(frame, size: size, gap: 8, in: visible))
     }
 
     private func keepOnScreen() {
@@ -149,8 +138,14 @@ final class PinToolbarController {
 
     // MARK: - つまみで動かす
 
+    /// つまみで動かしている最中か
+    var isMovingWithHandle: Bool { moveStartMouse != nil }
+
     /// つまみのドラッグで動かす（最初の呼び出しでマウスと位置を覚え、そこからの差で動かす）
     func moveWithMouse() {
+        // 動かしている間は、マウスが画像の上に乗っても、つかんだ手のカーソルのままにする
+        // （つまみから外れると矢印に、画像の上では描くツールの十字に変わってしまうため、動くたびに出し直す）
+        NSCursor.closedHand.set()
         let mouse = NSEvent.mouseLocation
         // 切り離しているときはツールバーだけ、付いているときは画像ごと動かす
         let target: NSWindow? = state.isDetached ? toolbarPanel : pinPanel

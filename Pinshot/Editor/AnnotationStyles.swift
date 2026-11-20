@@ -265,6 +265,8 @@ enum CounterFormat: String, CaseIterable, Identifiable, Codable {
 struct CounterStyle: Codable, Equatable {
     var design: CounterDesign = .filledCircle
     var format: CounterFormat = .number
+    /// 数字のフォント（フォントのファミリー名）。nil なら標準（システムのフォント）
+    var fontFamily: String?
 }
 
 // MARK: - 文字のスタイル
@@ -320,6 +322,8 @@ enum OutlineWeight: Int, CaseIterable, Identifiable, Codable {
 struct TextStyle: Codable, Equatable {
     var decoration: TextDecoration = .none
     var outline: OutlineWeight = .medium
+    /// フォント（フォントのファミリー名）。nil なら標準（システムのフォント）
+    var fontFamily: String?
 }
 
 /// 文字の一部分（1 つの文字の中で、部分ごとに大きさを変えられる）

@@ -20,12 +20,12 @@ struct PinSettingsView: View {
                 SettingsNote("どちらも、画像ごとに右クリックのメニューから変えられます。")
             }
             Section {
-                Picker("× ボタンと操作バー", selection: $settings.closeButtonMode) {
+                Picker("操作バーと捨てるボタン", selection: $settings.closeButtonMode) {
                     ForEach(CloseButtonMode.allCases) { mode in
                         Text(mode.label).tag(mode)
                     }
                 }
-                Toggle("操作バー（編集・不透明度・コピー・保存）を出す", isOn: $settings.showsQuickActions)
+                Toggle("操作バー（不透明度・コピー・保存・編集・捨てる）を出す", isOn: $settings.showsQuickActions)
                     .disabled(settings.closeButtonMode == .hidden)
             } header: {
                 Text("画像の上のボタン")

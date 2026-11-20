@@ -17,7 +17,10 @@ final class PinController: NSObject, NSWindowDelegate {
 
     /// 編集ツールバー（編集モードの間だけ出す）
     private let toolbar: PinToolbarController
-    private(set) var zoom: CGFloat = 1
+    private(set) var zoom: CGFloat = 1 {
+        // 操作バー・ツールバーの拡大率の表示に知らせる
+        didSet { appearance.zoom = Double(zoom) }
+    }
     private var cancellables = Set<AnyCancellable>()
 
     /// クリックを下のアプリに通しているか
@@ -42,7 +45,7 @@ final class PinController: NSObject, NSWindowDelegate {
     init(image: CGImage, imageSize: CGSize, frame: NSRect, zoom: CGFloat = 1, restoring: RestoreState? = nil) {
         let state = EditorState()
         self.state = state
-        self.appearance = PinAppearance(opacity: AppSettings.shared.defaultOpacity)
+        self.appearance = PinAppearance(opacity: AppSettings.shared.defaultOpacity, zoom: Double(zoom))
         let panel = PinPanel(contentRect: frame)
         self.panel = panel
         self.canvas = PinCanvasView(image: image, imageSize: imageSize, state: state)
@@ -246,7 +249,22 @@ final class PinController: NSObject, NSWindowDelegate {
 
     /// ドラッグで動かし終えたとき
     func windowDidFinishMoving() {
+        relayoutAttachedParts()
+    }
+
+    func windowDidMove(_ notification: Notification) {
+        relayoutAttachedParts()
+    }
+
+    func windowDidResize(_ notification: Notification) {
+        relayoutAttachedParts()
+    }
+
+    /// 動かしている間・拡大縮小したときに、ツールバーと操作バーを置き直す
+    /// （画像の下に余白がなくなったら、画面のいちばん下へ移す）
+    private func relayoutAttachedParts() {
         toolbar.layout()
+        canvas.repositionOutsideParts()
     }
 
     // MARK: - 編集モード
@@ -263,7 +281,7 @@ final class PinController: NSObject, NSWindowDelegate {
         state.isEditing = editing
         if editing {
             // アプリ全体は前に出さない（ほかの画像まで前に出てしまうため）。この画像のウィンドウだけをキーにする
-            toolbar.show(actions: makeToolbarActions())
+            toolbar.show(actions: makeToolbarActions(), appearance: appearance)
             panel.makeKey()
             panel.makeFirstResponder(canvas)
         } else {
@@ -282,6 +300,8 @@ final class PinController: NSObject, NSWindowDelegate {
             save: { [weak self] in self?.save() },
             done: { [weak self] in self?.setEditing(false) },
             close: { [weak self] in self?.close() },
+            setOpacity: { [weak self] value in self?.setOpacity(CGFloat(value)) },
+            setZoom: { [weak self] value in self?.setZoom(CGFloat(value)) },
             move: { [weak self] in self?.toolbar.moveWithMouse() },
             endMove: { [weak self] in self?.toolbar.endMoveWithMouse() }
         )
@@ -325,20 +345,35 @@ final class PinController: NSObject, NSWindowDelegate {
         return max(0.05, 24 / max(min(size.width, size.height), 1))
     }
 
-    func zoom(by factor: CGFloat, around anchor: NSPoint) {
-        let newZoom = min(max(zoom * factor, minZoom), 8)
-        guard abs(newZoom - zoom) > 0.0001 else { return }
-        applyZoom(newZoom, anchor: anchor, baseFrame: panel.frame)
+    private static let maxZoom: CGFloat = 8
+
+    private func clampedZoom(_ value: CGFloat) -> CGFloat {
+        min(max(value, minZoom), Self.maxZoom)
     }
 
+    func zoom(by factor: CGFloat, around anchor: NSPoint) {
+        setZoom(zoom * factor, around: anchor)
+    }
+
+    /// 拡大率を value にする（anchor（スクリーン座標）の位置を動かさない。nil なら画像の真ん中）
+    func setZoom(_ value: CGFloat, around anchor: NSPoint? = nil) {
+        let newZoom = clampedZoom(value)
+        guard abs(newZoom - zoom) > 0.0001 else { return }
+        let frame = panel.frame
+        applyZoom(newZoom, anchor: anchor ?? NSPoint(x: frame.midX, y: frame.midY), baseFrame: frame)
+    }
+
+    /// ツールバーのつまみで画像を動かしている最中か（その間は、画像の上でもカーソルをつかんだ手のままにする）
+    var isMovingWithToolbarHandle: Bool { toolbar.isMovingWithHandle }
+
     func resetZoom() {
-        applyZoom(1, anchor: NSPoint(x: panel.frame.midX, y: panel.frame.midY), baseFrame: panel.frame)
+        setZoom(1)
     }
 
     /// 端のドラッグで大きさを変える（縦横比を保ち、反対側の端は動かさない）
     func resize(with drag: EdgeResizeDrag) {
         let target = drag.target()
-        let newZoom = min(max(target.width / max(paddedContentSize.width, 1), minZoom), 8)
+        let newZoom = clampedZoom(target.width / max(paddedContentSize.width, 1))
         applyZoom(newZoom, anchor: target.anchor, baseFrame: drag.startFrame)
     }
 

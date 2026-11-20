@@ -8,6 +8,8 @@ struct ToolbarActions {
     var done: @MainActor () -> Void
     /// 画像を閉じる（編集中でもそのまま閉じる。メニューの「閉じた画像を戻す」で戻せる）
     var close: @MainActor () -> Void
+    var setOpacity: (Double) -> Void
+    var setZoom: (Double) -> Void
     /// つまみのドラッグで動かす（最初の呼び出しでマウスと位置を覚え、そこからの差で動かす）。
     /// ツールバーが画像に付いているときは画像ごと、切り離しているときはツールバーだけを動かす
     var move: @MainActor () -> Void
@@ -18,10 +20,12 @@ struct ToolbarActions {
 /// 幅は 1 行目（ツール・色・操作）で決まり、2 行目（オプション）は入りきらなければまとまりごとに折り返す
 struct EditorToolbar: View {
     @ObservedObject var state: EditorState
+    /// 画像の不透明度・拡大率（操作バーと同じものを見る）
+    @ObservedObject var appearance: PinAppearance
     let actions: ToolbarActions
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 2) {
             mainContent
                 .background(
                     // 1 行目の幅を測って、2 行目の折り返しの幅にする
@@ -30,13 +34,18 @@ struct EditorToolbar: View {
                     }
                 )
             if hasOptions {
-                optionsContent
-                    .padding(.leading, ToolbarMetrics.optionsIndent)
+                optionsTray
             }
         }
+        .coordinateSpace(name: ToolbarMetrics.rowsSpace)
         .onPreferenceChange(ToolbarRowWidthKey.self) { width in
             if abs(state.toolbarRowWidth - width) > 0.5 {
                 state.toolbarRowWidth = width
+            }
+        }
+        .onPreferenceChange(OptionsAnchorKey.self) { x in
+            if state.optionsAnchorX != x {
+                state.optionsAnchorX = x
             }
         }
         .padding(ToolbarMetrics.toolbarPadding)
@@ -56,6 +65,7 @@ struct EditorToolbar: View {
             ToolbarSection {
                 ForEach(ToolGroup.allCases) { group in
                     ToolGroupButton(state: state, group: group)
+                        .optionsAnchor(isActive: !state.showsBackdropOptions && optionsGroup == group)
                 }
             }
 
@@ -65,6 +75,7 @@ struct EditorToolbar: View {
                 ColorMenuButton(state: state)
                 PresetMenuButton(state: state)
                 BackdropButton(state: state)
+                    .optionsAnchor(isActive: state.showsBackdropOptions)
             }
 
             ToolbarDivider()
@@ -72,6 +83,16 @@ struct EditorToolbar: View {
             ToolbarSection {
                 ToolbarIconButton(state: state, symbol: "arrow.uturn.backward", hint: "元に戻す（⌘Z）", isEnabled: state.canUndo, action: actions.undo)
                 ToolbarIconButton(state: state, symbol: "arrow.uturn.forward", hint: "やり直す（⌘⇧Z）", isEnabled: state.canRedo, action: actions.redo)
+            }
+
+            ToolbarDivider()
+
+            // 画像の不透明度と表示の拡大率（操作バーと同じく、コピー・保存の左に置く）
+            ViewControls(appearance: appearance, style: .toolbar, editorState: state, setOpacity: actions.setOpacity, setZoom: actions.setZoom)
+
+            ToolbarDivider()
+
+            ToolbarSection {
                 ToolbarIconButton(state: state, symbol: "doc.on.doc", hint: "コピー（⌘C）：書き込みごとクリップボードへ", action: actions.copy)
                 ToolbarIconButton(state: state, symbol: "square.and.arrow.down", hint: "保存（⌘S）：PNG で保存", action: actions.save)
             }
@@ -95,8 +116,8 @@ struct EditorToolbar: View {
             .padding(.leading, 4)
             .hint("編集を終える（esc・⌘E）", state: state)
 
-            // 右端に、画像ごと閉じるボタン
-            ToolbarIconButton(state: state, symbol: "xmark", hint: "画像を閉じる（⌘W）：書き込みごと閉じる。メニューの「閉じた画像を戻す」で戻せる", action: actions.close)
+            // 右端に、画像ごと捨てるボタン（ゴミ箱。メニューの「閉じた画像を戻す」で戻せる）
+            ToolbarIconButton(state: state, symbol: "trash", hint: "画像を捨てる（⌘W）：書き込みごと閉じる。メニューの「閉じた画像を戻す」で戻せる", action: actions.close)
         }
     }
 
@@ -142,12 +163,66 @@ struct EditorToolbar: View {
         }
     }
 
-    private var optionsContent: some View {
-        let width = state.toolbarRowWidth - ToolbarMetrics.optionsIndent
+    /// 2 行目のオプションを出しているツールのまとまり（吹き出しの先を向けるボタン）
+    private var optionsGroup: ToolGroup? {
+        ToolGroup.allCases.first { $0.tools.contains(state.optionsTool) }
+    }
+
+    /// 2 行目は、1 行目で選んでいるボタンから出た吹き出しの形にする（そのボタンの細かい設定だと分かるように）。
+    /// 先頭に、何の設定かの見出し（アイコン＋名前）を置く
+    private var optionsTray: some View {
+        let padding = ToolbarMetrics.trayPadding
+        let width = state.toolbarRowWidth - padding.leading - padding.trailing
         return FlowLayout(spacing: 14, lineSpacing: 6) {
+            optionsHeader
             optionSections
         }
         .frame(width: width > 0 ? width : nil, alignment: .leading)
+        .padding(padding)
+        .padding(.top, ToolbarMetrics.trayNotch.height)
+        .background(tray.fill(ToolbarMetrics.trayFill))
+        .overlay(tray.stroke(ToolbarMetrics.trayBorder, lineWidth: 1))
+    }
+
+    /// 2 行目の吹き出しの形（先は、オプションを出しているボタンに向ける）
+    private var tray: CalloutShape {
+        CalloutShape(notchX: state.optionsAnchorX, notch: ToolbarMetrics.trayNotch, corner: ToolbarMetrics.trayCorner)
+    }
+
+    /// 何の設定かの見出し（背景・入力中の文字・選んだ書き込み・いまのツール）
+    private var optionsHeader: some View {
+        let symbol: String
+        let title: String
+        if state.showsBackdropOptions {
+            symbol = "photo.artframe"
+            title = "背景の設定"
+        } else {
+            let tool = state.optionsTool
+            symbol = tool.symbolName
+            if state.isEditingText {
+                title = "入力中の文字"
+            } else if state.selectionTool != nil {
+                title = "選んだ\(tool.label)"
+            } else {
+                title = "\(tool.label)の設定"
+            }
+        }
+        // 見出しは押せるものではないので、ボタン（台・選んでいる色）の形にはしない。
+        // 太字の文字と縦の区切り線で、その右に並ぶ設定の見出しだと分かるようにする
+        return HStack(spacing: 5) {
+            Image(systemName: symbol)
+                .font(.system(size: 11, weight: .semibold))
+            Text(title)
+                .font(.system(size: 12, weight: .bold))
+            Rectangle()
+                .fill(ToolbarMetrics.trayBorder)
+                .frame(width: 1, height: 16)
+                .padding(.leading, 7)
+        }
+        .foregroundStyle(.primary)
+        .padding(.leading, 2)
+        .frame(height: ToolbarMetrics.segmentHeight)
+        .fixedSize()
     }
 
     @ViewBuilder
@@ -159,7 +234,7 @@ struct EditorToolbar: View {
         }
     }
 
-    /// 背景のオプション（背景のボタンを押したとき）。色などを選ぶと、背景も付ける
+    /// 背景のオプション（背景のボタンを押したとき）。まず「なし / 付ける」を選び、付けたときだけ色・余白・角の丸み・影を出す
     @ViewBuilder
     private var backdropSections: some View {
         let shown = state.backdropShown
@@ -174,46 +249,48 @@ struct EditorToolbar: View {
                 }
             }
         }
-        OptionSection(label: "色") {
-            SegmentedGroup {
-                ForEach(ExportBackground.allCases) { background in
-                    SegmentButton(
-                        state: state,
-                        hint: "背景の色：\(background.label)",
-                        isSelected: shown && decoration.background == background
-                    ) {
-                        state.updateBackdrop { $0.background = background }
-                    } label: {
-                        Image(nsImage: background.swatchImage(diameter: 12))
+        if shown {
+            OptionSection(label: "色") {
+                SegmentedGroup {
+                    ForEach(ExportBackground.allCases) { background in
+                        SegmentButton(
+                            state: state,
+                            hint: "背景の色：\(background.label)",
+                            isSelected: decoration.background == background
+                        ) {
+                            state.updateBackdrop { $0.background = background }
+                        } label: {
+                            Image(nsImage: background.swatchImage(diameter: 12))
+                        }
                     }
                 }
             }
-        }
-        OptionSection(label: "余白") {
-            SegmentedGroup {
-                ForEach(ExportPadding.allCases) { padding in
-                    SegmentButton(state: state, text: padding.label, hint: "背景の余白：\(padding.label)", isSelected: shown && decoration.padding == padding) {
-                        state.updateBackdrop { $0.padding = padding }
+            OptionSection(label: "余白") {
+                SegmentedGroup {
+                    ForEach(ExportPadding.allCases) { padding in
+                        SegmentButton(state: state, text: padding.label, hint: "背景の余白：\(padding.label)", isSelected: decoration.padding == padding) {
+                            state.updateBackdrop { $0.padding = padding }
+                        }
                     }
                 }
             }
-        }
-        OptionSection(label: "角") {
-            SegmentedGroup {
-                ForEach(ExportCorner.allCases) { corner in
-                    SegmentButton(state: state, text: corner.label, hint: "画像の角の丸み：\(corner.label)", isSelected: shown && decoration.corner == corner) {
-                        state.updateBackdrop { $0.corner = corner }
+            OptionSection(label: "角") {
+                SegmentedGroup {
+                    ForEach(ExportCorner.allCases) { corner in
+                        SegmentButton(state: state, text: corner.label, hint: "画像の角の丸み：\(corner.label)", isSelected: decoration.corner == corner) {
+                            state.updateBackdrop { $0.corner = corner }
+                        }
                     }
                 }
             }
-        }
-        OptionSection(label: "影") {
-            SegmentedGroup {
-                SegmentButton(state: state, text: "なし", hint: "画像の影を付けない", isSelected: shown && !decoration.shadow) {
-                    state.updateBackdrop { $0.shadow = false }
-                }
-                SegmentButton(state: state, text: "あり", hint: "画像に影を付ける", isSelected: shown && decoration.shadow) {
-                    state.updateBackdrop { $0.shadow = true }
+            OptionSection(label: "影") {
+                SegmentedGroup {
+                    SegmentButton(state: state, text: "なし", hint: "画像の影を付けない", isSelected: !decoration.shadow) {
+                        state.updateBackdrop { $0.shadow = false }
+                    }
+                    SegmentButton(state: state, text: "あり", hint: "画像に影を付ける", isSelected: decoration.shadow) {
+                        state.updateBackdrop { $0.shadow = true }
+                    }
                 }
             }
         }
@@ -312,11 +389,21 @@ struct EditorToolbar: View {
                     .font(ToolbarMetrics.labelFont.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
+            OptionSection(label: "フォント") {
+                fontFamilyControl(current: state.counterStyle.fontFamily, hint: "番号のフォント（Mac に入っているフォントから選ぶ）") { family in
+                    state.counterStyle.fontFamily = family
+                }
+            }
             opacitySection
 
         case .text:
             OptionSection(label: "大きさ") {
                 fontSizeControl
+            }
+            OptionSection(label: "フォント") {
+                fontFamilyControl(current: state.textStyle.fontFamily, hint: "文字のフォント（Mac に入っているフォントから選ぶ）") { family in
+                    state.textStyle.fontFamily = family
+                }
             }
             OptionSection(label: "縁取り") {
                 SegmentedGroup {
@@ -397,6 +484,24 @@ struct EditorToolbar: View {
             .frame(height: ToolbarMetrics.segmentHeight + 4)
             .background(RoundedRectangle(cornerRadius: ToolbarMetrics.groupCorner).fill(ToolbarMetrics.groupFill))
             .hint("書き込みの不透明度（選んでいる書き込みにも反映。画像そのものの不透明度は、画像の下のバーで変える）", state: state, cursor: .arrow)
+        }
+    }
+
+    /// フォント（いまのフォントの名前 ▾。押すと、Mac に入っているフォントの一覧を開く）
+    private func fontFamilyControl(current: String?, hint: String, onSelect: @escaping @MainActor (String?) -> Void) -> some View {
+        SegmentedGroup {
+            SegmentButton(state: state, hint: hint, isSelected: false) {
+                FontMenu.popUp(current: current, onSelect: onSelect)
+            } label: {
+                HStack(spacing: 4) {
+                    Text(FontMenu.displayName(of: current))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .frame(maxWidth: 120)
+                    Image(systemName: "chevron.down")
+                        .font(ToolbarMetrics.chevronFont)
+                }
+            }
         }
     }
 
