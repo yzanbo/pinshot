@@ -142,14 +142,23 @@ struct HistoryHoverButton: View {
     }
 }
 
-/// 下の帯の、アイコン付きのボタン
+/// 下の帯の、アイコン付きのボタン。prominent なら目立たせる（いま押してほしいボタン。文字の「更新してコピー」など）
 struct HistoryFooterButton: View {
     let title: String
     let symbol: String
     var role: ButtonRole?
+    var prominent = false
     let action: () -> Void
 
     var body: some View {
+        if prominent {
+            button.buttonStyle(.borderedProminent)
+        } else {
+            button
+        }
+    }
+
+    private var button: some View {
         Button(role: role, action: action) {
             Label(title, systemImage: symbol)
         }

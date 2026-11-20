@@ -70,18 +70,38 @@ struct TextHistoryView: View {
         )
     }
 
-    /// 下の帯。選んでいるときは選んだ数と「選択を解除」、選んでいないときは件数と説明
+    /// 下の帯。選んでいるときは、右に選んだものへの操作（画像・共有の一覧と同じ位置）。選んでいないときは件数と説明
     private var footer: some View {
-        HistoryFooter(
-            selectedCount: model.selectedEntries.count,
+        let selected = model.selectedEntries
+        return HistoryFooter(
+            selectedCount: selected.count,
             unit: "件",
             summary: history.entries.isEmpty ? nil : history.summaryText,
             hint: "ダブルクリックでコピー・⌘ / shift + クリックで複数選ぶ",
             removeAll: CaptureHistoryWindowController.confirmRemoveAllTexts,
             clearSelection: model.clearSelection
         ) {
-            // 選んだものへの操作（コピー・削除）は右の欄にあるので、ここには並べない（同じボタンが 2 か所に出ないように）
-            EmptyView()
+            if selected.count == 1, let entry = selected.first {
+                // 読み取った画像への操作（画像があるときだけ）
+                if entry.imageFileName != nil {
+                    HistoryFooterButton(title: "画像を浮かせる", symbol: "pin") { model.pinImage(of: entry) }
+                        .help("読み取った画像を、もう一度画面に浮かせる")
+                    HistoryFooterButton(title: "画像をコピー", symbol: "photo.on.rectangle") { model.copyImage(of: entry) }
+                        .help("読み取った画像をクリップボードにコピー")
+                }
+                // 右の欄で直していれば、吹き出しと同じく「更新してコピー」で保存する（直しただけでは保存しない）
+                if model.isDraftEdited {
+                    HistoryFooterButton(title: "更新してコピー", symbol: "arrow.triangle.2.circlepath", prominent: true) { model.copyDraft() }
+                        .keyboardShortcut(.return, modifiers: .command)
+                        .help("履歴の文字を直した文字に更新して、コピーする（⌘↩）")
+                } else {
+                    HistoryFooterButton(title: "コピー", symbol: "doc.on.doc") { model.copyDraft() }
+                }
+            } else if selected.count > 1 {
+                HistoryFooterButton(title: "つなげてコピー", symbol: "doc.on.doc") { model.copy(selected) }
+                    .help("選んだ文字を、空の行をはさんでつなげてコピー")
+            }
+            HistoryFooterButton(title: "削除", symbol: "trash", role: .destructive) { model.remove(selected) }
         }
     }
 }
@@ -211,9 +231,9 @@ private struct TextHistoryRow: View {
     }
 }
 
-/// 右の欄。1 件を選んだときは、読み取った範囲の画像と、直せる全文を出す（打つのが止まると自動で保存）。
-/// 画像と文字のそれぞれの見出しの横に、それに効くボタンを置く（どちらに効くかが分かるように）。
-/// 2 件以上を選んだときは、「つなげてコピー」でコピーする文字をそのまま見せる
+/// 右の欄。1 件を選んだときは、読み取った範囲の画像と、直せる全文を出す。
+/// 2 件以上を選んだときは、「つなげてコピー」でコピーする文字をそのまま見せる。
+/// 選んだものへの操作（コピー・削除・画像を浮かせるなど）は、画像・共有の一覧と同じく下の帯の右に置き、ここには置かない
 private struct TextHistoryDetail: View {
     @ObservedObject var model: TextHistoryViewModel
 
@@ -227,16 +247,11 @@ private struct TextHistoryDetail: View {
                     message: "一覧で選ぶと、読み取った文字の全文と、どの画像から読んだかがここに出ます。文字は直せます。"
                 )
             } else if selected.count == 1, let entry = selected.first {
-                header(title: CaptureHistoryRules.dateTimeText(entry.date)) {
-                    smallButton("削除", symbol: "trash", help: "この 1 件を履歴から削除", role: .destructive) { model.remove([entry]) }
-                }
+                header(title: CaptureHistoryRules.dateTimeText(entry.date))
                 Divider()
                 single(entry)
             } else {
-                header(title: "\(selected.count) 件を選択中", subtitle: "空の行をはさんでつなげています") {
-                    smallButton("つなげてコピー", symbol: "doc.on.doc", help: "選んだ文字を、空の行をはさんでつなげてコピー") { model.copy(selected) }
-                    smallButton("削除", symbol: "trash", help: "選んだものを履歴から削除", role: .destructive) { model.remove(selected) }
-                }
+                header(title: "\(selected.count) 件を選択中", subtitle: "空の行をはさんでつなげています（下の「つなげてコピー」でこの形にコピー）")
                 Divider()
                 ScrollView {
                     Text(TextHistoryRules.joined(selected))
@@ -251,28 +266,18 @@ private struct TextHistoryDetail: View {
         .background(Color(nsColor: .textBackgroundColor).opacity(0.5))
     }
 
-    /// 1 件のとき（読み取った画像とそのボタン・直せる全文とそのボタン・保存の知らせ）
+    /// 1 件のとき（読み取った画像・直せる全文・保存の知らせ）
     private func single(_ entry: RecognizedTextEntry) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             if let image = model.image(for: entry) {
                 VStack(alignment: .leading, spacing: 6) {
-                    sectionTitle("読み取った画像") {
-                        smallButton("浮かせる", symbol: "pin", help: "この画像を、もう一度画面に浮かせる") { model.pinImage(of: entry) }
-                        smallButton("画像をコピー", symbol: "photo.on.rectangle", help: "この画像をクリップボードにコピー") { model.copyImage(of: entry) }
-                    }
+                    sectionTitle("読み取った画像")
                     sourceImage(image, entry: entry)
                 }
             }
             VStack(alignment: .leading, spacing: 6) {
-                // 吹き出しと同じく、直したら「更新してコピー」で保存する（直しただけでは保存しない）
-                sectionTitle("文字", detail: TextHistoryRules.countText(model.draft)) {
-                    if model.isDraftEdited {
-                        smallButton("更新してコピー", symbol: "arrow.triangle.2.circlepath", help: "履歴の文字を直した文字に更新して、コピーする（⌘↩）", prominent: true) { model.copyDraft() }
-                            .keyboardShortcut(.return, modifiers: .command)
-                    } else {
-                        smallButton("コピー", symbol: "doc.on.doc", help: "文字をコピー") { model.copyDraft() }
-                    }
-                }
+                // 吹き出しと同じく、直したら下の「更新してコピー」で保存する（直しただけでは保存しない）
+                sectionTitle("文字", detail: TextHistoryRules.countText(model.draft))
                 EditableText(text: $model.draft, extraMenuItems: [
                     EditableTextMenuItem(title: model.isDraftEdited ? "更新してコピー" : "全文をコピー", symbol: "doc.on.doc") { model.copyDraft() },
                 ])
@@ -284,7 +289,7 @@ private struct TextHistoryDetail: View {
         .padding(14)
     }
 
-    /// どの画像から読んだか（押しても何もしない。浮かせる・コピーは見出しのボタンで。ドラッグでほかのアプリへ渡せる）
+    /// どの画像から読んだか（押しても何もしない。浮かせる・コピーは下の帯のボタンで。ドラッグでほかのアプリへ渡せる）
     private func sourceImage(_ image: NSImage, entry: RecognizedTextEntry) -> some View {
         Image(nsImage: image)
             .resizable()
@@ -303,41 +308,38 @@ private struct TextHistoryDetail: View {
     private var saveStatus: some View {
         Group {
             if model.draftIsEmpty {
-                EditStatusLine(text: "空のままでは更新できません（削除するときは上の「削除」）", symbol: "exclamationmark.circle.fill", tint: .orange)
+                EditStatusLine(text: "空のままでは更新できません（削除するときは下の「削除」）", symbol: "exclamationmark.circle.fill", tint: .orange)
             } else if model.isDraftEdited {
-                EditStatusLine(text: "直しています。「更新してコピー」で、履歴とクリップボードを直した文字にします", symbol: "pencil.circle.fill", tint: .orange)
+                EditStatusLine(text: "直しています。下の「更新してコピー」（⌘↩）で、履歴とクリップボードを直した文字にします", symbol: "pencil.circle.fill", tint: .orange)
             } else if model.didUpdate {
                 EditStatusLine(text: "履歴とクリップボードを、直した文字に更新しました", symbol: "checkmark.circle.fill", tint: .green)
             } else {
-                EditStatusLine(text: "直すと、「更新してコピー」で履歴を更新できます", symbol: "pencil.circle", tint: .secondary)
+                EditStatusLine(text: "直すと、下の「更新してコピー」で履歴を更新できます", symbol: "pencil.circle", tint: .secondary)
             }
         }
     }
 
     // MARK: - 部品
 
-    /// 上の帯（見出しと、この選択全体に効くボタン）
-    private func header<Buttons: View>(title: String, subtitle: String? = nil, @ViewBuilder buttons: () -> Buttons) -> some View {
-        HStack(alignment: .center, spacing: 8) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.headline)
-                if let subtitle {
-                    Text(subtitle)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+    /// 上の帯（見出し）
+    private func header(title: String, subtitle: String? = nil) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.headline)
+            if let subtitle {
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
-            Spacer(minLength: 8)
-            buttons()
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
     }
 
-    /// 欄の見出しと、その欄に効くボタン（見出しの右に並べる）
-    private func sectionTitle<Buttons: View>(_ title: String, detail: String? = nil, @ViewBuilder buttons: () -> Buttons) -> some View {
-        HStack(alignment: .center, spacing: 6) {
+    /// 欄の見出し（detail は、文字数など）
+    private func sectionTitle(_ title: String, detail: String? = nil) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
             Text(title)
                 .font(.subheadline.weight(.semibold))
             if let detail {
@@ -345,25 +347,6 @@ private struct TextHistoryDetail: View {
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
-            Spacer(minLength: 8)
-            buttons()
-        }
-    }
-
-    /// アイコンと名前の付いた小さなボタン（何をするかが分かるよう、名前も出す）
-    /// prominent: 目立たせる（いま押してほしいボタン。「更新してコピー」など）
-    @ViewBuilder
-    private func smallButton(_ title: String, symbol: String, help: String, role: ButtonRole? = nil, prominent: Bool = false, action: @escaping () -> Void) -> some View {
-        let button = Button(role: role, action: action) {
-            Label(title, systemImage: symbol)
-        }
-        .controlSize(.small)
-        .help(help)
-        .hoverRole()
-        if prominent {
-            button.buttonStyle(.borderedProminent)
-        } else {
-            button
         }
     }
 }
