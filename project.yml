@@ -78,6 +78,7 @@ targets:
       - path: Pinshot/History/CaptureHistoryEntry.swift
       - path: Pinshot/History/TextHistoryEntry.swift
       - path: Pinshot/History/ListSelection.swift
+      - path: Pinshot/Support/KeyCode.swift
       - path: Pinshot/Pin/SavedPin.swift
       - path: Pinshot/Upload/UploadTypes.swift
       - path: Pinshot/Upload/UploadRules.swift

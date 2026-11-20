@@ -105,46 +105,29 @@ final class UploadHistoryViewModel: ObservableObject {
 
     // MARK: - キー
 
-    /// 一覧のキー操作。扱ったら true
+    /// 一覧のキー操作。扱ったら true（どのキーで何をするかは ListKeys。リストのときだけ ↑ ↓ でも動かす）
     func handleKey(_ event: NSEvent) -> Bool {
-        let flags = event.modifierFlags.intersection([.command, .option, .control, .shift])
-        let key = event.charactersIgnoringModifiers?.lowercased()
-        if flags == .command, key == "a" {
+        let isList = AppSettings.shared.uploadHistoryLayout == .list
+        guard let action = ListKeys.action(for: event, horizontal: true, vertical: isList) else { return false }
+        let selected = selectedEntries
+        switch action {
+        case .selectAll:
             selectAll()
-            return true
-        }
-        switch event.keyCode {
-        case KeyCode.leftArrow, KeyCode.rightArrow:
-            selection.move(by: event.keyCode == KeyCode.rightArrow ? 1 : -1, extending: flags.contains(.shift), order: order)
-            return true
-        case KeyCode.downArrow, KeyCode.upArrow:
-            // リストのときだけ ↓ ↑ でも動かす（サムネイルでは扱わず、一覧のスクロールに任せる）。
-            // 「case ↓, ↑ where 条件」と書くと、条件が ↑ にしか効かないので、ここで確かめる
-            guard AppSettings.shared.uploadHistoryLayout == .list else { return false }
-            selection.move(by: event.keyCode == KeyCode.downArrow ? 1 : -1, extending: flags.contains(.shift), order: order)
-            return true
-        case KeyCode.escape:
+        case .move(let step, let extending):
+            selection.move(by: step, extending: extending, order: order)
+        case .clearSelection:
             guard !selection.isEmpty else { return false }
             clearSelection()
-            return true
-        default:
-            break
-        }
-        let selected = selectedEntries
-        guard !selected.isEmpty else { return false }
-        switch event.keyCode {
-        case KeyCode.delete, KeyCode.forwardDelete:
+        case .remove:
+            guard !selected.isEmpty else { return false }
             remove(selected)
-            return true
-        case KeyCode.return, KeyCode.keypadEnter:
+        case .activate:
+            guard !selected.isEmpty else { return false }
             openInBrowser(selected)
-            return true
-        default:
-            if flags == .command, key == "c" {
-                copyLinks(selected, format: AppSettings.shared.shareLinkFormat)
-                return true
-            }
-            return false
+        case .copy:
+            guard !selected.isEmpty else { return false }
+            copyLinks(selected, format: AppSettings.shared.shareLinkFormat)
         }
+        return true
     }
 }

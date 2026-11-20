@@ -192,40 +192,25 @@ final class TextHistoryViewModel: ObservableObject {
 
     // MARK: - キー
 
-    /// 一覧のキー操作。扱ったら true
+    /// 一覧のキー操作。扱ったら true（どのキーで何をするかは ListKeys。縦に並べるので ↑ ↓ で動かす）
     func handleKey(_ event: NSEvent) -> Bool {
-        let flags = event.modifierFlags.intersection([.command, .option, .control, .shift])
-        let key = event.charactersIgnoringModifiers?.lowercased()
-        if flags == .command, key == "a" {
+        guard let action = ListKeys.action(for: event, horizontal: false, vertical: true) else { return false }
+        let selected = selectedEntries
+        switch action {
+        case .selectAll:
             selectAll()
-            return true
-        }
-        switch event.keyCode {
-        case KeyCode.downArrow, KeyCode.upArrow:
-            selection.move(by: event.keyCode == KeyCode.downArrow ? 1 : -1, extending: flags.contains(.shift), order: order)
-            return true
-        case KeyCode.escape:
+        case .move(let step, let extending):
+            selection.move(by: step, extending: extending, order: order)
+        case .clearSelection:
             guard !selection.isEmpty else { return false }
             clearSelection()
-            return true
-        default:
-            break
-        }
-        let selected = selectedEntries
-        guard !selected.isEmpty else { return false }
-        switch event.keyCode {
-        case KeyCode.delete, KeyCode.forwardDelete:
+        case .remove:
+            guard !selected.isEmpty else { return false }
             remove(selected)
-            return true
-        case KeyCode.return, KeyCode.keypadEnter:
+        case .activate, .copy:
+            guard !selected.isEmpty else { return false }
             copy(selected)
-            return true
-        default:
-            if flags == .command, key == "c" {
-                copy(selected)
-                return true
-            }
-            return false
         }
+        return true
     }
 }
