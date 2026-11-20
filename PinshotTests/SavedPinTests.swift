@@ -36,6 +36,22 @@ final class SavedPinTests: XCTestCase {
         XCTAssertEqual(decoded.pins[0].onTopOverride, false)
     }
 
+    func testOriginRoundTripsAndOldStateHasNone() throws {
+        // どの履歴の画像かも残る（戻したあとも、履歴から同じ画像を浮かせたときに増やさないため）
+        var pin = makePin()
+        let historyID = UUID()
+        pin.origin = .textHistory(historyID)
+        let decoded = try JSONDecoder().decode(SavedPin.self, from: JSONEncoder().encode(pin))
+        XCTAssertEqual(decoded.origin, .textHistory(historyID))
+        XCTAssertNotEqual(decoded.origin, .captureHistory(historyID))
+
+        // 印を足す前の版で残した状態も読める（印はなし）
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(makePin())) as? [String: Any])
+        object.removeValue(forKey: "origin")
+        let old = try JSONDecoder().decode(SavedPin.self, from: JSONSerialization.data(withJSONObject: object))
+        XCTAssertNil(old.origin)
+    }
+
     func testImageFileNamesCoverPinsAndClosed() {
         let a = UUID(), b = UUID()
         var session = SavedPinSession()

@@ -35,6 +35,8 @@ final class PinController: NSObject, NSWindowDelegate {
 
     /// この画像だけ最前面の設定を変えているとき（nil なら設定に従う）
     private var onTopOverride: Bool?
+    /// どの履歴の画像か（履歴から同じ画像を浮かせたときに、増やさず前に出すため）
+    var origin: PinOrigin?
 
     var isOnTop: Bool { onTopOverride ?? AppSettings.shared.alwaysOnTop }
 
@@ -48,7 +50,8 @@ final class PinController: NSObject, NSWindowDelegate {
             opacity: restorableOpacity,
             snapshot: canvas.snapshot,
             backdrop: state.savedBackdrop,
-            onTopOverride: onTopOverride
+            onTopOverride: onTopOverride,
+            origin: origin
         )
     }
 
@@ -72,6 +75,7 @@ final class PinController: NSObject, NSWindowDelegate {
             canvas.restore(restoring.snapshot)
             state.restoreBackdrop(restoring.backdrop)
             onTopOverride = restoring.onTopOverride
+            origin = restoring.origin
         }
         canvas.controller = self
         canvas.frame = NSRect(origin: .zero, size: frame.size)

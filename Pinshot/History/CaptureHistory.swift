@@ -35,9 +35,11 @@ final class CaptureHistory: ObservableObject {
 
     // MARK: - 足す
 
-    /// 撮った画像を履歴に足す（設定で残さないときは何もしない）。PNG を作る重い処理は裏で行う
-    func add(image: CGImage, pointSize: CGSize) {
-        guard AppSettings.shared.historyEnabled else { return }
+    /// 撮った画像を履歴に足す（設定で残さないときは何もしない）。PNG を作る重い処理は裏で行う。
+    /// 足す履歴の id を返す（浮かせた画像に、どの履歴の画像かの印を付けるため。残さないときは nil）
+    @discardableResult
+    func add(image: CGImage, pointSize: CGSize) -> UUID? {
+        guard AppSettings.shared.historyEnabled else { return nil }
         let id = UUID()
         let date = Date()
         let folder = folder
@@ -50,6 +52,7 @@ final class CaptureHistory: ObservableObject {
                 self.saveIndex()
             }
         }
+        return id
     }
 
     /// 画像と縮小画像を書く（裏で呼ぶ）。書けなければ nil
@@ -111,15 +114,16 @@ final class CaptureHistory: ObservableObject {
 
     // MARK: - 浮かせる・コピーする（一覧・メニューバーから）
 
-    /// マウスのある画面の真ん中に浮かせる（2 枚以上は、少しずつずらして重ねる）。1 枚も読めなければ音で知らせる
+    /// マウスのある画面の真ん中に浮かせる（2 枚以上は、少しずつずらして重ねる）。
+    /// もう浮いている画像は、増やさずに前に出す。読めない画像は音で知らせる
     func pin(_ targets: [CaptureHistoryEntry]) {
         var pinned = 0
         for entry in targets {
-            guard let image = loadImage(for: entry) else { continue }
-            PinManager.shared.pinAtMouseScreen(image: image, imageSize: entry.pointSize, offset: CGFloat(pinned) * 24)
-            pinned += 1
+            let isNew = PinManager.shared.pinFromHistory(.captureHistory(entry.id), offset: CGFloat(pinned) * 24) {
+                loadImage(for: entry).map { ($0, entry.pointSize) }
+            }
+            if isNew { pinned += 1 }
         }
-        if pinned == 0 { NSSound.beep() }
     }
 
     /// クリップボードにコピーする。読めなければ音で知らせて false

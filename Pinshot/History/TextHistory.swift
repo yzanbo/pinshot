@@ -89,10 +89,10 @@ final class TextHistory: ObservableObject {
         imageURL(for: entry).flatMap(NSImage.init(contentsOf:))
     }
 
-    /// 読み取った範囲の画像を、マウスのある画面の真ん中に浮かせる。読めなければ音で知らせる
+    /// 読み取った範囲の画像を、マウスのある画面の真ん中に浮かせる。もう浮いていれば、増やさずに前に出す。
+    /// 読めなければ音で知らせる
     func pinImage(of entry: RecognizedTextEntry) {
-        guard let (image, size) = loadImage(of: entry) else { return NSSound.beep() }
-        PinManager.shared.pinAtMouseScreen(image: image, imageSize: size)
+        PinManager.shared.pinFromHistory(.textHistory(entry.id)) { loadImage(of: entry) }
     }
 
     /// 読み取った範囲の画像を、クリップボードにコピーする。読めなければ音で知らせて false

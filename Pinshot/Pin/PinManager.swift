@@ -43,13 +43,15 @@ final class PinManager {
     /// 撮った画像を浮かせ、撮った画像の履歴にも残す。
     /// zoom: 最初の倍率（frame はこの倍率をかけた大きさで渡す）
     func pin(image: CGImage, imageSize: CGSize, frame: NSRect, zoom: CGFloat = 1) {
-        show(image: image, imageSize: imageSize, frame: frame, zoom: zoom)
-        CaptureHistory.shared.add(image: image, pointSize: imageSize)
+        // 履歴の印を付けておく（あとで履歴から同じ画像を浮かせたときに、増やさずこの画像を前に出す）
+        let historyID = CaptureHistory.shared.add(image: image, pointSize: imageSize)
+        show(image: image, imageSize: imageSize, frame: frame, zoom: zoom, origin: historyID.map(PinOrigin.captureHistory))
     }
 
     /// 画像を浮かせる（履歴には残さない）
-    private func show(image: CGImage, imageSize: CGSize, frame: NSRect, zoom: CGFloat) {
+    private func show(image: CGImage, imageSize: CGSize, frame: NSRect, zoom: CGFloat, origin: PinOrigin? = nil) {
         let controller = makeController(image: image, imageSize: imageSize, frame: frame, zoom: zoom)
+        controller.origin = origin
         controller.show()
         scheduleSave()
 
@@ -126,9 +128,32 @@ final class PinManager {
         return true
     }
 
-    /// 画像を、マウスのある画面の真ん中に浮かせる（クリップボード・撮った画像の履歴から。履歴には残さない）。
+    /// origin の画像がもう浮いていれば、新しく浮かせずに前に出してキーにする（「すでに浮かせています」と知らせる）。
+    /// 浮いていなければ false（呼ぶ側が画像を読んで浮かせる）
+    private func focusPin(from origin: PinOrigin) -> Bool {
+        guard let existing = pins.last(where: { $0.origin == origin }) else { return false }
+        existing.show()
+        existing.ensureOnScreen()
+        existing.canvas.showHUD("すでに浮かせています")
+        return true
+    }
+
+    /// 履歴の画像を浮かせる。同じ画像がもう浮いていれば、増やさずにそれを前に出す。
+    /// 新しく浮かせたら true（続けて浮かせるときに、ずらす数を数えるため）
+    @discardableResult
+    func pinFromHistory(_ origin: PinOrigin, offset: CGFloat = 0, load: () -> (image: CGImage, size: CGSize)?) -> Bool {
+        if focusPin(from: origin) { return false }
+        guard let (image, size) = load() else {
+            NSSound.beep()
+            return false
+        }
+        pinAtMouseScreen(image: image, imageSize: size, offset: offset, origin: origin)
+        return true
+    }
+
+    /// 画像を、マウスのある画面の真ん中に浮かせる（クリップボード・履歴から。履歴には残さない）。
     /// offset: 続けて浮かせるときに、右下へずらす量
-    func pinAtMouseScreen(image: CGImage, imageSize size: CGSize, offset: CGFloat = 0) {
+    func pinAtMouseScreen(image: CGImage, imageSize size: CGSize, offset: CGFloat = 0, origin: PinOrigin? = nil) {
         let visible = ScreenGeometry.screen(containing: NSEvent.mouseLocation)?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
         // 大きい画像は、画面の 7 割に収まるよう縮める
         let zoom = min(1, visible.width * 0.7 / size.width, visible.height * 0.7 / size.height)
@@ -138,7 +163,7 @@ final class PinManager {
             width: size.width * zoom,
             height: size.height * zoom
         )
-        show(image: image, imageSize: size, frame: frame, zoom: zoom)
+        show(image: image, imageSize: size, frame: frame, zoom: zoom, origin: origin)
     }
 
     /// スクロールキャプチャの間は、浮かせた画像がスクロール操作を受けないようにする

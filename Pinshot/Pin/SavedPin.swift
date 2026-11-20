@@ -14,8 +14,18 @@ struct SavedPin: Codable, Equatable {
     var backdrop: SavedBackdrop
     /// この画像だけ最前面の設定を変えているとき（nil なら設定に従う）
     var onTopOverride: Bool?
+    /// どの履歴の画像か（履歴から同じ画像を浮かせたときに、増やさず前に出すため。前の版の状態にはない）
+    var origin: PinOrigin? = nil
 
     var imageFileName: String { "\(id.uuidString).png" }
+}
+
+/// 浮かせた画像が、どの履歴の画像か
+enum PinOrigin: Codable, Equatable {
+    /// 撮った画像の履歴の 1 枚（撮った直後に浮かせた画像も、この印を持つ）
+    case captureHistory(UUID)
+    /// 読み取った文字の履歴の、読み取った範囲の画像
+    case textHistory(UUID)
 }
 
 /// 浮かせた画像に付けている背景
