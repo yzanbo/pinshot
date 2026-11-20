@@ -5,7 +5,8 @@ import AppKit
 /// - ウィンドウがあれば、そのウィンドウのシートで出す。アプリ全体を止めないので、出している間もショートカットで撮れる（ダイアログごと撮れる）
 @MainActor
 enum AppAlert {
-    /// 確かめる。confirmTitle を押したら onConfirm を呼ぶ（esc・キャンセルでは何もしない）
+    /// 確かめる。confirmTitle を押したら onConfirm を呼ぶ（esc・キャンセルでは何もしない）。
+    /// 押すボタンは、見やすいふつうの決定ボタン（青地に白）にする
     static func confirm(
         _ message: String,
         detail: String,
@@ -13,13 +14,25 @@ enum AppAlert {
         in window: NSWindow? = nil,
         onConfirm: @escaping () -> Void
     ) {
+        choose(message, detail: detail, choices: [confirmTitle], in: window) { _ in onConfirm() }
+    }
+
+    /// いくつかの中から選んでもらう（choices の順にボタンを並べ、最初を決定ボタンにする。キャンセルは esc でも押せる）。
+    /// 選んだら、その番号（choices の何番目か）を onChoose に渡す。キャンセルでは何もしない
+    static func choose(
+        _ message: String,
+        detail: String,
+        choices: [String],
+        in window: NSWindow? = nil,
+        onChoose: @escaping (Int) -> Void
+    ) {
         let alert = make(message, detail: detail)
-        // 押すボタンは、見やすいふつうの決定ボタン（青地に白）にする。キャンセルは esc でも押せる
-        alert.addButton(withTitle: confirmTitle)
+        choices.forEach { alert.addButton(withTitle: $0) }
         let cancel = alert.addButton(withTitle: "キャンセル")
         cancel.keyEquivalent = "\u{1b}"
         present(alert, in: window) { response in
-            if response == .alertFirstButtonReturn { onConfirm() }
+            let index = response.rawValue - NSApplication.ModalResponse.alertFirstButtonReturn.rawValue
+            if choices.indices.contains(index) { onChoose(index) }
         }
     }
 

@@ -63,33 +63,19 @@ final class UploadHistoryViewModel: ObservableObject {
         let deletable = entries.filter { UploadDestinations.destination(for: $0.destination)?.capabilities.canDelete ?? false }
         let count = entries.count == 1 ? "このリンク" : "\(entries.count) 件のリンク"
 
-        let alert = NSAlert()
-        alert.icon = NSApp.applicationIconImage
-        alert.messageText = "\(count)を削除しますか？"
-        alert.informativeText = deletable.isEmpty
+        // ほかのダイアログと同じ見た目にする（AppAlert。最初の選択肢が青い決定ボタン、キャンセルは esc）
+        let detail = deletable.isEmpty
             ? "この一覧から外します（\(labels) の画像は、そのまま残ります）。"
             : "「\(labels) からも削除」を選ぶと、\(labels) の画像も消え、リンクを開いても見られなくなります。元に戻せません。\n「一覧から外すだけ」なら、\(labels) の画像は残ります。"
-        if !deletable.isEmpty {
-            let button = alert.addButton(withTitle: "\(labels) からも削除")
-            button.hasDestructiveAction = true
-        }
-        alert.addButton(withTitle: "一覧から外すだけ")
-        let cancel = alert.addButton(withTitle: "キャンセル")
-        cancel.keyEquivalent = "\u{1b}"
-
-        let finish: (NSApplication.ModalResponse) -> Void = { [weak self] response in
-            let fromDestination: Bool
-            switch (deletable.isEmpty, response) {
-            case (false, .alertFirstButtonReturn): fromDestination = true
-            case (false, .alertSecondButtonReturn), (true, .alertFirstButtonReturn): fromDestination = false
-            default: return
-            }
+        let choices = deletable.isEmpty ? ["一覧から外す"] : ["\(labels) からも削除", "一覧から外すだけ"]
+        AppAlert.choose(
+            "\(count)を削除しますか？",
+            detail: detail,
+            choices: choices,
+            in: CaptureHistoryWindowController.shared.window
+        ) { [weak self] index in
+            let fromDestination = !deletable.isEmpty && index == 0
             self?.removeNow(entries, fromDestination: fromDestination, labels: labels)
-        }
-        if let window = CaptureHistoryWindowController.shared.window, window.isVisible {
-            alert.beginSheetModal(for: window, completionHandler: finish)
-        } else {
-            finish(alert.runModal())
         }
     }
 

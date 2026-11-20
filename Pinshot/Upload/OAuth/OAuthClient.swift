@@ -122,7 +122,8 @@ final class OAuthClient: NSObject, ASWebAuthenticationPresentationContextProvidi
         let alert = NSAlert()
         alert.messageText = "\(destination.label) の画面に出た文字列を貼ってください"
         alert.informativeText = "ブラウザで \(destination.label) にログインして「許可」を押すと、文字列が出ます。それをコピーして、ここに貼ってください。"
-        alert.icon = NSApp.applicationIconImage
+        // ほかのダイアログ（AppAlert）と同じアイコンにする
+        if let icon = AppSupport.appIcon { alert.icon = icon }
         let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 320, height: 24))
         field.placeholderString = "ここに貼る"
         alert.accessoryView = field
