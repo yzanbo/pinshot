@@ -32,7 +32,7 @@ Pinshot/
 │   │                         （+Cursor・+Mouse・+Keyboard・+Selection・+History・+Text・+TextRecognition・+TextMark・+Outside）
 │   ├── PinAccessory          部品を画像の外に出す子ウィンドウ（閉じるボタンと操作バーはいつも。ほかは画像が小さくて中に入らないとき）
 │   ├── PinBackdropView       画像のまわりの背景（余白・影）
-│   ├── QuickActionBar・PinCloseButton  画像の下の操作バーと選んだ書き込みのバー、左上の外の閉じるボタン
+│   ├── QuickActionBar・PinCloseButton  画像の下の操作バー（編集中はツールバーの上のバーとしても使う）と選んだ書き込みのバー、左上の外の閉じるボタン
 │   ├── HUDView・HintBubble   「コピーしました」などのお知らせ、ツールバーの説明のポップアップ
 │   ├── TextScanOverlay・RecognizedTextPopover  文字を読み取っている間・読み取ったあとの見た目と、読み取った文字の吹き出し（直してコピーし直せる）
 │   └── ResizeEdges           端のドラッグで大きさを変える計算（テストあり）
@@ -50,13 +50,14 @@ Pinshot/
 │   ├── Annotation・AnnotationStyles・Tool・ToolGroup・RGBAColor   書き込みのデータ（Windows 版と形式をそろえる）と、ツールの組
 │   ├── AnnotationRenderer・ImageEffects・ImageExporter 描画・モザイクとぼかし・書き出し
 │   ├── TextRecognizer        文字の読み取り（Vision）と、読み取った文字を読む順に並べる決まり（テストあり）
-│   ├── TextMarkLayout        文字マーカーを、ドラッグした所の文字に合わせて行ごとの四角にする決まりと、その形（テストあり）
+│   ├── TextMarkLayout        文字マーカーを、ドラッグした所の文字に合わせて行ごとの四角にする決まりと、その形・画素を見て文字の線がある高さに合わせる処理（TextInk）（テストあり）
 │   ├── AnnotationDocument    1 枚の画像の編集データ（書き込み・トリミング・元に戻す履歴）。変えるときは必ずここを通す
 │   ├── EditHandle            選んだ書き込みのつまみ（形を直す）
 │   ├── EditorState・EditorStyle・StylePreset・EditHistory  編集の状態・スタイルの保存・元に戻す
 │   └── Toolbar/              ツールバー（SwiftUI）と、その部品
 │       ├── EditorToolbar・ToolbarComponents・ToolbarMenuButtons  ツールバー本体、共通の部品、メニューを開くボタン
-│       ├── ViewControls      不透明度と拡大率（操作バーとツールバーの両方に出す）
+│       ├── TextStylePreview  文字ツールのオプションの見本（書き込みと同じ描き方で、次に入力する文字の見え方を出す）
+│       ├── ViewControls      不透明度と拡大率（操作バーに出す。編集中もツールバーの上のバーとして同じ操作バーを出す）
 │       └── FontMenu・TextInputController・ColorPanelController  フォントのメニュー、数字や名前の入力欄、カラーパネル
 ├── Assets.xcassets/ アプリのアイコン（scripts/make-app-icon.swift で描いて書き出す）
 ├── Settings/       設定の値（AppSettings・Shortcut・ExportDecoration）と画面
