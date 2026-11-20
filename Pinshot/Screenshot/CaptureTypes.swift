@@ -49,6 +49,8 @@ final class CaptureOptions: ObservableObject {
     @Published var timer: Int
 
     static let timerChoices = [0, 3, 5, 10]
+    /// ショートカット（「タイマーでキャプチャ」）で撮るときの秒数
+    static let shortcutTimerSeconds = 5
 
     init(mode: CaptureMode, timer: Int) {
         self.mode = mode

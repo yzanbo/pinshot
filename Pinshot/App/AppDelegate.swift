@@ -42,8 +42,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         keyTap.onShortcut = { [weak self] action in self?.performFromShortcut(action) }
         registerHotKeys()
         keyTap.start()
-        // 撮った画像の履歴を読み、期間を過ぎたものを消す
-        CaptureHistory.shared.pruneExpired()
+        // 撮った画像の履歴を読む（読むときに、期間を過ぎたものを消す）
+        _ = CaptureHistory.shared
         // 前に浮かせていた画像を戻し、動いている間もときどき保存する
         PinManager.shared.restoreSession()
         PinManager.shared.startAutosave()
@@ -61,15 +61,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .store(in: &cancellables)
 
         // ショートカットを変えたら登録し直す。記録している間はすべて止めておく
-        settings.$shortcuts
-            .dropFirst()
+        settings.$shortcuts.dropFirst().map { _ in () }
+            .merge(with: settings.$recordingAction.dropFirst().map { _ in () })
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.registerHotKeys() }
-            .store(in: &cancellables)
-        settings.$recordingAction
-            .dropFirst()
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.registerHotKeys() }
+            .sink { [weak self] in self?.registerHotKeys() }
             .store(in: &cancellables)
 
         // 初めての起動では使い方を案内する
@@ -102,20 +97,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         var unavailable: Set<ShortcutAction> = []
 
         for action in ShortcutAction.allCases {
-            guard let shortcut = settings.shortcut(for: action) else {
-                statusMenu.showShortcut(nil, registered: true, for: action)
-                continue
+            let shortcut = settings.shortcut(for: action)
+            // 記録している間は登録しない（メニューの表示はそのまま）
+            if let shortcut, !recording {
+                hotKeys[action] = HotKey(keyCode: shortcut.keyCode, modifiers: shortcut.modifiers) { [weak self] in
+                    self?.performFromShortcut(action)
+                }
+                if hotKeys[action] == nil { unavailable.insert(action) }
             }
-            if recording {
-                statusMenu.showShortcut(shortcut, registered: true, for: action)
-                continue
-            }
-            let hotKey = HotKey(keyCode: shortcut.keyCode, modifiers: shortcut.modifiers) { [weak self] in
-                self?.performFromShortcut(action)
-            }
-            hotKeys[action] = hotKey
-            if hotKey == nil { unavailable.insert(action) }
-            statusMenu.showShortcut(shortcut, registered: hotKey != nil, for: action)
+            statusMenu.showShortcut(shortcut, registered: !unavailable.contains(action), for: action)
         }
         // メニューを開いている間の見張りにも、同じショートカットを渡す（記録中・ほかのアプリが使っているものは除く）
         keyTap.shortcuts = recording ? [:] : settings.shortcuts.filter { hotKeys[$0.key] != nil }
@@ -149,9 +139,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .captureRegion: captureController.start(mode: .region)
         case .captureWindow: captureController.start(mode: .window)
         case .captureScreen: captureController.start(mode: .screen)
-        case .captureScroll:
-            captureController.start(mode: .scroll)
-        case .captureTimer: captureController.start(mode: .region, timer: 5)
+        case .captureScroll: captureController.start(mode: .scroll)
+        case .captureTimer: captureController.start(mode: .region, timer: CaptureOptions.shortcutTimerSeconds)
         case .pinClipboard:
             if !PinManager.shared.pinClipboardImage() { NSSound.beep() }
         case .openHistory: CaptureHistoryWindowController.shared.show()

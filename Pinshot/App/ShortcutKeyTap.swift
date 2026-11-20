@@ -32,7 +32,7 @@ final class ShortcutKeyTap {
     }
 
     private func install() -> Bool {
-        guard AXIsProcessTrusted() else { return false }
+        guard AccessibilityPermission.isGranted else { return false }
         let mask = CGEventMask(1 << CGEventType.keyDown.rawValue)
         let userInfo = Unmanaged.passUnretained(self).toOpaque()
         guard let tap = CGEvent.tapCreate(

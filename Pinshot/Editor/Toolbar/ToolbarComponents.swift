@@ -324,7 +324,7 @@ struct ToolButton: View {
         ToolbarIconButton(
             state: state,
             symbol: tool.symbolName,
-            hint: "\(tool.label)（\(tool.shortcut.uppercased())）：\(tool.usage)",
+            hint: "\(tool.labelWithShortcut)：\(tool.usage)",
             isSelected: state.tool == tool
         ) {
             state.tool = tool

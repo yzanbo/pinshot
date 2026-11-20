@@ -51,6 +51,9 @@ enum Tool: String, CaseIterable, Identifiable, Codable {
         }
     }
 
+    /// 名前とキー（例: 「矢印（A）」）
+    var labelWithShortcut: String { "\(label)（\(shortcut.uppercased())）" }
+
     /// 編集モード中に押すと切り替わるキー
     var shortcut: String {
         switch self {

@@ -118,9 +118,8 @@ final class CaptureHistory: ObservableObject {
 
     // MARK: - 浮かせる・コピーする（一覧・メニューバーから）
 
-    /// マウスのある画面の真ん中に浮かせる（2 枚以上は、少しずつずらして重ねる）。浮かせた枚数を返す
-    @discardableResult
-    func pin(_ targets: [CaptureHistoryEntry]) -> Int {
+    /// マウスのある画面の真ん中に浮かせる（2 枚以上は、少しずつずらして重ねる）。1 枚も読めなければ音で知らせる
+    func pin(_ targets: [CaptureHistoryEntry]) {
         var pinned = 0
         for entry in targets {
             guard let image = loadImage(for: entry) else { continue }
@@ -128,7 +127,6 @@ final class CaptureHistory: ObservableObject {
             pinned += 1
         }
         if pinned == 0 { NSSound.beep() }
-        return pinned
     }
 
     /// クリップボードにコピーする。読めなければ音で知らせて false

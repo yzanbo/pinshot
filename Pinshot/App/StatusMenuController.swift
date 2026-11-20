@@ -66,7 +66,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
             item.target = self
             item.tag = seconds
             timerMenu.addItem(item)
-            if seconds == 5 {
+            if seconds == CaptureOptions.shortcutTimerSeconds {
                 actionItems[.captureTimer] = item
                 actionTitles[.captureTimer] = item.title
             }
@@ -160,13 +160,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
 
         var items: [NSMenuItem] = []
         if history.entries.isEmpty {
-            let empty = NSMenuItem(
-                title: AppSettings.shared.historyEnabled ? "まだ撮った画像はありません" : "履歴を残さない設定になっています",
-                action: nil,
-                keyEquivalent: ""
-            )
-            empty.isEnabled = false
-            items.append(empty)
+            items.append(.disabled(title: AppSettings.shared.historyEnabled ? "まだ撮った画像はありません" : "履歴を残さない設定になっています"))
         }
         for entry in history.entries.prefix(recentHistoryCount) {
             let thumbnail = history.menuThumbnail(for: entry)
@@ -201,13 +195,17 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
             updateStatusMenu()
             return
         }
-        guard menu === windowListMenu else { return }
+        if menu === windowListMenu {
+            rebuildWindowList(menu)
+        }
+    }
+
+    /// 「ウィンドウを選んでキャプチャ」の一覧を、いま開いているウィンドウで作り直す
+    private func rebuildWindowList(_ menu: NSMenu) {
         menu.removeAllItems()
         let windows = WindowList.visibleWindows()
         if windows.isEmpty {
-            let empty = NSMenuItem(title: "撮れるウィンドウがありません", action: nil, keyEquivalent: "")
-            empty.isEnabled = false
-            menu.addItem(empty)
+            menu.addItem(.disabled(title: "撮れるウィンドウがありません"))
             return
         }
         for info in windows {
@@ -227,7 +225,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
         case #selector(releaseClickThrough):
             return PinManager.shared.hasClickThroughPins
         case #selector(performActionItem(_:)):
-            guard let raw = menuItem.representedObject as? String, let action = ShortcutAction(rawValue: raw) else { return true }
+            guard let action = action(of: menuItem) else { return true }
             switch action {
             case .pinClipboard: return NSImage.canInit(with: .general)
             case .restoreClosed: return PinManager.shared.canRestore
@@ -242,7 +240,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
     // MARK: - 押したとき
 
     @objc private func performActionItem(_ sender: NSMenuItem) {
-        guard let raw = sender.representedObject as? String, let action = ShortcutAction(rawValue: raw) else { return }
+        guard let action = action(of: sender) else { return }
         actions.perform(action)
     }
 
@@ -262,6 +260,11 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
     @objc private func copyHistoryItem(_ sender: NSMenuItem) {
         guard let entry = historyEntry(of: sender) else { return NSSound.beep() }
         CaptureHistory.shared.copy(entry)
+    }
+
+    /// メニューの項目に結びつけた操作
+    private func action(of item: NSMenuItem) -> ShortcutAction? {
+        (item.representedObject as? String).flatMap(ShortcutAction.init(rawValue:))
     }
 
     /// メニューの項目に結びつけた履歴

@@ -31,7 +31,16 @@ enum ScreenPermission {
     }
 
     static func openSettings() {
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
+        PrivacySettings.open("Privacy_ScreenCapture")
+    }
+}
+
+/// システム設定の「プライバシーとセキュリティ」のページ
+@MainActor
+enum PrivacySettings {
+    /// pane（Privacy_ScreenCapture・Privacy_Accessibility など）のページを開く
+    static func open(_ pane: String) {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?\(pane)") {
             NSWorkspace.shared.open(url)
         }
     }
@@ -48,9 +57,7 @@ enum AccessibilityPermission {
     static func request() {
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
         _ = AXIsProcessTrustedWithOptions(options)
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
-            NSWorkspace.shared.open(url)
-        }
+        PrivacySettings.open("Privacy_Accessibility")
     }
 }
 

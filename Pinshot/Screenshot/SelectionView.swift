@@ -58,9 +58,7 @@ final class SelectionView: NSView {
     /// マウスの位置を伝える（選択を始めたときの初期位置用）
     func updatePointer(screenPoint: NSPoint) {
         guard let window, NSMouseInRect(screenPoint, window.frame, false) else {
-            pointer = nil
-            hoveredWindow = nil
-            refresh()
+            clearPointer()
             return
         }
         movePointer(to: convert(window.convertPoint(fromScreen: screenPoint), from: nil))
@@ -70,7 +68,7 @@ final class SelectionView: NSView {
         start = nil
         current = nil
         if let pointer {
-            hoveredWindow = windowRects.first { $0.rect.contains(pointer) }
+            hoveredWindow = windowRect(at: pointer)
         }
         hoveredScrollRect = nil
         hoveredScrollWindowID = nil
@@ -80,10 +78,27 @@ final class SelectionView: NSView {
         needsDisplay = true
     }
 
+    /// マウスがこの画面から出たとき（マウスの下のウィンドウの枠・座標の表示を消す）
+    private func clearPointer() {
+        pointer = nil
+        hoveredWindow = nil
+        refresh()
+    }
+
+    /// point の下にある、いちばん手前のウィンドウ
+    private func windowRect(at point: NSPoint) -> (info: WindowInfo, rect: NSRect)? {
+        windowRects.first { $0.rect.contains(point) }
+    }
+
+    /// マウスの下のウィンドウで見つけた、スクロール領域（別のウィンドウで見つけたものは使わない）
+    private var scrollRectOfHoveredWindow: NSRect? {
+        hoveredScrollWindowID == hoveredWindow?.info.id ? hoveredScrollRect : nil
+    }
+
     private func movePointer(to point: NSPoint) {
         pointer = point
         if start == nil {
-            hoveredWindow = windowRects.first { $0.rect.contains(point) }
+            hoveredWindow = windowRect(at: point)
             scheduleScrollLookup()
         }
         refresh()
@@ -158,9 +173,7 @@ final class SelectionView: NSView {
 
     override func mouseExited(with event: NSEvent) {
         guard start == nil else { return }
-        pointer = nil
-        hoveredWindow = nil
-        refresh()
+        clearPointer()
     }
 
     // MARK: - 描き直す範囲
@@ -182,7 +195,7 @@ final class SelectionView: NSView {
             if let rect = selectionRect, rect.width > 0, rect.height > 0 { return rect }
             // クリックで撮るもの（スクロール領域。見つからなければウィンドウ）を、いつも枠で示す
             guard start == nil else { return nil }
-            if let rect = hoveredScrollRect, hoveredScrollWindowID == hoveredWindow?.info.id { return rect }
+            if let rect = scrollRectOfHoveredWindow { return rect }
             return hoveredWindow?.rect
         case .region:
             if let rect = selectionRect, rect.width > 0, rect.height > 0 { return rect }
@@ -199,7 +212,7 @@ final class SelectionView: NSView {
         guard let rect = highlightRect else { return nil }
         switch mode {
         case .scroll where selectionRect == nil:
-            if hoveredScrollRect != nil, hoveredScrollWindowID == hoveredWindow?.info.id {
+            if scrollRectOfHoveredWindow != nil {
                 return "クリックでこのスクロール領域を撮る　\(Int(rect.width)) × \(Int(rect.height))"
             }
             return AccessibilityPermission.isGranted
@@ -271,7 +284,7 @@ final class SelectionView: NSView {
         let point = clamped(convert(event.locationInWindow, from: nil))
         pointer = point
         // クリックで選ぶウィンドウは、押した時点のものにする
-        hoveredWindow = windowRects.first { $0.rect.contains(point) }
+        hoveredWindow = windowRect(at: point)
         if mode.selectsRegion {
             start = point
             current = point
@@ -287,7 +300,7 @@ final class SelectionView: NSView {
         if mode.selectsRegion {
             current = point
         } else {
-            hoveredWindow = windowRects.first { $0.rect.contains(point) }
+            hoveredWindow = windowRect(at: point)
         }
         refresh()
     }
@@ -299,8 +312,7 @@ final class SelectionView: NSView {
             let dragged = selectionRect.map { $0.width >= 4 && $0.height >= 4 } ?? false
             // ドラッグせずにクリックしたとき：範囲のモードでは何も撮らない（範囲はドラッグで選ぶ）。
             // スクロールのモードでは、マウスの下のウィンドウの、見つけたスクロール領域（なければウィンドウ）を撮る
-            let clickedScrollRect = hoveredScrollWindowID == hoveredWindow?.info.id ? hoveredScrollRect : nil
-            let clickTarget = mode == .scroll ? clickedScrollRect ?? hoveredWindow?.rect : nil
+            let clickTarget = mode == .scroll ? scrollRectOfHoveredWindow ?? hoveredWindow?.rect : nil
             let target = (dragged ? selectionRect : clickTarget)?.integral
             guard let rect = target, rect.width >= 4, rect.height >= 4, let window else {
                 start = nil

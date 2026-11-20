@@ -162,9 +162,7 @@ struct EditorToolbar: View {
     }
 
     /// 2 行目のオプションを出しているツールのまとまり（吹き出しの先を向けるボタン）
-    private var optionsGroup: ToolGroup? {
-        ToolGroup.allCases.first { $0.tools.contains(state.optionsTool) }
-    }
+    private var optionsGroup: ToolGroup { ToolGroup.group(of: state.optionsTool) }
 
     /// 2 行目は、1 行目で選んでいるボタンから出た吹き出しの形にする（そのボタンの細かい設定だと分かるように）。
     /// 先頭に、何の設定かの見出し（アイコン＋名前）を置く

@@ -59,13 +59,13 @@ struct ToolGroupButton: View {
         } else {
             SplitMenuButton(
                 state: state,
-                hint: "\(group.label)：押すと「\(current.label)（\(current.shortcut.uppercased())）」、▾ で \(group.tools.map { "\($0.label)（\($0.shortcut.uppercased())）" }.joined(separator: "・")) から選ぶ",
+                hint: "\(group.label)：押すと「\(current.labelWithShortcut)」、▾ で \(group.tools.map(\.labelWithShortcut).joined(separator: "・")) から選ぶ",
                 isSelected: isSelected,
                 primaryAction: { state.tool = current },
                 menu: {
                     group.tools.map { tool in
                         .item(
-                            title: "\(tool.label)（\(tool.shortcut.uppercased())）",
+                            title: tool.labelWithShortcut,
                             image: NSImage(systemSymbolName: tool.symbolName, accessibilityDescription: tool.label),
                             isChecked: state.tool == tool
                         ) { state.tool = tool }

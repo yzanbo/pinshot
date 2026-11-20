@@ -55,7 +55,8 @@ final class PinToolbarController {
         toolbarPanel = nil
     }
 
-    /// 画像のウィンドウの階層が変わったら、ツールバーも合わせる（切り離しているときは一段前）
+    /// 画像のウィンドウの階層が変わったら、ツールバーも合わせる。
+    /// 切り離しているときは、画像をクリックして前に出してもツールバーが下に隠れないよう、一段前に置く
     func updateLevel() {
         toolbarPanel?.level = state.isDetached ? NSWindow.Level(rawValue: pinPanel.level.rawValue + 1) : pinPanel.level
     }
@@ -65,8 +66,7 @@ final class PinToolbarController {
         guard let toolbar = toolbarPanel else { return }
         if state.isDetached {
             pinPanel.removeChildWindow(toolbar)
-            // 画像をクリックして前に出しても、ツールバーが下に隠れないよう一段前に置く
-            toolbar.level = NSWindow.Level(rawValue: pinPanel.level.rawValue + 1)
+            updateLevel()
             if let origin = detachedOrigin {
                 toolbar.setFrameOrigin(origin)
             } else {
@@ -76,7 +76,7 @@ final class PinToolbarController {
             keepOnScreen()
             toolbar.orderFrontRegardless()
         } else {
-            toolbar.level = pinPanel.level
+            updateLevel()
             if toolbar.parent == nil {
                 pinPanel.addChildWindow(toolbar, ordered: .above)
             }
@@ -153,7 +153,6 @@ final class PinToolbarController {
         guard let start = moveStartMouse else {
             moveStartMouse = mouse
             moveStartOrigin = target.frame.origin
-            HoverRole.movable.draggingCursor.set()
             // つまみの説明は、ドラッグを始めたら消す（動かしている間は出さない）
             hideHint()
             return
