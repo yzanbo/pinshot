@@ -76,11 +76,15 @@ final class EditorState: ObservableObject {
     @Published var isDetached: Bool {
         didSet { defaults.set(isDetached, forKey: Key.isDetached) }
     }
-    /// ボタンにマウスを乗せたら、説明のポップアップを出す
-    @Published var showsHints: Bool {
-        didSet { defaults.set(showsHints, forKey: Key.showsHints) }
+    /// ボタンにマウスを乗せたら、説明のポップアップを出す（すべての画像・すべてのバーで同じ。保存した値を読み書きする）
+    var showsHints: Bool {
+        get { Self.savedShowsHints }
+        set {
+            objectWillChange.send()
+            defaults.set(newValue, forKey: Key.showsHints)
+        }
     }
-    /// 保存している「説明を出す」（編集していない画像のバーでも使う）
+    /// 保存している「説明を出す」（説明のポップアップ HoverHints が見る）
     static var savedShowsHints: Bool {
         UserDefaults.standard.object(forKey: Key.showsHints) as? Bool ?? true
     }
@@ -93,8 +97,6 @@ final class EditorState: ObservableObject {
     @Published var isEditingText = false
     /// 次に置く番号（ツールバーに出す）
     @Published var nextCounterNumber = 1
-    /// ツールバーのボタンにマウスを乗せているときの説明
-    @Published var hoverHint: String?
     /// ツールバーの 2 行目（吹き出し）の先を向ける、1 行目のボタンの中心（横の位置）
     @Published var optionsAnchorX: CGFloat?
     /// ツールバーの 1 行目の幅（2 行目はこの幅で折り返す）
@@ -129,7 +131,6 @@ final class EditorState: ObservableObject {
         opacity = defaults.object(forKey: Key.opacity) as? Double ?? 1
         customColors = Self.load([RGBAColor].self, forKey: Key.customColors) ?? []
         isDetached = defaults.bool(forKey: Key.isDetached)
-        showsHints = Self.savedShowsHints
         let decoration = AppSettings.shared.exportDecoration
         backdropShown = decoration.isEnabled
         backdropDecoration = decoration

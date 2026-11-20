@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// 浮かせた画像 1 枚ぶんの、編集ツールバーのウィンドウ（出す・隠す・置く場所・説明のポップアップ）
+/// 浮かせた画像 1 枚ぶんの、編集ツールバーのウィンドウ（出す・隠す・置く場所・つまみで動かす）
 @MainActor
 final class PinToolbarController {
     private let pinPanel: PinPanel
@@ -16,8 +16,6 @@ final class PinToolbarController {
     private var detachedOrigin: NSPoint?
     /// この時刻までは、ツールバーの大きさが変わるたびに中央に置き直す（出した直後のため）
     private var recentreUntil = Date.distantPast
-    /// いま出している説明（ほかのボタンに乗り移ったときに、そちらの説明を消さないよう覚える）
-    private var shownHint: String?
 
     init(pinPanel: PinPanel, state: EditorState) {
         self.pinPanel = pinPanel
@@ -47,8 +45,10 @@ final class PinToolbarController {
     }
 
     func hide() {
-        hideHint()
+        // 隠したツールバーのボタンの説明が残らないようにする
+        HoverHints.shared.hide()
         // つまみのドラッグ中に隠したとき（esc で編集を終えたなど）に、ドラッグの途中の状態が残らないようにする
+        if moveStartMouse != nil { HoverHints.shared.isSuppressed = false }
         moveStartMouse = nil
         guard let toolbar = toolbarPanel else { return }
         pinPanel.removeChildWindow(toolbar)
@@ -155,14 +155,15 @@ final class PinToolbarController {
             moveStartMouse = mouse
             moveStartOrigin = target.frame.origin
             moveTarget = target
-            // つまみの説明は、ドラッグを始めたら消す（動かしている間は出さない）
-            hideHint()
+            // ボタンの説明は、ドラッグを始めたら消し、動かしている間は出さない
+            HoverHints.shared.isSuppressed = true
             return
         }
         target.setFrameOrigin(NSPoint(x: moveStartOrigin.x + mouse.x - start.x, y: moveStartOrigin.y + mouse.y - start.y))
     }
 
     func endMoveWithMouse() {
+        HoverHints.shared.isSuppressed = false
         let movedToolbar = moveTarget != nil && moveTarget === toolbarPanel
         moveStartMouse = nil
         moveTarget = nil
@@ -171,26 +172,5 @@ final class PinToolbarController {
         } else {
             layout()
         }
-    }
-
-    // MARK: - 説明のポップアップ
-
-    /// ボタンの説明（初めは少し待ってから出し、出ている間はすぐ差し替える）
-    func updateHint(_ hint: String?) {
-        // ドラッグで動かしている間は出さない
-        guard let hint, state.showsHints, moveStartMouse == nil, let toolbar = toolbarPanel, toolbar.isVisible else {
-            hideHint()
-            return
-        }
-        shownHint = hint
-        HoverHints.shared.show(hint) { [weak self] in
-            guard let self, self.moveStartMouse == nil, let toolbar = self.toolbarPanel, toolbar.isVisible else { return nil }
-            return toolbar.frame
-        }
-    }
-
-    private func hideHint() {
-        HoverHints.shared.end(shownHint)
-        shownHint = nil
     }
 }

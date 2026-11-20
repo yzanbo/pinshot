@@ -11,10 +11,10 @@ extension EditorToolbar {
         let decoration = state.backdropDecoration
         OptionSection(label: "背景") {
             SegmentedGroup {
-                SegmentButton(state: state, text: "なし", hint: "背景を外す", isSelected: !shown) {
+                SegmentButton(text: "なし", hint: "背景を外す", isSelected: !shown) {
                     state.setBackdropShown(false)
                 }
-                SegmentButton(state: state, text: "付ける", hint: "背景を付ける（書き出しも同じ見た目）", isSelected: shown) {
+                SegmentButton(text: "付ける", hint: "背景を付ける（書き出しも同じ見た目）", isSelected: shown) {
                     state.setBackdropShown(true)
                 }
             }
@@ -24,7 +24,6 @@ extension EditorToolbar {
                 SegmentedGroup {
                     ForEach(ExportBackground.allCases) { background in
                         SegmentButton(
-                            state: state,
                             hint: "背景の色：\(background.label)",
                             isSelected: decoration.background == background
                         ) {
@@ -38,7 +37,7 @@ extension EditorToolbar {
             OptionSection(label: "余白") {
                 SegmentedGroup {
                     ForEach(ExportPadding.allCases) { padding in
-                        SegmentButton(state: state, text: padding.label, hint: "背景の余白：\(padding.label)", isSelected: decoration.padding == padding) {
+                        SegmentButton(text: padding.label, hint: "背景の余白：\(padding.label)", isSelected: decoration.padding == padding) {
                             state.updateBackdrop { $0.padding = padding }
                         }
                     }
@@ -47,7 +46,7 @@ extension EditorToolbar {
             OptionSection(label: "角") {
                 SegmentedGroup {
                     ForEach(ExportCorner.allCases) { corner in
-                        SegmentButton(state: state, text: corner.label, hint: "画像の角の丸み：\(corner.label)", isSelected: decoration.corner == corner) {
+                        SegmentButton(text: corner.label, hint: "画像の角の丸み：\(corner.label)", isSelected: decoration.corner == corner) {
                             state.updateBackdrop { $0.corner = corner }
                         }
                     }
@@ -55,10 +54,10 @@ extension EditorToolbar {
             }
             OptionSection(label: "影") {
                 SegmentedGroup {
-                    SegmentButton(state: state, text: "なし", hint: "画像の影を付けない", isSelected: !decoration.shadow) {
+                    SegmentButton(text: "なし", hint: "画像の影を付けない", isSelected: !decoration.shadow) {
                         state.updateBackdrop { $0.shadow = false }
                     }
-                    SegmentButton(state: state, text: "あり", hint: "画像に影を付ける", isSelected: decoration.shadow) {
+                    SegmentButton(text: "あり", hint: "画像に影を付ける", isSelected: decoration.shadow) {
                         state.updateBackdrop { $0.shadow = true }
                     }
                 }
@@ -69,7 +68,6 @@ extension EditorToolbar {
         let isDefault = settings.exportDecoration == current
         OptionSection(label: "初期設定") {
             SegmentButton(
-                state: state,
                 symbol: isDefault ? "checkmark" : "arrow.down.to.line",
                 text: isDefault ? "次の画像にも使う（いまの初期設定）" : "次の画像にも使う",
                 hint: "この背景（なし / 付ける・色・余白・角・影）を、これから浮かせる画像にも最初から使う",
@@ -97,7 +95,7 @@ extension EditorToolbar {
             OptionSection(label: "角") {
                 SegmentedGroup {
                     ForEach(CornerStyle.allCases) { corner in
-                        SegmentButton(state: state, text: corner.label, hint: "四角の角の丸み：\(corner.label)", isSelected: state.rectangleStyle.corner == corner) {
+                        SegmentButton(text: corner.label, hint: "四角の角の丸み：\(corner.label)", isSelected: state.rectangleStyle.corner == corner) {
                             state.rectangleStyle.corner = corner
                         }
                     }
@@ -115,10 +113,10 @@ extension EditorToolbar {
             lineWidthSection(for: tool)
             OptionSection(label: "矢じり") {
                 SegmentedGroup {
-                    SegmentButton(state: state, symbol: "arrow.left", text: "始点", hint: "始点（描き始めの側）に矢じりを付ける・外す", isSelected: state.arrowStyle.startHead) {
+                    SegmentButton(symbol: "arrow.left", text: "始点", hint: "始点（描き始めの側）に矢じりを付ける・外す", isSelected: state.arrowStyle.startHead) {
                         state.arrowStyle.startHead.toggle()
                     }
-                    SegmentButton(state: state, symbol: "arrow.right", text: "終点", hint: "終点（描き終わりの側）に矢じりを付ける・外す", isSelected: state.arrowStyle.endHead) {
+                    SegmentButton(symbol: "arrow.right", text: "終点", hint: "終点（描き終わりの側）に矢じりを付ける・外す", isSelected: state.arrowStyle.endHead) {
                         state.arrowStyle.endHead.toggle()
                     }
                 }
@@ -127,7 +125,7 @@ extension EditorToolbar {
                 OptionSection(label: "形") {
                     SegmentedGroup {
                         ForEach(ArrowHeadShape.allCases) { shape in
-                            SegmentButton(state: state, symbol: shape.symbolName, text: shape.label, hint: "矢じりの形：\(shape.label)", isSelected: state.arrowStyle.shape == shape) {
+                            SegmentButton(symbol: shape.symbolName, text: shape.label, hint: "矢じりの形：\(shape.label)", isSelected: state.arrowStyle.shape == shape) {
                                 state.arrowStyle.shape = shape
                             }
                         }
@@ -136,7 +134,7 @@ extension EditorToolbar {
                 OptionSection(label: "矢じりの大きさ") {
                     SegmentedGroup {
                         ForEach(ArrowHead.allCases) { head in
-                            SegmentButton(state: state, text: head.label, hint: "矢じりの大きさ：\(head.label)", isSelected: state.arrowStyle.head == head) {
+                            SegmentButton(text: head.label, hint: "矢じりの大きさ：\(head.label)", isSelected: state.arrowStyle.head == head) {
                                 state.arrowStyle.head = head
                             }
                         }
@@ -153,7 +151,7 @@ extension EditorToolbar {
             OptionSection(label: "種類") {
                 SegmentedGroup {
                     ForEach(TextMarkKind.allCases) { kind in
-                        SegmentButton(state: state, symbol: kind.symbolName, text: kind.label, hint: "文字マーカーの種類：\(kind.label)", isSelected: state.textMarkStyle.kind == kind) {
+                        SegmentButton(symbol: kind.symbolName, text: kind.label, hint: "文字マーカーの種類：\(kind.label)", isSelected: state.textMarkStyle.kind == kind) {
                             state.textMarkStyle.kind = kind
                         }
                     }
@@ -164,7 +162,7 @@ extension EditorToolbar {
                 OptionSection(label: "余白") {
                     SegmentedGroup {
                         ForEach(TextMarkPadding.allCases) { padding in
-                            SegmentButton(state: state, text: padding.label, hint: "文字からの余白：\(padding.label)（選んでいる文字マーカーにも反映）", isSelected: state.textMarkStyle.padding == padding) {
+                            SegmentButton(text: padding.label, hint: "文字からの余白：\(padding.label)（選んでいる文字マーカーにも反映）", isSelected: state.textMarkStyle.padding == padding) {
                                 state.textMarkStyle.padding = padding
                             }
                         }
@@ -174,7 +172,7 @@ extension EditorToolbar {
                 OptionSection(label: "線の位置") {
                     SegmentedGroup {
                         ForEach(TextMarkLinePosition.allCases) { position in
-                            SegmentButton(state: state, text: position.label, hint: "線の位置：\(position.label)（この画像のすべての文字マーカーをそろえる）", isSelected: state.textMarkStyle.linePosition == position) {
+                            SegmentButton(text: position.label, hint: "線の位置：\(position.label)（この画像のすべての文字マーカーをそろえる）", isSelected: state.textMarkStyle.linePosition == position) {
                                 actions.setTextMarkLinePosition(position)
                             }
                         }
@@ -190,7 +188,7 @@ extension EditorToolbar {
             OptionSection(label: "大きさ") {
                 SegmentedGroup {
                     ForEach(CounterSize.allCases) { size in
-                        SegmentButton(state: state, text: size.label, hint: "番号の大きさ：\(size.label)", isSelected: state.counterSize == size) {
+                        SegmentButton(text: size.label, hint: "番号の大きさ：\(size.label)", isSelected: state.counterSize == size) {
                             state.counterSize = size
                         }
                     }
@@ -199,7 +197,7 @@ extension EditorToolbar {
             OptionSection(label: "デザイン") {
                 SegmentedGroup {
                     ForEach(CounterDesign.allCases) { design in
-                        SegmentButton(state: state, symbol: design.symbolName, text: design.label, hint: "番号のデザイン：\(design.label)", isSelected: state.counterStyle.design == design) {
+                        SegmentButton(symbol: design.symbolName, text: design.label, hint: "番号のデザイン：\(design.label)", isSelected: state.counterStyle.design == design) {
                             state.counterStyle.design = design
                         }
                     }
@@ -208,7 +206,7 @@ extension EditorToolbar {
             OptionSection(label: "表記") {
                 SegmentedGroup {
                     ForEach(CounterFormat.allCases) { format in
-                        SegmentButton(state: state, text: format.label, hint: "番号の表記：\(format.label)", isSelected: state.counterStyle.format == format) {
+                        SegmentButton(text: format.label, hint: "番号の表記：\(format.label)", isSelected: state.counterStyle.format == format) {
                             state.counterStyle.format = format
                         }
                     }
@@ -240,7 +238,7 @@ extension EditorToolbar {
             OptionSection(label: "縁取り") {
                 SegmentedGroup {
                     ForEach(TextDecoration.allCases) { decoration in
-                        SegmentButton(state: state, text: decoration.label, hint: "文字の縁取り：\(decoration.label)", isSelected: state.textStyle.decoration == decoration) {
+                        SegmentButton(text: decoration.label, hint: "文字の縁取り：\(decoration.label)", isSelected: state.textStyle.decoration == decoration) {
                             state.textStyle.decoration = decoration
                         }
                     }
@@ -250,7 +248,7 @@ extension EditorToolbar {
                 OptionSection(label: "縁取りの太さ") {
                     SegmentedGroup {
                         ForEach(OutlineWeight.allCases) { weight in
-                            SegmentButton(state: state, text: weight.label, hint: "文字の縁取りの太さ：\(weight.label)", isSelected: state.textStyle.outline == weight) {
+                            SegmentButton(text: weight.label, hint: "文字の縁取りの太さ：\(weight.label)", isSelected: state.textStyle.outline == weight) {
                                 state.textStyle.outline = weight
                             }
                         }
@@ -259,11 +257,11 @@ extension EditorToolbar {
             }
             OptionSection(label: "マーカー") {
                 SegmentedGroup {
-                    SegmentButton(state: state, text: "なし", hint: "文字のマーカー：なし", isSelected: state.textStyle.marker == nil) {
+                    SegmentButton(text: "なし", hint: "文字のマーカー：なし", isSelected: state.textStyle.marker == nil) {
                         state.textStyle.marker = nil
                     }
                     ForEach(TextMarkKind.allCases) { kind in
-                        SegmentButton(state: state, symbol: kind.symbolName, text: kind.label, hint: "文字のマーカー：\(kind.label)（文字マーカーと同じ描き方。縁取りと組み合わせられる）", isSelected: state.textStyle.marker == kind) {
+                        SegmentButton(symbol: kind.symbolName, text: kind.label, hint: "文字のマーカー：\(kind.label)（文字マーカーと同じ描き方。縁取りと組み合わせられる）", isSelected: state.textStyle.marker == kind) {
                             state.textStyle.marker = kind
                         }
                     }
@@ -273,7 +271,7 @@ extension EditorToolbar {
                 OptionSection(label: "マーカーの色") {
                     SegmentedGroup {
                         ForEach(RGBAColor.palette, id: \.self) { color in
-                            SegmentButton(state: state, hint: "マーカーの色", isSelected: state.textStyle.resolvedMarkerColor == color) {
+                            SegmentButton(hint: "マーカーの色", isSelected: state.textStyle.resolvedMarkerColor == color) {
                                 state.textStyle.markerColor = color
                             } label: {
                                 Circle()
@@ -298,7 +296,6 @@ extension EditorToolbar {
             SegmentedGroup {
                 ForEach(LineWidths.presets(for: tool), id: \.self) { width in
                     SegmentButton(
-                        state: state,
                         hint: "太さ：\(Int(width)) pt（[ ] キーでも変えられる。選んでいる書き込みにも反映）",
                         isSelected: abs(state.lineWidth(for: tool) - width) < 0.01
                     ) {
@@ -321,7 +318,7 @@ extension EditorToolbar {
         OptionSection(label: "塗り") {
             SegmentedGroup {
                 ForEach(FillStyle.allCases) { fill in
-                    SegmentButton(state: state, text: fill.label, hint: "塗り：\(fill.label)", isSelected: selection == fill) {
+                    SegmentButton(text: fill.label, hint: "塗り：\(fill.label)", isSelected: selection == fill) {
                         set(fill)
                     }
                 }
@@ -343,14 +340,15 @@ extension EditorToolbar {
             .padding(.horizontal, 8)
             .frame(height: ToolbarMetrics.segmentHeight + 4)
             .background(RoundedRectangle(cornerRadius: ToolbarMetrics.groupCorner).fill(ToolbarMetrics.groupFill))
-            .hint("書き込みの不透明度（選んでいる書き込みにも反映。画像そのものの不透明度は、画像の下のバーで変える）", state: state)
+            .hoverHint("書き込みの不透明度（選んでいる書き込みにも反映。画像そのものの不透明度は、画像の下のバーで変える）")
+            .hoverRole()
         }
     }
 
     /// フォント（いまのフォントの名前 ▾。押すと、Mac に入っているフォントの一覧を開く）
     private func fontFamilyControl(current: String?, hint: String, onSelect: @escaping @MainActor (String?) -> Void) -> some View {
         SegmentedGroup {
-            SegmentButton(state: state, hint: hint, isSelected: false) {
+            SegmentButton(hint: hint, isSelected: false) {
                 FontMenu.popUp(current: current, onSelect: onSelect)
             } label: {
                 HStack(spacing: 4) {
@@ -368,13 +366,13 @@ extension EditorToolbar {
     /// 文字の大きさ（− / 数字（押すと手入力）/ ▾ 一覧 / ＋）
     private var fontSizeControl: some View {
         SegmentedGroup {
-            SegmentButton(state: state, hint: "文字を小さく（⌘- か [）", isSelected: false) {
+            SegmentButton(hint: "文字を小さく（⌘- か [）", isSelected: false) {
                 state.stepFontSize(up: false)
             } label: {
                 Image(systemName: "textformat.size.smaller")
             }
 
-            SegmentButton(state: state, hint: "文字の大きさ（押すと数字を入力。入力中は、カーソルの位置の大きさを表示）", isSelected: false) {
+            SegmentButton(hint: "文字の大きさ（押すと数字を入力。入力中は、カーソルの位置の大きさを表示）", isSelected: false) {
                 FontSizeInputController.show(current: state.fontSize) { size in
                     state.fontSize = size
                 }
@@ -385,7 +383,7 @@ extension EditorToolbar {
                     .frame(minWidth: 26)
             }
 
-            SegmentButton(state: state, hint: "文字の大きさを一覧から選ぶ", isSelected: false) {
+            SegmentButton(hint: "文字の大きさを一覧から選ぶ", isSelected: false) {
                 PopupMenu.popUp(FontSizes.presets.map { size in
                     .item(title: "\(Int(size)) pt", isChecked: abs(state.fontSize - size) < 0.01) { state.fontSize = size }
                 })
@@ -394,7 +392,7 @@ extension EditorToolbar {
                     .font(ToolbarMetrics.chevronFont)
             }
 
-            SegmentButton(state: state, hint: "文字を大きく（⌘+ か ]）", isSelected: false) {
+            SegmentButton(hint: "文字を大きく（⌘+ か ]）", isSelected: false) {
                 state.stepFontSize(up: true)
             } label: {
                 Image(systemName: "textformat.size.larger")

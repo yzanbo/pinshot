@@ -30,13 +30,13 @@ Pinshot/
 │   ├── SavedPin・PinSessionStore  終了・再起動のあとも戻す状態（1 枚ずつ読む・形の番号。テストあり）と、その保存先（~/Library/Application Support/Pinshot/Pins に PNG と session.json。読めないところがあれば unreadable-日時 のフォルダに残す）
 │   ├── PinController(+◯◯)    画像 1 枚ぶんの操作（拡大縮小・不透明度・編集モード）。+Export はコピー・保存、+Menu は右クリックメニュー
 │   ├── PinPanel・PinAppearance  画像のウィンドウ、画像の不透明度と拡大率（操作バーとツールバーで同じ値を見る）
-│   ├── PinToolbarController  編集ツールバーのウィンドウ（出す・置く場所・説明のポップアップ）
+│   ├── PinToolbarController  編集ツールバーのウィンドウ（出す・置く場所・つまみで動かす）
 │   ├── PinCanvasView(+◯◯)    画像と書き込みの表示と操作。役割ごとにファイルを分けている
 │   │                         （+Cursor・+Mouse・+Keyboard・+Selection・+History・+Text・+TextRecognition・+TextMark・+Outside）
 │   ├── PinAccessory          部品を画像の外に出す子ウィンドウ（閉じるボタンと操作バーはいつも。ほかは画像が小さくて中に入らないとき）
 │   ├── PinBackdropView       画像のまわりの背景（余白・影）
 │   ├── QuickActionBar・PinCloseButton  画像の下の操作バー（編集中はツールバーの上のバーとしても使う）と選んだ書き込みのバー、左上の外の閉じるボタン
-│   ├── HUDView・HintBubble   「コピーしました」などのお知らせ、ボタンの説明のポップアップ（HoverHints。Pinshot が前面になくても出る）
+│   ├── HUDView・HintBubble   「コピーしました」などのお知らせ、ボタンの説明のポップアップ（HoverHints。Pinshot が前面になくても出る。操作バー・編集ツールバー・録画の窓など、どのバーも .hoverHint で出す）
 │   ├── TextScanOverlay・RecognizedTextPopover  文字を読み取っている間・読み取ったあとの見た目と、読み取った文字の吹き出し（直してコピーし直せる）
 │   └── ResizeEdges           端のドラッグで大きさを変える計算（テストあり）
 ├── Upload/         アップロードして共有リンク（いまは Gyazo。ほかの保存先を足せるように分けてある）

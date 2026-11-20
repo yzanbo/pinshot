@@ -3,7 +3,6 @@ import SwiftUI
 /// アイコンの枠と ▾ の枠を並べたボタン。アイコンを押すと primaryAction（なければメニュー）、▾ でメニュー。
 /// アイコンは固定の幅の枠の真ん中に置くので、アイコンが変わっても ▾ の位置は変わらない
 private struct SplitMenuButton<Icon: View>: View {
-    @ObservedObject var state: EditorState
     let hint: String
     var isSelected = false
     var primaryAction: (@MainActor () -> Void)?
@@ -41,7 +40,8 @@ private struct SplitMenuButton<Icon: View>: View {
             RoundedRectangle(cornerRadius: ToolbarMetrics.cellCorner)
                 .fill(isSelected ? ToolbarMetrics.selectedFill : .clear)
         )
-        .hint(hint, state: state)
+        .hoverHint(hint)
+        .hoverRole()
     }
 }
 
@@ -58,7 +58,6 @@ struct ToolGroupButton: View {
             ToolButton(state: state, tool: group.tools[0])
         } else {
             SplitMenuButton(
-                state: state,
                 hint: "\(group.label)：押すと「\(current.labelWithShortcut)」、▾ で \(group.tools.map(\.labelWithShortcut).joined(separator: "・")) から選ぶ",
                 isSelected: isSelected,
                 primaryAction: { state.tool = current },
@@ -86,7 +85,6 @@ struct ColorMenuButton: View {
 
     var body: some View {
         SplitMenuButton(
-            state: state,
             hint: "色：\(state.color.name)（押すと色の一覧。1〜6 キーでも選べる）",
             menu: {
                 var entries: [MenuEntry] = (RGBAColor.palette + state.customColors).map { color in
@@ -113,7 +111,6 @@ struct BackdropButton: View {
 
     var body: some View {
         ToolbarIconButton(
-            state: state,
             symbol: "photo.artframe",
             hint: "背景：押すと、下の行で背景を付ける・外す、色・余白・角の丸み・影を選べる（書き出しも同じ見た目）",
             isSelected: state.showsBackdropOptions
@@ -150,7 +147,7 @@ struct PresetMenuButton: View {
     @ObservedObject var store = StylePresetStore.shared
 
     var body: some View {
-        ToolbarIconButton(state: state, symbol: "paintpalette", hint: "スタイル：保存した色・太さ・オプションを名前で呼び出す・保存する") {
+        ToolbarIconButton(symbol: "paintpalette", hint: "スタイル：保存した色・太さ・オプションを名前で呼び出す・保存する") {
             PopupMenu.popUp(entries)
         }
     }

@@ -74,6 +74,10 @@ final class HoverHints {
     private var task: Task<Void, Never>?
     /// 出している（出そうとしている）説明
     private var current: String?
+    /// 出さない間（つまみで画像やツールバーを動かしている間）。true にしたら、出している説明も消す
+    var isSuppressed = false {
+        didSet { if isSuppressed { hide() } }
+    }
     private var clickMonitor: Any?
 
     private init() {
@@ -86,6 +90,7 @@ final class HoverHints {
     /// text を出す。avoiding は出す直前に聞く、重ねたくない窓の位置（その上に出し、上に入らなければ下）。nil なら出さない。
     /// keepOut も出す直前に聞く、決して重ねない四角（録画している範囲など。重ならずに出せなければ出さない）
     func show(_ text: String, avoiding: @escaping @MainActor () -> NSRect?, keepOut: (@MainActor () -> NSRect?)? = nil) {
+        guard !isSuppressed else { return }
         task?.cancel()
         current = text
         if bubble.isShown {
@@ -95,7 +100,7 @@ final class HoverHints {
         }
         task = Task { @MainActor [weak self] in
             try? await Task.sleep(for: .milliseconds(450))
-            guard let self, !Task.isCancelled, self.current == text, let rect = avoiding() else { return }
+            guard let self, !Task.isCancelled, !self.isSuppressed, self.current == text, let rect = avoiding() else { return }
             self.bubble.show(text, at: NSEvent.mouseLocation, avoiding: rect, keepOut: keepOut?())
         }
     }
@@ -112,8 +117,8 @@ final class HoverHints {
         bubble.hide()
     }
 
-    /// マウスの真下にある自分の窓（ボタンのあるバーなど）に重ならないよう、text を出す。
-    /// 編集ツールバーの表示メニューの「ボタンに乗せたら説明を出す」をオフにしていたら出さない
+    /// マウスの真下にある自分の窓（ボタンのあるバー・編集ツールバーなど）に重ならないよう、text を出す。
+    /// 編集ツールバーの表示メニューの「ボタンに乗せたら説明を出す」をオフにしていたら出さない（すべてのバーで同じ）
     func showOverWindowUnderMouse(_ text: String, keepOut: (@MainActor () -> NSRect?)? = nil) {
         guard EditorState.savedShowsHints else { return }
         show(text, avoiding: {

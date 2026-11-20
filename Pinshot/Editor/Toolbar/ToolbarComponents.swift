@@ -210,7 +210,6 @@ struct SegmentedGroup<Content: View>: View {
 
 /// セグメントの 1 つ（選んでいるものだけ色を付ける）
 struct SegmentButton<Label: View>: View {
-    @ObservedObject var state: EditorState
     let hint: String
     let isSelected: Bool
     let action: @MainActor () -> Void
@@ -233,21 +232,21 @@ struct SegmentButton<Label: View>: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .hint(hint, state: state)
+        .hoverHint(hint)
+        .hoverRole()
     }
 }
 
 extension SegmentButton where Label == SegmentTextLabel {
     /// 文字（とアイコン）のセグメント
     init(
-        state: EditorState,
         symbol: String? = nil,
         text: String,
         hint: String,
         isSelected: Bool,
         action: @escaping @MainActor () -> Void
     ) {
-        self.init(state: state, hint: hint, isSelected: isSelected, action: action) {
+        self.init(hint: hint, isSelected: isSelected, action: action) {
             SegmentTextLabel(symbol: symbol, text: text)
         }
     }
@@ -289,7 +288,6 @@ private struct ToolbarCell<Content: View>: View {
 }
 
 struct ToolbarIconButton: View {
-    @ObservedObject var state: EditorState
     let symbol: String
     let hint: String
     var isSelected = false
@@ -309,7 +307,8 @@ struct ToolbarIconButton: View {
         .buttonStyle(.plain)
         .disabled(!isEnabled)
         .opacity(isEnabled ? 1 : 0.35)
-        .hint(hint, state: state, role: isEnabled ? .pressable : .inactive)
+        .hoverHint(hint)
+        .hoverRole(isEnabled ? .pressable : .inactive)
     }
 }
 
@@ -319,7 +318,6 @@ struct ToolButton: View {
 
     var body: some View {
         ToolbarIconButton(
-            state: state,
             symbol: tool.symbolName,
             hint: "\(tool.labelWithShortcut)：\(tool.usage)",
             isSelected: state.tool == tool
@@ -329,19 +327,3 @@ struct ToolButton: View {
     }
 }
 
-// MARK: - 説明とカーソル
-
-extension View {
-    /// マウスを乗せている間、説明のポップアップの中身を差し替え、部品の種類（role）に合ったカーソルにする
-    func hint(_ text: String, state: EditorState, role: HoverRole = .pressable) -> some View {
-        self
-            .onHover { hovering in
-                if hovering {
-                    state.hoverHint = text
-                } else if state.hoverHint == text {
-                    state.hoverHint = nil
-                }
-            }
-            .hoverRole(role)
-    }
-}

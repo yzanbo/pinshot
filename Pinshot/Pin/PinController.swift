@@ -109,11 +109,6 @@ final class PinController: NSObject, NSWindowDelegate {
         .sink { [weak self] aspects in self?.canvas.applyStyleToSelection(aspects: aspects) }
         .store(in: &cancellables)
 
-        // ボタンにマウスを乗せたら、説明をポップアップで出す
-        state.$hoverHint
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] hint in self?.toolbar.updateHint(hint) }
-            .store(in: &cancellables)
         // ツールや選択が変わったら、前の説明は消す（消えたボタンの説明が残らないように）。
         // 2 行目も、背景のオプションからツールのオプションに戻す
         Publishers.Merge3(
@@ -123,7 +118,7 @@ final class PinController: NSObject, NSWindowDelegate {
         )
         .receive(on: DispatchQueue.main)
         .sink { [weak self] _ in
-            self?.state.hoverHint = nil
+            HoverHints.shared.hide()
             if self?.state.showsBackdropOptions == true {
                 self?.state.showsBackdropOptions = false
             }

@@ -118,8 +118,8 @@ struct EditorToolbar: View {
             ToolbarDivider()
 
             ToolbarSection {
-                ToolbarIconButton(state: state, symbol: "arrow.uturn.backward", hint: "元に戻す（⌘Z）", isEnabled: state.canUndo, action: actions.undo)
-                ToolbarIconButton(state: state, symbol: "arrow.uturn.forward", hint: "やり直す（⌘⇧Z）", isEnabled: state.canRedo, action: actions.redo)
+                ToolbarIconButton(symbol: "arrow.uturn.backward", hint: "元に戻す（⌘Z）", isEnabled: state.canUndo, action: actions.undo)
+                ToolbarIconButton(symbol: "arrow.uturn.forward", hint: "やり直す（⌘⇧Z）", isEnabled: state.canRedo, action: actions.redo)
             }
 
             ToolbarDivider()
@@ -131,7 +131,7 @@ struct EditorToolbar: View {
 
     /// ツールバーの表示（画像から切り離す・乗せたときの説明を出す）
     private var layoutMenu: some View {
-        ToolbarIconButton(state: state, symbol: "slider.horizontal.3", hint: "ツールバーの表示（切り離し・説明）") {
+        ToolbarIconButton(symbol: "slider.horizontal.3", hint: "ツールバーの表示（切り離し・説明）") {
             PopupMenu.popUp([
                 .item(title: "画像から切り離す（好きな場所に置ける）", isChecked: state.isDetached) { state.isDetached.toggle() },
                 .separator,
