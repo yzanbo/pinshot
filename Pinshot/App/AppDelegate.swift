@@ -31,6 +31,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusMenu.install()
         registerHotKeys()
 
+        // 見た目（システム・ライト・ダーク）をアプリ全体に設定し、変えたらすぐ反映する
+        settings.$appearance
+            .sink { mode in NSApp.appearance = mode.nsAppearance }
+            .store(in: &cancellables)
+
         // ショートカットを変えたら登録し直す。記録している間はすべて止めておく
         settings.$shortcuts
             .dropFirst()

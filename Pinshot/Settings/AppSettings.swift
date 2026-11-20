@@ -33,6 +33,32 @@ enum SaveMode: String, CaseIterable, Identifiable {
     }
 }
 
+/// 画面の見た目（ツールバー・メニュー・設定などのライト / ダーク）
+enum AppearanceMode: String, CaseIterable, Identifiable {
+    case system
+    case light
+    case dark
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .system: "システム"
+        case .light: "ライト"
+        case .dark: "ダーク"
+        }
+    }
+
+    /// アプリ全体に設定する見た目（nil ならシステムの設定に合わせる）
+    var nsAppearance: NSAppearance? {
+        switch self {
+        case .system: nil
+        case .light: NSAppearance(named: .aqua)
+        case .dark: NSAppearance(named: .darkAqua)
+        }
+    }
+}
+
 /// アプリの設定。変えるとすぐ UserDefaults に保存する
 @MainActor
 final class AppSettings: ObservableObject {
@@ -51,6 +77,7 @@ final class AppSettings: ObservableObject {
         static let alwaysOnTop = "settings.alwaysOnTop"
         static let detailedCaptureUI = "settings.detailedCaptureUI"
         static let exportDecoration = "settings.exportDecoration"
+        static let appearance = "settings.appearance"
     }
 
     private let defaults = UserDefaults.standard
@@ -94,6 +121,11 @@ final class AppSettings: ObservableObject {
             if let shortcut = action.defaultShortcut { result[action] = shortcut }
         }
         return result
+    }
+
+    /// 画面の見た目（システム・ライト・ダーク）。変えるとすぐアプリ全体に反映する（AppDelegate）
+    @Published var appearance: AppearanceMode {
+        didSet { defaults.set(appearance.rawValue, forKey: Key.appearance) }
     }
 
     /// 撮ったらすぐクリップボードにもコピーする
@@ -170,6 +202,7 @@ final class AppSettings: ObservableObject {
         } else {
             shortcuts = Self.defaultShortcuts
         }
+        appearance = defaults.string(forKey: Key.appearance).flatMap(AppearanceMode.init(rawValue:)) ?? .system
         copyAfterCapture = defaults.object(forKey: Key.copyAfterCapture) as? Bool ?? false
         showsQuickActions = defaults.object(forKey: Key.showsQuickActions) as? Bool ?? true
         alwaysOnTop = defaults.object(forKey: Key.alwaysOnTop) as? Bool ?? true
