@@ -32,8 +32,7 @@ enum ScreenCapturer {
     static func capture(screen: NSScreen, content: SCShareableContent, excluding windowIDs: Set<CGWindowID> = []) async throws -> ScreenShot? {
         guard let display = content.display(for: screen) else { return nil }
 
-        let excluded = content.windows.filter { windowIDs.contains($0.windowID) }
-        let filter = SCContentFilter(display: display, excludingWindows: excluded)
+        let filter = displayFilter(display, content: content, excluding: windowIDs)
         let config = SCStreamConfiguration()
         let scale = screen.backingScaleFactor
         config.width = Int(screen.frame.width * scale)
@@ -43,6 +42,12 @@ enum ScreenCapturer {
 
         let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
         return ScreenShot(screen: screen, image: image)
+    }
+
+    /// display の画面を写すフィルター（windowIDs のウィンドウは写さない）。
+    /// 画面を撮るときと録画するときで、写すもの・写さないものの決まりをそろえるため、フィルターはここで作る
+    static func displayFilter(_ display: SCDisplay, content: SCShareableContent, excluding windowIDs: Set<CGWindowID>) -> SCContentFilter {
+        SCContentFilter(display: display, excludingWindows: content.windows.filter { windowIDs.contains($0.windowID) })
     }
 
     /// ウィンドウだけを撮る（ほかのウィンドウに隠れていても、そのウィンドウの中身が撮れる）。

@@ -50,7 +50,7 @@ final class RecordingController {
                 let content = try await ScreenCapturer.shareableContent()
                 guard let display = content.display(for: screen) else { throw ScreenRecorder.RecorderError.cannotWrite }
                 let mine = Set([border, panel].compactMap { $0.map { CGWindowID($0.windowNumber) } })
-                let filter = SCContentFilter(display: display, excludingWindows: content.windows.filter { mine.contains($0.windowID) })
+                let filter = ScreenCapturer.displayFilter(display, content: content, excluding: mine)
                 let size = RecordingRules.pixelSize(points: rect.size, scale: screen.backingScaleFactor)
                 let recorder = try ScreenRecorder(
                     filter: filter,
