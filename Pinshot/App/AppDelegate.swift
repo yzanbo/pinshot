@@ -55,7 +55,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // 初めての起動では使い方を案内する
         if !UserDefaults.standard.bool(forKey: Self.didShowWelcomeKey) {
             UserDefaults.standard.set(true, forKey: Self.didShowWelcomeKey)
-            WelcomeWindowController.shared.show()
+            WelcomeWindowController.shared.show(firstLaunch: true)
         }
     }
 
