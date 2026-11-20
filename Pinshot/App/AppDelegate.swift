@@ -25,6 +25,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // 使い方の画面などに出すアイコンを、アプリの中のアイコンにする（AppSupport.appIcon）
+        if let icon = AppSupport.appIcon {
+            NSApp.applicationIconImage = icon
+        }
         AppSupport.installMainMenu()
         AppSupport.allowCursorChangesInBackground()
         OpenMenus.startObserving()

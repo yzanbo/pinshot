@@ -3,6 +3,10 @@ import AppKit
 /// アプリの裏方の設定
 @MainActor
 enum AppSupport {
+    /// アプリのアイコン。アプリの中のアイコンのファイル（AppIcon.icns）を直接読み込む。
+    /// macOS が覚えているアイコンは、アイコンを変える前の古いもの・仮のもののことがあるため
+    static let appIcon: NSImage? = Bundle.main.image(forResource: "AppIcon")
+
     /// 文字の入力欄で ⌘C・⌘V・⌘A・⌘Z が効くよう、編集メニューを持つメインメニューを用意する
     /// （メニューバーに常駐するアプリはメニューが出ないが、キーの組み合わせはメニューを通して届く）
     static func installMainMenu() {

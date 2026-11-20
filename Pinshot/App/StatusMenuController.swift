@@ -205,7 +205,12 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
 
     @objc private func openAbout() {
         NSApp.activate()
-        NSApp.orderFrontStandardAboutPanel(nil)
+        // 「Pinshot について」は、渡さないと macOS が覚えているアイコン（古いもの・仮のもの）を出すので、はっきり渡す
+        var options: [NSApplication.AboutPanelOptionKey: Any] = [:]
+        if let icon = AppSupport.appIcon {
+            options[.applicationIcon] = icon
+        }
+        NSApp.orderFrontStandardAboutPanel(options: options)
     }
 
     // MARK: - ショートカットの表示
