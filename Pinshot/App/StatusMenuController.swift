@@ -23,7 +23,6 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
     /// 画面収録の許可がないときだけ出す項目（知らせと区切り線）
     private var permissionItems: [NSMenuItem] = []
     private var pinsHeaderItem: NSMenuItem?
-    private var clickThroughItem: NSMenuItem?
     /// 「撮った画像の履歴」の見出し（枚数を出す）
     private var historyHeaderItem: NSMenuItem?
     /// 録画している・上げている途中か（メニューバーのアイコンを変える）
@@ -119,10 +118,6 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
         for action in ShortcutAction.pinActions {
             addActionItem(action, to: menu)
         }
-        // クリックを透過している画像があるときだけ出す
-        let clickThrough = makeItem("クリック透過をすべて解除", symbol: "cursorarrow.rays", action: #selector(releaseClickThrough))
-        menu.addItem(clickThrough)
-        clickThroughItem = clickThrough
 
         // アプリ
         menu.addItem(.separator())
@@ -185,14 +180,13 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
         }
     }
 
-    /// メニューを開くたびに、いまの状態（許可・浮かせている画像の数・クリック透過）に合わせる
+    /// メニューを開くたびに、いまの状態（許可・浮かせている画像の数・履歴の数）に合わせる
     private func updateStatusMenu() {
         let needsPermission = !ScreenPermission.isGranted
         permissionItems.forEach { $0.isHidden = !needsPermission }
 
         let pins = PinManager.shared
         pinsHeaderItem?.title = pins.pinCount > 0 ? "浮かせた画像（\(pins.pinCount) 枚）" : "浮かせた画像"
-        clickThroughItem?.isHidden = !pins.hasClickThroughPins
         let historyCount = CaptureHistory.shared.entries.count
         historyHeaderItem?.title = historyCount > 0 ? "撮った画像の履歴（\(historyCount) 枚）" : "撮った画像の履歴"
         let textCount = TextHistory.shared.entries.count
@@ -258,8 +252,6 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
         switch menuItem.action {
         case #selector(captureWithTimer(_:)), #selector(captureListedWindow(_:)):
             return !RecordingController.shared.isRecording
-        case #selector(releaseClickThrough):
-            return PinManager.shared.hasClickThroughPins
         case #selector(performActionItem(_:)):
             guard let action = action(of: menuItem) else { return true }
             // 録画している間は、録画に写ってしまうので撮らない（「録画を止める」は押せる）
@@ -305,10 +297,6 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
     /// メニューの項目に結びつけた操作
     private func action(of item: NSMenuItem) -> ShortcutAction? {
         (item.representedObject as? String).flatMap(ShortcutAction.init(rawValue:))
-    }
-
-    @objc private func releaseClickThrough() {
-        PinManager.shared.releaseClickThrough()
     }
 
     @objc private func openSettings() {

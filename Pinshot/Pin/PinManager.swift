@@ -34,7 +34,6 @@ final class PinManager {
         }
     }
 
-    var hasClickThroughPins: Bool { pins.contains { $0.isClickThrough } }
     var canRestore: Bool { !closedPins.isEmpty }
     var hasPins: Bool { !pins.isEmpty }
     /// 浮かせている画像の数
@@ -178,14 +177,6 @@ final class PinManager {
     /// すべての画像をほかのウィンドウより前に出す（最前面にしていない画像が隠れたとき用）
     func bringAllToFront() {
         pins.forEach { $0.bringToFront() }
-    }
-
-    /// クリック透過をすべてやめる
-    func releaseClickThrough() {
-        for pin in pins where pin.isClickThrough {
-            pin.setClickThrough(false)
-            pin.setOpacity(AppSettings.shared.defaultOpacity)
-        }
     }
 
     /// 編集中の画像があれば、編集を終える（書きかけの文字も確定する）。履歴のウィンドウを開くときに使う

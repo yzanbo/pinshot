@@ -242,16 +242,15 @@ final class PinCanvasView: NSView, NSTextFieldDelegate, NSDraggingSource {
         case .hidden: false
         }
         let editing = state.isEditing
-        let clickThrough = controller?.isClickThrough ?? false
         // 画像の外の部品は、マウスを乗せたときだけ出す設定では、画像から部品へマウスを動かす間に消えないよう、少し待って隠す
         let hideDelay: TimeInterval = settings.closeButtonMode == .hover ? 0.6 : 0
 
         // 閉じるボタン（×）：画像を隠さないよう、編集中かどうかに関係なく、画像の左上の外側に出す
-        updateOutsideClose(visible: visible && !clickThrough, hideDelay: hideDelay)
+        updateOutsideClose(visible: visible, hideDelay: hideDelay)
 
         // 操作バー：画像を隠さないよう、どんな大きさの画像でも画像の外（下。下に余白がなければ画面のいちばん下）に出す
         let showsBar = settings.showsQuickActions && visible && !editing
-        updateOutsideQuickBar(visible: showsBar && !clickThrough, hideDelay: hideDelay)
+        updateOutsideQuickBar(visible: showsBar, hideDelay: hideDelay)
         updateSelectionBar()
         needsDisplay = true
     }

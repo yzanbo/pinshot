@@ -53,9 +53,6 @@ extension PinController {
                 guard let self else { return }
                 self.setOnTop(!self.isOnTop)
             },
-            .item(title: "クリックを透過する（下のアプリを操作できる）", image: symbol("cursorarrow.rays")) { [weak self] in
-                self?.setClickThrough(true)
-            },
             // 操作バーを出さないときは、ダブルクリックで編集モードに入るまで、画像の下に何も出さない（すべての画像に効く）
             .item(title: "画像の下に操作バーを出す", image: symbol("rectangle.bottomthird.inset.filled"), isChecked: AppSettings.shared.showsQuickActions) {
                 AppSettings.shared.showsQuickActions.toggle()

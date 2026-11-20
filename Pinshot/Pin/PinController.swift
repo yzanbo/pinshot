@@ -23,16 +23,6 @@ final class PinController: NSObject, NSWindowDelegate {
     }
     private var cancellables = Set<AnyCancellable>()
 
-    /// クリックを下のアプリに通しているか
-    private(set) var isClickThrough = false
-    /// クリック透過にする前の不透明度（透過にすると薄くするので、残すときはこの値を使う）
-    private var opacityBeforeClickThrough: CGFloat?
-
-    /// 残すときの不透明度（クリック透過は戻さないので、透過にする前の不透明度）
-    var restorableOpacity: CGFloat {
-        isClickThrough ? (opacityBeforeClickThrough ?? panel.alphaValue) : panel.alphaValue
-    }
-
     /// この画像だけ最前面の設定を変えているとき（nil なら設定に従う）
     private var onTopOverride: Bool?
     /// どの履歴の画像か（履歴から同じ画像を浮かせたときに、増やさず前に出すため）
@@ -47,7 +37,7 @@ final class PinController: NSObject, NSWindowDelegate {
             imageSize: canvas.imageSize,
             frame: contentScreenFrame,
             zoom: zoom,
-            opacity: restorableOpacity,
+            opacity: panel.alphaValue,
             snapshot: canvas.snapshot,
             backdrop: state.savedBackdrop,
             onTopOverride: onTopOverride,
@@ -463,23 +453,5 @@ final class PinController: NSObject, NSWindowDelegate {
 
     func adjustOpacity(by delta: CGFloat) {
         setOpacity(panel.alphaValue + delta)
-    }
-
-    /// クリックを下のアプリに通す（なぞって描くときなどに）。戻すときはメニューバーから
-    func setClickThrough(_ enabled: Bool) {
-        if enabled, !isClickThrough {
-            opacityBeforeClickThrough = panel.alphaValue
-        }
-        isClickThrough = enabled
-        if !enabled { opacityBeforeClickThrough = nil }
-        if enabled {
-            setEditing(false)
-            if panel.alphaValue > 0.7 {
-                setOpacity(0.6)
-            }
-            canvas.showHUD("クリック透過中（メニューバーから解除）")
-        }
-        panel.ignoresMouseEvents = enabled
-        canvas.updateChrome()
     }
 }
