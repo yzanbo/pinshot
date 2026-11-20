@@ -417,6 +417,10 @@ struct EditorToolbar: View {
             opacitySection
 
         case .text:
+            // 次に入力したらどう見えるかの見本（いまの設定で描く）
+            OptionSection(label: "見本") {
+                TextStylePreview(style: state.textStyle, color: state.drawColor, fontSize: state.fontSize)
+            }
             OptionSection(label: "大きさ") {
                 fontSizeControl
             }
@@ -440,6 +444,34 @@ struct EditorToolbar: View {
                         ForEach(OutlineWeight.allCases) { weight in
                             SegmentButton(state: state, text: weight.label, hint: "文字の縁取りの太さ：\(weight.label)", isSelected: state.textStyle.outline == weight) {
                                 state.textStyle.outline = weight
+                            }
+                        }
+                    }
+                }
+            }
+            OptionSection(label: "マーカー") {
+                SegmentedGroup {
+                    SegmentButton(state: state, text: "なし", hint: "文字のマーカー：なし", isSelected: state.textStyle.marker == nil) {
+                        state.textStyle.marker = nil
+                    }
+                    ForEach(TextMarkKind.allCases) { kind in
+                        SegmentButton(state: state, symbol: kind.symbolName, text: kind.label, hint: "文字のマーカー：\(kind.label)（文字マーカーと同じ描き方。縁取りと組み合わせられる）", isSelected: state.textStyle.marker == kind) {
+                            state.textStyle.marker = kind
+                        }
+                    }
+                }
+            }
+            if state.textStyle.marker != nil {
+                OptionSection(label: "マーカーの色") {
+                    SegmentedGroup {
+                        ForEach(RGBAColor.palette, id: \.self) { color in
+                            SegmentButton(state: state, hint: "マーカーの色", isSelected: state.textStyle.resolvedMarkerColor == color) {
+                                state.textStyle.markerColor = color
+                            } label: {
+                                Circle()
+                                    .fill(Color(nsColor: color.nsColor))
+                                    .frame(width: 12, height: 12)
+                                    .overlay(Circle().strokeBorder(Color.primary.opacity(0.25)))
                             }
                         }
                     }

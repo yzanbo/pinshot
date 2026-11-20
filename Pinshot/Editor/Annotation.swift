@@ -154,6 +154,41 @@ extension Annotation {
         runs.map(\.fontSize).max() ?? FontSizes.default
     }
 
+    /// 文字に付けるマーカーの線の太さ（文字の大きさに合わせる）
+    static func textMarkerLineWidth(fontSize: CGFloat) -> CGFloat {
+        max(1.5, fontSize * 0.07)
+    }
+
+    /// 文字の行ごとの、文字の線がある範囲（画像のポイント座標）。文字に付けるマーカーを引く所。
+    /// 行の高さ（行間を含む）ではなく、ベースラインから上に文字の大きさの 8 割・下に 1 割にする
+    /// （日本語の文字は、行の範囲の下側に余白があり、そのままだと線が下にずれるため）
+    static func textLineRects(_ runs: [TextRun], origin: CGPoint, width: CGFloat?, family: String?) -> [CGRect] {
+        let text = attributedText(runs, color: .black, family: family)
+        guard text.length > 0 else { return [] }
+        // 描くとき（NSString の折り返し）と同じ所で行が分かれるよう、行の左右の余白なし・フォントの行間を使う
+        let storage = NSTextStorage(attributedString: text)
+        let layout = NSLayoutManager()
+        layout.usesFontLeading = true
+        let container = NSTextContainer(size: CGSize(width: width ?? .greatestFiniteMagnitude, height: .greatestFiniteMagnitude))
+        container.lineFragmentPadding = 0
+        layout.addTextContainer(container)
+        storage.addLayoutManager(layout)
+        layout.ensureLayout(for: container)
+        var rects: [CGRect] = []
+        layout.enumerateLineFragments(forGlyphRange: layout.glyphRange(for: container)) { lineRect, usedRect, _, glyphRange, _ in
+            guard usedRect.width > 0.5 else { return }
+            // 行の中でいちばん大きい文字（1 つの文字の中で、部分ごとに大きさが違うことがあるため）
+            var size: CGFloat = 0
+            storage.enumerateAttribute(.font, in: layout.characterRange(forGlyphRange: glyphRange, actualGlyphRange: nil)) { value, _, _ in
+                size = max(size, (value as? NSFont)?.pointSize ?? 0)
+            }
+            guard size > 0 else { return }
+            let baseline = lineRect.minY + layout.location(forGlyphAt: glyphRange.location).y
+            rects.append(CGRect(x: origin.x + usedRect.minX, y: origin.y + baseline - size * 0.8, width: usedRect.width, height: size * 0.9))
+        }
+        return rects
+    }
+
     /// ラベルの余白
     static func labelPadding(fontSize: CGFloat) -> CGSize {
         CGSize(width: max(4, fontSize * 0.35), height: max(2, fontSize * 0.15))
@@ -174,15 +209,25 @@ extension Annotation {
         case .text(let runs, let origin, let style, let width):
             let rect = CGRect(origin: origin, size: Annotation.textSize(runs, width: width, family: style.fontFamily))
             let maxSize = Annotation.maxFontSize(runs)
+            var box: CGRect
             switch style.decoration {
-            case .none: return rect
+            case .none:
+                box = rect
             case .whiteOutline, .blackOutline:
                 let pad = maxSize * style.outline.overflow
-                return rect.insetBy(dx: -pad, dy: -pad)
+                box = rect.insetBy(dx: -pad, dy: -pad)
             case .label:
                 let padding = Annotation.labelPadding(fontSize: maxSize)
-                return rect.insetBy(dx: -padding.width, dy: -padding.height)
+                box = rect.insetBy(dx: -padding.width, dy: -padding.height)
             }
+            // マーカー（囲み・下線など）が文字の外にはみ出すぶんも含める
+            if let marker = style.marker {
+                let lineWidth = Annotation.textMarkerLineWidth(fontSize: maxSize)
+                for line in Annotation.textLineRects(runs, origin: origin, width: width, family: style.fontFamily) {
+                    box = box.union(TextMarkGeometry.outer(line, style: TextMarkStyle(kind: marker), lineWidth: lineWidth))
+                }
+            }
+            return box
         case .counter(_, let center, let radius, let style):
             let r = style.design == .plain ? radius * 1.2 : radius
             return CGRect(x: center.x - r, y: center.y - r, width: r * 2, height: r * 2)

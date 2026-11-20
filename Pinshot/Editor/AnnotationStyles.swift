@@ -324,6 +324,14 @@ struct TextStyle: Codable, Equatable {
     var outline: OutlineWeight = .medium
     /// フォント（フォントのファミリー名）。nil なら標準（システムのフォント）
     var fontFamily: String?
+    /// 文字に付けるマーカー（蛍光ペン・下線・取り消し線・囲み。文字マーカーと同じ描き方）。nil ならなし。
+    /// 縁取りとは別のもので、組み合わせられる（足す前に残した文字は nil として読む）
+    var marker: TextMarkKind?
+    /// マーカーの色（nil なら黄色）
+    var markerColor: RGBAColor?
+
+    /// マーカーの色（決めていなければ黄色）
+    var resolvedMarkerColor: RGBAColor { markerColor ?? .yellow }
 }
 
 /// 文字の一部分（1 つの文字の中で、部分ごとに大きさを変えられる）

@@ -314,6 +314,10 @@ enum AnnotationRenderer {
         let maxSize = Annotation.maxFontSize(runs)
         var fillColor = color.nsColor
         let decoration = style.decoration
+        // 文字に付けるマーカー（蛍光ペンは文字の後ろ、ほかは文字の上に描く）
+        let markerLines = style.marker == nil ? [] : Annotation.textLineRects(runs, origin: origin, width: width, family: style.fontFamily)
+        drawTextMarker(markerLines, style: style, textColor: color, fontSize: maxSize, behindText: true, in: ctx)
+        defer { drawTextMarker(markerLines, style: style, textColor: color, fontSize: maxSize, behindText: false, in: ctx) }
 
         switch decoration {
         case .none:
@@ -342,6 +346,19 @@ enum AnnotationRenderer {
         }
 
         draw(Annotation.attributedText(runs, color: fillColor, family: style.fontFamily), at: origin, width: width)
+    }
+
+    /// 文字に付けるマーカーを、文字の行ごとに描く（文字マーカーと同じ描き方。色は文字の不透明度に合わせる）。
+    /// behindText: 文字の後ろに描くもの（蛍光ペン）か、文字の上に描くもの（下線・取り消し線・囲み）か
+    private static func drawTextMarker(_ lines: [CGRect], style: TextStyle, textColor: RGBAColor, fontSize: CGFloat, behindText: Bool, in ctx: CGContext) {
+        guard let kind = style.marker, (kind == .highlight) == behindText else { return }
+        drawTextMark(
+            lines,
+            style: TextMarkStyle(kind: kind),
+            color: style.resolvedMarkerColor.withAlpha(textColor.a),
+            lineWidth: Annotation.textMarkerLineWidth(fontSize: fontSize),
+            in: ctx
+        )
     }
 
     /// 文字を描く。width があれば、その幅で折り返す（入力欄と同じ所で行が分かれる）

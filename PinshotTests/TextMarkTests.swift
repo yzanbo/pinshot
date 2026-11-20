@@ -173,3 +173,42 @@ final class TextMarkStyleTests: XCTestCase {
         XCTAssertEqual(roundTrip, TextMarkStyle(kind: .underline, padding: .large, linePosition: .high))
     }
 }
+
+/// 文字の書き込みに付けるマーカー
+final class TextMarkerOnTextTests: XCTestCase {
+    func testLineRectsFollowLinesAndBaseline() {
+        let runs = [TextRun(text: "一行目\n二行目", fontSize: 20)]
+        let rects = Annotation.textLineRects(runs, origin: CGPoint(x: 10, y: 50), width: nil, family: nil)
+        XCTAssertEqual(rects.count, 2)
+        // 高さは文字の大きさの 9 割。2 行目は 1 行目より下
+        XCTAssertEqual(rects[0].height, 18, accuracy: 0.01)
+        XCTAssertGreaterThan(rects[1].minY, rects[0].maxY)
+        XCTAssertEqual(rects[0].minX, 10, accuracy: 0.5)
+    }
+
+    func testLineRectsWrapLikeTheTextField() {
+        // 幅で折り返すと、行が増える（入力欄・書き込みと同じ所で分かれる）
+        let runs = [TextRun(text: String(repeating: "あ", count: 30), fontSize: 20)]
+        let rects = Annotation.textLineRects(runs, origin: .zero, width: 200, family: nil)
+        XCTAssertGreaterThan(rects.count, 1)
+        XCTAssertTrue(rects.allSatisfy { $0.width <= 200.5 })
+    }
+
+    func testBoundsIncludeMarker() {
+        let runs = [TextRun(text: "見本", fontSize: 30)]
+        var style = TextStyle()
+        let plain = Annotation(shape: .text(runs: runs, origin: .zero, style: style, width: nil), color: .black, lineWidth: 0).bounds
+        style.marker = .box
+        let boxed = Annotation(shape: .text(runs: runs, origin: .zero, style: style, width: nil), color: .black, lineWidth: 0).bounds
+        XCTAssertTrue(boxed.contains(plain))
+        XCTAssertGreaterThan(boxed.width, plain.width)
+    }
+
+    func testOldTextStyleWithoutMarkerStillDecodes() throws {
+        // マーカーを足す前に残した文字の設定も読める（マーカーなし・色は黄色）
+        let decoded = try JSONDecoder().decode(TextStyle.self, from: Data(#"{"decoration":"label","outline":1}"#.utf8))
+        XCTAssertNil(decoded.marker)
+        XCTAssertEqual(decoded.decoration, .label)
+        XCTAssertEqual(decoded.resolvedMarkerColor, .yellow)
+    }
+}
