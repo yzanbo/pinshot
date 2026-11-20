@@ -9,6 +9,7 @@ enum ShortcutAction: String, CaseIterable, Identifiable {
     case captureScroll
     case captureTimer
     case pinClipboard
+    case openHistory
     case restoreClosed
     case bringAllToFront
     case closeAll
@@ -23,6 +24,7 @@ enum ShortcutAction: String, CaseIterable, Identifiable {
         case .captureScroll: "スクロールキャプチャ"
         case .captureTimer: "タイマーでキャプチャ（5 秒）"
         case .pinClipboard: "クリップボードの画像を浮かせる"
+        case .openHistory: "撮った画像の履歴…"
         case .restoreClosed: "閉じた画像を戻す"
         case .bringAllToFront: "すべての画像を前に出す"
         case .closeAll: "すべての画像を閉じる"
@@ -32,6 +34,7 @@ enum ShortcutAction: String, CaseIterable, Identifiable {
     /// メニュー・設定で、まとめて見せる組
     static let captureActions: [ShortcutAction] = [.captureRegion, .captureWindow, .captureScreen, .captureScroll, .captureTimer]
     static let pinActions: [ShortcutAction] = [.pinClipboard, .restoreClosed, .bringAllToFront, .closeAll]
+    static let historyActions: [ShortcutAction] = [.openHistory]
 
     /// メニュー・設定に出すアイコン（キャプチャの種類は、範囲選択の画面のモードバーと同じもの）
     var symbolName: String {
@@ -42,6 +45,7 @@ enum ShortcutAction: String, CaseIterable, Identifiable {
         case .captureScroll: CaptureMode.scroll.symbolName
         case .captureTimer: "timer"
         case .pinClipboard: "doc.on.clipboard"
+        case .openHistory: "clock.arrow.circlepath"
         case .restoreClosed: "arrow.uturn.backward"
         case .bringAllToFront: "square.3.layers.3d.top.filled"
         case .closeAll: "xmark.circle"

@@ -64,6 +64,7 @@ targets:
       - path: Pinshot/Screenshot/CaptureTypes.swift
       - path: Pinshot/Support/GraphicsHelpers.swift
       - path: Pinshot/Support/ScreenGeometry.swift
+      - path: Pinshot/History/CaptureHistoryEntry.swift
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES

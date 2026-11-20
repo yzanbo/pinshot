@@ -11,10 +11,13 @@ struct ShortcutSettingsView: View {
             Section("キャプチャ") {
                 rows(for: ShortcutAction.captureActions)
             }
-            Section {
+            Section("浮かせた画像") {
                 rows(for: ShortcutAction.pinActions)
+            }
+            Section {
+                rows(for: ShortcutAction.historyActions)
             } header: {
-                Text("浮かせた画像")
+                Text("撮った画像の履歴")
             } footer: {
                 HStack(alignment: .firstTextBaseline) {
                     SettingsNote("ボタンを押してからキーを押すと割り当てられます（⌘・⌥・⌃ のどれかと一緒に）。どのアプリを使っていても効きます。")

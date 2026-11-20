@@ -22,6 +22,12 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
     private var permissionItems: [NSMenuItem] = []
     private var pinsHeaderItem: NSMenuItem?
     private var clickThroughItem: NSMenuItem?
+    /// 「撮った画像の履歴…」の項目（この上に、最近撮った画像を並べる）と、並べた項目
+    private var historyItem: NSMenuItem?
+    private var historyHeaderItem: NSMenuItem?
+    private var recentHistoryItems: [NSMenuItem] = []
+    /// メニューに並べる、最近撮った画像の数
+    private let recentHistoryCount = 5
 
     init(actions: Actions) {
         self.actions = actions
@@ -76,6 +82,16 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
         menu.addItem(windowListItem)
         windowListMenu = windowList
 
+        // 撮った画像の履歴（最近撮った画像は、メニューを開くたびに並べ直す）
+        menu.addItem(.separator())
+        let historyHeader = NSMenuItem.sectionHeader(title: "撮った画像の履歴")
+        menu.addItem(historyHeader)
+        historyHeaderItem = historyHeader
+        for action in ShortcutAction.historyActions {
+            addActionItem(action, to: menu)
+        }
+        historyItem = actionItems[.openHistory]
+
         // 浮かせた画像
         menu.addItem(.separator())
         let pinsHeader = NSMenuItem.sectionHeader(title: "浮かせた画像")
@@ -129,6 +145,53 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
         let pins = PinManager.shared
         pinsHeaderItem?.title = pins.pinCount > 0 ? "浮かせた画像（\(pins.pinCount) 枚）" : "浮かせた画像"
         clickThroughItem?.isHidden = !pins.hasClickThroughPins
+        updateRecentHistory()
+    }
+
+    /// 「撮った画像の履歴…」の上に、最近撮った画像を縮小画像付きで並べる。
+    /// 押すと浮かせる。⌥ を押している間は「コピー」に変わる。履歴がないときは、その旨を出す
+    private func updateRecentHistory() {
+        guard let menu = statusMenu, let historyItem else { return }
+        recentHistoryItems.forEach { menu.removeItem($0) }
+        recentHistoryItems = []
+        let history = CaptureHistory.shared
+        let count = history.entries.count
+        historyHeaderItem?.title = count > 0 ? "撮った画像の履歴（\(count) 枚）" : "撮った画像の履歴"
+
+        var items: [NSMenuItem] = []
+        if history.entries.isEmpty {
+            let empty = NSMenuItem(
+                title: AppSettings.shared.historyEnabled ? "まだ撮った画像はありません" : "履歴を残さない設定になっています",
+                action: nil,
+                keyEquivalent: ""
+            )
+            empty.isEnabled = false
+            items.append(empty)
+        }
+        for entry in history.entries.prefix(recentHistoryCount) {
+            let thumbnail = history.menuThumbnail(for: entry)
+            let pin = makeHistoryItem(entry, title: CaptureHistoryRules.shortTitle(entry), action: #selector(pinHistoryItem(_:)))
+            pin.image = thumbnail
+            pin.toolTip = "押すと浮かせる（⌥ を押しながらでコピー）"
+            let copy = makeHistoryItem(entry, title: "コピー：\(CaptureHistoryRules.shortTitle(entry))", action: #selector(copyHistoryItem(_:)))
+            copy.image = thumbnail
+            copy.isAlternate = true
+            copy.keyEquivalentModifierMask = .option
+            items += [pin, copy]
+        }
+        var index = menu.index(of: historyItem)
+        for item in items {
+            menu.insertItem(item, at: index)
+            index += 1
+        }
+        recentHistoryItems = items
+    }
+
+    private func makeHistoryItem(_ entry: CaptureHistoryEntry, title: String, action: Selector) -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
+        item.target = self
+        item.representedObject = entry.id
+        return item
     }
 
     // MARK: - メニューを開くとき
@@ -189,6 +252,22 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
 
     @objc private func captureListedWindow(_ sender: NSMenuItem) {
         actions.captureWindow(CGWindowID(sender.tag))
+    }
+
+    @objc private func pinHistoryItem(_ sender: NSMenuItem) {
+        guard let entry = historyEntry(of: sender) else { return NSSound.beep() }
+        CaptureHistory.shared.pin([entry])
+    }
+
+    @objc private func copyHistoryItem(_ sender: NSMenuItem) {
+        guard let entry = historyEntry(of: sender) else { return NSSound.beep() }
+        CaptureHistory.shared.copy(entry)
+    }
+
+    /// メニューの項目に結びつけた履歴
+    private func historyEntry(of item: NSMenuItem) -> CaptureHistoryEntry? {
+        guard let id = item.representedObject as? UUID else { return nil }
+        return CaptureHistory.shared.entries.first { $0.id == id }
     }
 
     @objc private func releaseClickThrough() {

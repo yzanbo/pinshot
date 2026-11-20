@@ -34,6 +34,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         OpenMenus.startObserving()
         statusMenu.install()
         registerHotKeys()
+        // 撮った画像の履歴を読み、期間を過ぎたものを消す
+        CaptureHistory.shared.pruneExpired()
 
         // 見た目（システム・ライト・ダーク）をアプリ全体に設定し、変えたらすぐ反映する
         settings.$appearance
@@ -113,6 +115,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .captureTimer: captureController.start(mode: .region, timer: 5)
         case .pinClipboard:
             if !PinManager.shared.pinClipboardImage() { NSSound.beep() }
+        case .openHistory: CaptureHistoryWindowController.shared.show()
         case .restoreClosed: PinManager.shared.restoreLastClosed()
         case .bringAllToFront: PinManager.shared.bringAllToFront()
         case .closeAll: PinManager.shared.closeAll()
