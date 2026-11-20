@@ -58,7 +58,7 @@ extension PinCanvasView {
         case .select:
             // 書き込み（文字も）の上なら、ドラッグで動かせることを示す手（文字はダブルクリックで直せる）
             return hitAnnotation(at: point) == nil ? HoverRole.inactive.cursor : HoverRole.movable.cursor
-        case .text:
+        case .text, .textMark:
             return .iBeam
         case .counter:
             return .pointingHand
@@ -75,6 +75,10 @@ extension PinCanvasView {
     func toolDidChange() {
         if state.tool != .select {
             selectedID = nil
+        }
+        // 文字マーカーを選んだら、ドラッグする前に文字の位置を調べ始める
+        if state.isEditing, state.tool == .textMark {
+            prepareTextMarkLines()
         }
         updateCursor()
         needsDisplay = true

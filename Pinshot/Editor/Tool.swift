@@ -8,6 +8,7 @@ enum Tool: String, CaseIterable, Identifiable, Codable {
     case arrow
     case pen
     case highlight
+    case textMark
     case text
     case counter
     case spotlight
@@ -25,6 +26,7 @@ enum Tool: String, CaseIterable, Identifiable, Codable {
         case .arrow: "矢印"
         case .pen: "ペン"
         case .highlight: "蛍光ペン"
+        case .textMark: "文字マーカー"
         case .text: "文字"
         case .counter: "番号"
         case .spotlight: "スポットライト"
@@ -42,6 +44,7 @@ enum Tool: String, CaseIterable, Identifiable, Codable {
         case .arrow: "arrow.up.right"
         case .pen: "pencil.tip"
         case .highlight: "highlighter"
+        case .textMark: "textformat.abc.dottedunderline"
         case .text: "textformat"
         case .counter: "1.circle"
         case .spotlight: "flashlight.on.fill"
@@ -63,6 +66,7 @@ enum Tool: String, CaseIterable, Identifiable, Codable {
         case .arrow: "a"
         case .pen: "p"
         case .highlight: "h"
+        case .textMark: "k"
         case .text: "t"
         case .counter: "n"
         case .spotlight: "s"
@@ -81,6 +85,7 @@ enum Tool: String, CaseIterable, Identifiable, Codable {
         case .arrow: "ドラッグで矢印を描く。shift で 45° ごとにそろう"
         case .pen: "ドラッグで自由に描く"
         case .highlight: "ドラッグでなぞってマーカーを引く。shift でまっすぐ"
+        case .textMark: "画像の文字の上をドラッグすると、文字の高さと幅に合わせて引く（蛍光ペン・下線・取り消し線・囲み）。行をまたぐと行ごとに引く。文字のない所では、まっすぐ引く"
         case .text: "クリックして文字を入力（shift + return で改行、return で確定）。書いた文字はクリックで直せる"
         case .counter: "クリックするたびに 1, 2, 3… と番号を置く。削除すると後ろの番号が詰まる"
         case .spotlight: "ドラッグした範囲だけを明るく残し、まわりを暗くして目立たせる"
@@ -98,14 +103,25 @@ enum LineWidths {
     /// 蛍光ペンの太さ
     static let highlight: [CGFloat] = [6, 10, 14, 18, 24, 32, 40]
 
+    /// 文字マーカー（下線・取り消し線・囲み）の太さ
+    static let textMark: [CGFloat] = [1, 2, 3, 4, 6]
+
     /// 太さを選べるツール
-    static let tools: Set<Tool> = [.rectangle, .ellipse, .arrow, .pen, .highlight]
+    static let tools: Set<Tool> = [.rectangle, .ellipse, .arrow, .pen, .highlight, .textMark]
 
     static func presets(for tool: Tool) -> [CGFloat] {
-        tool == .highlight ? highlight : line
+        switch tool {
+        case .highlight: highlight
+        case .textMark: textMark
+        default: line
+        }
     }
 
     static func defaultWidth(for tool: Tool) -> CGFloat {
-        tool == .highlight ? 18 : 4
+        switch tool {
+        case .highlight: 18
+        case .textMark: 2
+        default: 4
+        }
     }
 }

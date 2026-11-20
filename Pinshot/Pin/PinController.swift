@@ -113,6 +113,7 @@ final class PinController: NSObject, NSWindowDelegate {
             state.$counterSize.dropFirst().map { _ in StyleAspects.counter }.eraseToAnyPublisher(),
             state.$counterStyle.dropFirst().map { _ in StyleAspects.counter }.eraseToAnyPublisher(),
             state.$textStyle.dropFirst().map { _ in StyleAspects.text }.eraseToAnyPublisher(),
+            state.$textMarkStyle.dropFirst().map { _ in StyleAspects.textMark }.eraseToAnyPublisher(),
         ])
         .receive(on: DispatchQueue.main)
         .sink { [weak self] aspects in self?.canvas.applyStyleToSelection(aspects: aspects) }

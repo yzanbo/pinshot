@@ -8,6 +8,8 @@ struct Annotation: Codable, Identifiable, Equatable {
         case arrow(from: CGPoint, to: CGPoint, style: ArrowStyle)
         case pen([CGPoint])
         case highlight([CGPoint])
+        /// 文字マーカー。rects は文字の行ごとの範囲（読み取った文字の位置に合わせたもの）
+        case textMark([CGRect], style: TextMarkStyle)
         /// width: 折り返す幅（画像のポイント）。nil なら折り返さない（改行したところだけで行を分ける）
         case text(runs: [TextRun], origin: CGPoint, style: TextStyle, width: CGFloat? = nil)
         case counter(Int, center: CGPoint, radius: CGFloat, style: CounterStyle)
@@ -44,6 +46,15 @@ struct Annotation: Codable, Identifiable, Equatable {
         return false
     }
 
+    /// 影を付けない書き込み（蛍光ペン・文字マーカーの蛍光ペン。下の文字と重ねて読ませるもの）
+    var isTranslucentMarker: Bool {
+        switch shape {
+        case .highlight: true
+        case .textMark(_, let style): style.kind == .highlight
+        default: false
+        }
+    }
+
     var isText: Bool {
         if case .text = shape { return true }
         return false
@@ -62,6 +73,7 @@ struct Annotation: Codable, Identifiable, Equatable {
         case .arrow: .arrow
         case .pen: .pen
         case .highlight: .highlight
+        case .textMark: .textMark
         case .text: .text
         case .counter: .counter
         case .mosaic: .mosaic
@@ -79,6 +91,8 @@ struct Annotation: Codable, Identifiable, Equatable {
             return hypot(to.x - from.x, to.y - from.y) > 4
         case .pen(let points), .highlight(let points):
             return points.count > 1
+        case .textMark(let rects, _):
+            return rects.contains { $0.width > 2 && $0.height > 2 }
         case .text(let runs, _, _, _):
             return !Annotation.plainText(runs).isEmpty
         case .counter:
@@ -172,6 +186,10 @@ extension Annotation {
         case .counter(_, let center, let radius, let style):
             let r = style.design == .plain ? radius * 1.2 : radius
             return CGRect(x: center.x - r, y: center.y - r, width: r * 2, height: r * 2)
+        case .textMark(let rects, let style):
+            return rects
+                .map { TextMarkGeometry.outer($0, kind: style.kind, lineWidth: lineWidth) }
+                .reduce(CGRect.null) { $0.union($1) }
         }
     }
 
@@ -206,6 +224,10 @@ extension Annotation {
             return bounds.insetBy(dx: -tolerance, dy: -tolerance).contains(point)
         case .arrow(let from, let to, _):
             return distance(from: point, toSegment: from, to) <= reach + 2
+        case .textMark(let rects, let style):
+            return rects.contains {
+                TextMarkGeometry.outer($0, kind: style.kind, lineWidth: lineWidth).insetBy(dx: -tolerance, dy: -tolerance).contains(point)
+            }
         case .pen(let points), .highlight(let points):
             if points.count == 1 { return hypot(point.x - points[0].x, point.y - points[0].y) <= reach }
             return zip(points, points.dropFirst()).contains { distance(from: point, toSegment: $0, $1) <= reach }
@@ -226,6 +248,7 @@ extension Annotation {
         case .arrow(let from, let to, let style): moved.shape = .arrow(from: move(from), to: move(to), style: style)
         case .pen(let points): moved.shape = .pen(points.map(move))
         case .highlight(let points): moved.shape = .highlight(points.map(move))
+        case .textMark(let rects, let style): moved.shape = .textMark(rects.map(offset), style: style)
         case .text(let runs, let origin, let style, let width): moved.shape = .text(runs: runs, origin: move(origin), style: style, width: width)
         case .counter(let number, let center, let radius, let style):
             moved.shape = .counter(number, center: move(center), radius: radius, style: style)
@@ -248,6 +271,9 @@ extension Annotation {
         switch shape {
         case .highlight, .pen:
             if appliesWidth { copy.lineWidth = style.lineWidth(for: tool) }
+        case .textMark(let rects, _):
+            if appliesWidth { copy.lineWidth = style.lineWidth(for: .textMark) }
+            if aspects.contains(.textMark) { copy.shape = .textMark(rects, style: style.textMark) }
         case .rectangle(let rect, _):
             if appliesWidth { copy.lineWidth = style.lineWidth(for: .rectangle) }
             if aspects.contains(.rectangle) { copy.shape = .rectangle(rect, style: style.rectangle) }

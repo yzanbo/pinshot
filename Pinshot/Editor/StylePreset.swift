@@ -14,6 +14,8 @@ struct StylePreset: Codable, Equatable, Identifiable {
     var counter: CounterStyle
     var text: TextStyle
     var fontSize: CGFloat
+    /// 文字マーカー（これを足す前に保存したスタイルには入っていない）
+    var textMark: TextMarkStyle? = nil
 }
 
 /// 前の版（3 つの枠・名前なし）のスタイル。引き継ぎのためだけに使う

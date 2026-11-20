@@ -118,6 +118,8 @@ extension PinCanvasView {
         case .highlight:
             dragStart = point
             drafting = Annotation(shape: .highlight([point]), color: state.drawColor, lineWidth: state.lineWidth(for: .highlight))
+        case .textMark:
+            beginTextMark(at: point)
         case .crop:
             dragStart = point
             cropDraft = CGRect(origin: point, size: .zero)
@@ -161,6 +163,9 @@ extension PinCanvasView {
         guard let start = dragStart else { return }
         if cropDraft != nil {
             cropDraft = CGRect(corner: start, point)
+        } else if case .textMark? = drafting?.shape {
+            dragTextMark(to: point)
+            return
         } else if case .pen(var points)? = drafting?.shape {
             points.append(point)
             drafting?.shape = .pen(points)
@@ -230,6 +235,7 @@ extension PinCanvasView {
 
         defer {
             dragStart = nil
+            textMarkDragEnd = nil
             drafting = nil
             needsDisplay = true
             updateCursor()

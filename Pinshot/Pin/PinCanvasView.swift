@@ -55,6 +55,11 @@ final class PinCanvasView: NSView, NSTextFieldDelegate, NSDraggingSource {
     var textRegionDraft: CGRect?
     /// 文字を読み取っている間・読み取ったあとの見た目
     var textScanOverlay: TextScanOverlay?
+    /// 文字マーカーで使う、画像の文字の位置（調べ終えるまでは nil）と、調べているところか
+    var textMarkLines: [TextLineBoxes]?
+    var isFindingTextMarkLines = false
+    /// 文字マーカーを引いている途中の、マウスの位置
+    var textMarkDragEnd: CGPoint?
     /// 読み取った文字を見せている吹き出し
     var textResultPopover: RecognizedTextPopover?
 

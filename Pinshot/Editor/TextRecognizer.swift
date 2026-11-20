@@ -28,6 +28,11 @@ enum TextRecognizer {
         try recognizeNow(image).text
     }
 
+    /// 文字の行と、1 文字ずつの位置を読み取る（文字マーカーで使う）。読めなければ空
+    static func recognizeLines(_ image: CGImage) async -> [RecognizedLine] {
+        await inBackground(fallback: []) { try recognizeLinesNow(image) }
+    }
+
     /// 読み取りは重いので、画面を止めないよう裏で行う。読めなければ記録を残して fallback を返す
     private static func inBackground<T>(fallback: T, _ work: @escaping () throws -> T) async -> T {
         await withCheckedContinuation { continuation in
@@ -39,6 +44,19 @@ enum TextRecognizer {
                     continuation.resume(returning: fallback)
                 }
             }
+        }
+    }
+
+    private static func recognizeLinesNow(_ image: CGImage) throws -> [RecognizedLine] {
+        try observations(in: image).compactMap { observation -> RecognizedLine? in
+            guard let candidate = observation.topCandidates(1).first, !candidate.string.isEmpty else { return nil }
+            let string = candidate.string
+            // 1 文字ずつの位置（取れない文字は、行の位置にしておく。等分するかは TextMarkLayout が決める）
+            let characters = string.indices.map { index -> CGRect in
+                let range = index..<string.index(after: index)
+                return (try? candidate.boundingBox(for: range))?.boundingBox ?? observation.boundingBox
+            }
+            return RecognizedLine(box: observation.boundingBox, characters: characters)
         }
     }
 
@@ -58,6 +76,12 @@ enum TextRecognizer {
         }
         return TextRecognitionResult(text: RecognizedTextLayout.join(pieces), boxes: pieces.map(\.box))
     }
+}
+
+/// 読み取った文字の 1 行と、1 文字ずつの位置（0〜1。Vision と同じく左下が原点）
+struct RecognizedLine: Equatable {
+    var box: CGRect
+    var characters: [CGRect]
 }
 
 /// 読み取った文字のかたまり 1 つ

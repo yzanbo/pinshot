@@ -66,7 +66,7 @@ enum AnnotationRenderer {
         defer { ctx.restoreGState() }
 
         // 矢印の線と矢じりの影が重ならないよう、1 枚にまとめてから影を付ける
-        let usesShadow = shadow && !annotation.isEffect && !annotation.isHighlight
+        let usesShadow = shadow && !annotation.isEffect && !annotation.isTranslucentMarker
         if usesShadow {
             ctx.setShadow(offset: .zero, blur: 3, color: NSColor.black.withAlphaComponent(0.4).cgColor)
             ctx.beginTransparencyLayer(auxiliaryInfo: nil)
@@ -95,6 +95,9 @@ enum AnnotationRenderer {
 
         case .highlight(let points):
             drawHighlight(points, color: annotation.color, lineWidth: annotation.lineWidth, in: ctx)
+
+        case .textMark(let rects, let style):
+            drawTextMark(rects, kind: style.kind, color: annotation.color, lineWidth: annotation.lineWidth, in: ctx)
 
         case .counter(let number, let center, let radius, let style):
             drawCounter(number, center: center, radius: radius, style: style, color: annotation.color, in: ctx)
@@ -152,6 +155,52 @@ enum AnnotationRenderer {
         }
         ctx.addPath(path)
         ctx.strokePath()
+    }
+
+    /// 文字マーカー（行ごとの四角に、蛍光ペン・下線・取り消し線・囲み）
+    private static func drawTextMark(_ rects: [CGRect], kind: TextMarkKind, color: RGBAColor, lineWidth: CGFloat, in ctx: CGContext) {
+        guard !rects.isEmpty else { return }
+        ctx.setLineCap(.butt)
+        switch kind {
+        case .highlight:
+            // 蛍光ペンと同じ塗り方（下の文字が透けて読める）
+            let path = CGMutablePath()
+            for rect in rects {
+                let r = TextMarkGeometry.highlightRect(rect)
+                let radius = min(r.height * 0.15, r.width / 2)
+                path.addRoundedRect(in: r, cornerWidth: radius, cornerHeight: radius)
+            }
+            ctx.setFillColor(color.cgColor)
+            ctx.saveGState()
+            ctx.setBlendMode(.multiply)
+            ctx.setAlpha(0.9)
+            ctx.addPath(path)
+            ctx.fillPath()
+            ctx.restoreGState()
+            ctx.saveGState()
+            ctx.setAlpha(0.22)
+            ctx.addPath(path)
+            ctx.fillPath()
+            ctx.restoreGState()
+        case .underline, .strikethrough:
+            ctx.setStrokeColor(color.cgColor)
+            ctx.setLineWidth(lineWidth)
+            for rect in rects {
+                let y = kind == .underline ? TextMarkGeometry.underlineY(rect, lineWidth: lineWidth) : rect.midY
+                ctx.move(to: CGPoint(x: rect.minX, y: y))
+                ctx.addLine(to: CGPoint(x: rect.maxX, y: y))
+            }
+            ctx.strokePath()
+        case .box:
+            ctx.setStrokeColor(color.cgColor)
+            ctx.setLineWidth(lineWidth)
+            for rect in rects {
+                let r = TextMarkGeometry.boxRect(rect, lineWidth: lineWidth)
+                let radius = min(6, r.height * 0.25)
+                ctx.addPath(CGPath(roundedRect: r, cornerWidth: radius, cornerHeight: radius, transform: nil))
+            }
+            ctx.strokePath()
+        }
     }
 
     /// 蛍光ペン。明るい背景では下の文字を残したまま色を付け（乗算）、暗い背景でも見えるよう少しだけ普通に重ねる

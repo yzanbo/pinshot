@@ -18,7 +18,7 @@ enum ToolGroup: String, CaseIterable, Identifiable {
         case .select: [.select]
         case .shape: [.rectangle, .ellipse]
         case .arrow: [.arrow]
-        case .draw: [.pen, .highlight]
+        case .draw: [.pen, .highlight, .textMark]
         case .text: [.text]
         case .counter: [.counter]
         case .hide: [.spotlight, .mosaic, .blur]

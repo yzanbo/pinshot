@@ -24,6 +24,8 @@ extension PinCanvasView {
             state.rectangleStyle = style
         case .ellipse(_, let style):
             state.ellipseStyle = style
+        case .textMark(_, let style):
+            state.textMarkStyle = style
         default:
             break
         }

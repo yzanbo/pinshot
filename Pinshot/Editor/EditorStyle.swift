@@ -11,7 +11,8 @@ struct StyleAspects: OptionSet {
     static let arrow = StyleAspects(rawValue: 1 << 5)
     static let counter = StyleAspects(rawValue: 1 << 6)
     static let text = StyleAspects(rawValue: 1 << 7)
-    static let all: StyleAspects = [.color, .opacity, .lineWidth, .rectangle, .ellipse, .arrow, .counter, .text]
+    static let textMark = StyleAspects(rawValue: 1 << 8)
+    static let all: StyleAspects = [.color, .opacity, .lineWidth, .rectangle, .ellipse, .arrow, .counter, .text, .textMark]
 }
 
 /// ツールバーで選んでいる見た目の設定一式
@@ -25,6 +26,7 @@ struct EditorStyle: Equatable {
     var counterSize: CounterSize
     var counter: CounterStyle
     var text: TextStyle
+    var textMark: TextMarkStyle = TextMarkStyle()
     /// 書き込みの不透明度（0.1〜1）
     var opacity: CGFloat
 

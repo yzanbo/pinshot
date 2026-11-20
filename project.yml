@@ -71,6 +71,7 @@ targets:
       - path: Pinshot/Support/ScreenGeometry.swift
       - path: Pinshot/Support/PercentText.swift
       - path: Pinshot/Editor/TextRecognizer.swift
+      - path: Pinshot/Editor/TextMarkLayout.swift
       - path: Pinshot/History/CaptureHistoryEntry.swift
       - path: Pinshot/History/TextHistoryEntry.swift
       - path: Pinshot/History/ListSelection.swift

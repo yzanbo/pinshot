@@ -160,7 +160,7 @@ struct EditorToolbar: View {
     private var hasOptions: Bool {
         if state.showsBackdropOptions { return true }
         switch state.optionsTool {
-        case .rectangle, .ellipse, .arrow, .pen, .highlight, .counter, .text: return true
+        case .rectangle, .ellipse, .arrow, .pen, .highlight, .textMark, .counter, .text: return true
         default: return false
         }
     }
@@ -356,6 +356,21 @@ struct EditorToolbar: View {
 
         case .pen, .highlight:
             lineWidthSection(for: tool)
+            opacitySection
+
+        case .textMark:
+            OptionSection(label: "種類") {
+                SegmentedGroup {
+                    ForEach(TextMarkKind.allCases) { kind in
+                        SegmentButton(state: state, symbol: kind.symbolName, text: kind.label, hint: "文字マーカーの種類：\(kind.label)", isSelected: state.textMarkStyle.kind == kind) {
+                            state.textMarkStyle.kind = kind
+                        }
+                    }
+                }
+            }
+            if state.textMarkStyle.kind.usesLineWidth {
+                lineWidthSection(for: tool)
+            }
             opacitySection
 
         case .counter:

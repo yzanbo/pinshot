@@ -331,3 +331,44 @@ struct TextRun: Codable, Equatable {
     var text: String
     var fontSize: CGFloat
 }
+
+// MARK: - 文字マーカー
+
+/// 文字マーカーの種類（文字の位置に合わせて引く）
+enum TextMarkKind: String, CaseIterable, Identifiable, Codable {
+    /// 文字の高さに合わせた蛍光ペン
+    case highlight
+    /// 文字の下に線
+    case underline
+    /// 文字の真ん中に線
+    case strikethrough
+    /// 文字を四角で囲む
+    case box
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .highlight: "蛍光ペン"
+        case .underline: "下線"
+        case .strikethrough: "取り消し線"
+        case .box: "囲み"
+        }
+    }
+
+    var symbolName: String {
+        switch self {
+        case .highlight: "highlighter"
+        case .underline: "underline"
+        case .strikethrough: "strikethrough"
+        case .box: "rectangle"
+        }
+    }
+
+    /// 線の太さを使うか（蛍光ペンは文字の高さで塗るので使わない）
+    var usesLineWidth: Bool { self != .highlight }
+}
+
+struct TextMarkStyle: Codable, Equatable {
+    var kind: TextMarkKind = .highlight
+}

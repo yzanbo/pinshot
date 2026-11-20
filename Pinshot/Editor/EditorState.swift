@@ -15,6 +15,7 @@ final class EditorState: ObservableObject {
         static let counterSize = "editor.counterSize"
         static let counterStyle = "editor.counterStyle"
         static let textStyle = "editor.textStyle"
+        static let textMarkStyle = "editor.textMarkStyle"
         static let customColors = "editor.customColors"
         static let opacity = "editor.opacity"
         static let isDetached = "toolbar.isDetached"
@@ -57,6 +58,9 @@ final class EditorState: ObservableObject {
     }
     @Published var textStyle: TextStyle {
         didSet { save(textStyle, forKey: Key.textStyle) }
+    }
+    @Published var textMarkStyle: TextMarkStyle {
+        didSet { save(textMarkStyle, forKey: Key.textMarkStyle) }
     }
     /// 書き込みの不透明度（0.1〜1）
     @Published var opacity: Double {
@@ -117,6 +121,7 @@ final class EditorState: ObservableObject {
         counterSize = (defaults.object(forKey: Key.counterSize) as? Int).flatMap(CounterSize.init(rawValue:)) ?? .medium
         counterStyle = Self.load(CounterStyle.self, forKey: Key.counterStyle) ?? CounterStyle()
         textStyle = Self.load(TextStyle.self, forKey: Key.textStyle) ?? TextStyle()
+        textMarkStyle = Self.load(TextMarkStyle.self, forKey: Key.textMarkStyle) ?? TextMarkStyle()
         opacity = defaults.object(forKey: Key.opacity) as? Double ?? 1
         customColors = Self.load([RGBAColor].self, forKey: Key.customColors) ?? []
         isDetached = defaults.bool(forKey: Key.isDetached)
@@ -234,7 +239,8 @@ final class EditorState: ObservableObject {
             counterSize: counterSize,
             counter: counterStyle,
             text: textStyle,
-            fontSize: fontSize
+            fontSize: fontSize,
+            textMark: textMarkStyle
         )
     }
 
@@ -250,6 +256,8 @@ final class EditorState: ObservableObject {
         counterStyle = preset.counter
         textStyle = preset.text
         fontSize = preset.fontSize
+        // 文字マーカーを足す前に保存したスタイルには入っていないので、いまのままにする
+        if let textMark = preset.textMark { textMarkStyle = textMark }
     }
 
     // MARK: - まとめ
@@ -269,6 +277,7 @@ final class EditorState: ObservableObject {
             counterSize: counterSize,
             counter: counterStyle,
             text: textStyle,
+            textMark: textMarkStyle,
             opacity: CGFloat(opacity)
         )
     }
