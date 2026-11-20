@@ -16,8 +16,6 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
     /// 画面収録の許可がないときだけ出す項目（知らせと区切り線）
     private var permissionItems: [NSMenuItem] = []
     private var pinsHeaderItem: NSMenuItem?
-    /// 「撮った画像の履歴」の見出し（枚数を出す）
-    private var historyHeaderItem: NSMenuItem?
     /// 録画している・上げている途中か（メニューバーのアイコンを変える）
     private var isRecording = false
     private var isUploading = false
@@ -70,11 +68,9 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
         menu.addItem(recordWindowListItem)
         recordWindowListMenu = recordWindowList
 
-        // 撮った画像の履歴（見出しに枚数を出す。最近撮った画像は並べない。見るのは履歴のウィンドウ）
+        // 履歴（撮った画像・読み取った文字・上げたもの。見出しは付けず、上下の区切り線で分ける。
+        // 最近撮った画像は並べない。見るのは履歴のウィンドウ）
         menu.addItem(.separator())
-        let historyHeader = NSMenuItem.sectionHeader(title: "撮った画像の履歴")
-        menu.addItem(historyHeader)
-        historyHeaderItem = historyHeader
         for action in ShortcutAction.historyActions {
             addActionItem(action, to: menu)
         }
@@ -190,8 +186,6 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
 
         let pins = PinManager.shared
         pinsHeaderItem?.title = pins.pinCount > 0 ? "浮かせた画像（\(pins.pinCount) 枚）" : "浮かせた画像"
-        let historyCount = CaptureHistory.shared.entries.count
-        historyHeaderItem?.title = historyCount > 0 ? "撮った画像の履歴（\(historyCount) 枚）" : "撮った画像の履歴"
         let textCount = TextHistory.shared.entries.count
         textHistoryItem?.title = textCount > 0 ? "読み取った文字（\(textCount) 件）" : "読み取った文字"
     }

@@ -22,7 +22,7 @@ struct ShortcutSettingsView: View {
             Section {
                 rows(for: ShortcutAction.historyActions)
             } header: {
-                Text("撮った画像の履歴")
+                Text("履歴")
             } footer: {
                 HStack {
                     Spacer()

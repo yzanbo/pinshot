@@ -35,7 +35,7 @@ enum ShortcutAction: String, CaseIterable, Identifiable {
         case .recordFullScreen: "画面全体を録画"
         case .recordTimer: "タイマーで録画（5 秒）"
         case .pinClipboard: "クリップボードの画像を浮かせる"
-        case .openHistory: "撮った画像の履歴…"
+        case .openHistory: "履歴…"
         case .restoreClosed: "閉じた画像を戻す"
         case .bringAllToFront: "すべての画像を前に出す"
         case .closeAll: "すべての画像を閉じる"

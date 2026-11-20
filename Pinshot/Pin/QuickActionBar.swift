@@ -42,7 +42,7 @@ struct QuickActionBar: View {
             QuickActionButton(symbol: "folder", help: "保存先のフォルダを Finder で開く", action: { ImageSaver.openSaveFolder() })
             QuickActionButton(symbol: "text.viewfinder", help: "文字をコピー（⇧⌘T）：画像の文字を読み取る。範囲を選ぶときは「…」から", action: copyText)
             divider
-            QuickActionButton(symbol: "clock.arrow.circlepath", help: "撮った画像の履歴", action: history)
+            QuickActionButton(symbol: "clock.arrow.circlepath", help: "履歴（撮った画像・読み取った文字・上げたもの）", action: history)
             QuickActionButton(symbol: "ellipsis", help: "そのほかの操作", action: more)
             editButton
         }
