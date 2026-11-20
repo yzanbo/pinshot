@@ -45,11 +45,18 @@ final class PinManager {
     func pin(image: CGImage, imageSize: CGSize, frame: NSRect, zoom: CGFloat = 1) {
         // 履歴の印を付けておく（あとで履歴から同じ画像を浮かせたときに、増やさずこの画像を前に出す）
         let historyID = CaptureHistory.shared.add(image: image, pointSize: imageSize)
-        show(image: image, imageSize: imageSize, frame: frame, zoom: zoom, origin: historyID.map(PinOrigin.captureHistory))
+        let controller = show(image: image, imageSize: imageSize, frame: frame, zoom: zoom, origin: historyID.map(PinOrigin.captureHistory))
+        // 設定の「撮ったら自動で上げる」（初期設定はオフ）。上げるのは撮ったままの画像
+        if AppSettings.shared.autoUploadCaptures {
+            UploadCenter.shared.shareImage(image, pointSize: imageSize, automatic: true) { [weak controller] status in
+                controller?.canvas.showUploadStatus(status)
+            }
+        }
     }
 
     /// 画像を浮かせる（履歴には残さない）
-    private func show(image: CGImage, imageSize: CGSize, frame: NSRect, zoom: CGFloat, origin: PinOrigin? = nil) {
+    @discardableResult
+    private func show(image: CGImage, imageSize: CGSize, frame: NSRect, zoom: CGFloat, origin: PinOrigin? = nil) -> PinController {
         let controller = makeController(image: image, imageSize: imageSize, frame: frame, zoom: zoom)
         controller.origin = origin
         controller.show()
@@ -59,6 +66,7 @@ final class PinManager {
             ImageExporter.writeToPasteboard(image, pointSize: imageSize)
             controller.canvas.showHUD("コピーしました")
         }
+        return controller
     }
 
     private func makeController(

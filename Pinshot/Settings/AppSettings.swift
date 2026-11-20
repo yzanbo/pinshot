@@ -92,6 +92,10 @@ final class AppSettings: ObservableObject {
         static let textHistoryLayout = "settings.textHistoryLayout"
         static let restorePins = "settings.restorePins"
         static let textPopoverClosesOnOutsideClick = "settings.textPopoverClosesOnOutsideClick"
+        static let uploadDestination = "settings.uploadDestination"
+        static let shareLinkFormat = "settings.shareLinkFormat"
+        static let autoUploadCaptures = "settings.autoUploadCaptures"
+        static let notifiesUploads = "settings.notifiesUploads"
     }
 
     private let defaults = UserDefaults.standard
@@ -190,6 +194,26 @@ final class AppSettings: ObservableObject {
     /// 読み取った文字の吹き出しを、外を押したら閉じる（オフなら「閉じる」か esc でだけ閉じる）
     @Published var textPopoverClosesOnOutsideClick: Bool {
         didSet { defaults.set(textPopoverClosesOnOutsideClick, forKey: Key.textPopoverClosesOnOutsideClick) }
+    }
+
+    /// 共有リンクを作るときに上げる先（選んでいなければ nil。どこにも上げない）
+    @Published var uploadDestination: UploadDestinationID? {
+        didSet { defaults.set(uploadDestination?.rawValue, forKey: Key.uploadDestination) }
+    }
+
+    /// 共有リンクをクリップボードに入れる形（ページの URL・画像の URL・Markdown）
+    @Published var shareLinkFormat: ShareLinkFormat {
+        didSet { defaults.set(shareLinkFormat.rawValue, forKey: Key.shareLinkFormat) }
+    }
+
+    /// 撮ったら、すぐ上げる先に上げて共有リンクをコピーする（初期設定はオフ。オンにするときに確かめる）
+    @Published var autoUploadCaptures: Bool {
+        didSet { defaults.set(autoUploadCaptures, forKey: Key.autoUploadCaptures) }
+    }
+
+    /// 上げ終えたら、macOS の通知を出す
+    @Published var notifiesUploads: Bool {
+        didSet { defaults.set(notifiesUploads, forKey: Key.notifiesUploads) }
     }
 
     /// 撮ったらすぐクリップボードにもコピーする
@@ -321,6 +345,12 @@ final class AppSettings: ObservableObject {
         textHistoryLayout = defaults.option(Key.textHistoryLayout, default: .standard)
         restorePins = defaults.bool(Key.restorePins, default: true)
         textPopoverClosesOnOutsideClick = defaults.bool(Key.textPopoverClosesOnOutsideClick, default: false)
+        uploadDestination = (defaults.string(forKey: Key.uploadDestination)).flatMap(UploadDestinationID.init(rawValue:))
+        // 初期設定は画像の URL（Slack・Discord・GitHub などに貼ると、その場で画像が出る）
+        shareLinkFormat = defaults.option(Key.shareLinkFormat, default: .direct)
+        // 撮った画像が外に送られるので、初期設定では自動で上げない
+        autoUploadCaptures = defaults.bool(Key.autoUploadCaptures, default: false)
+        notifiesUploads = defaults.bool(Key.notifiesUploads, default: true)
         copyAfterCapture = defaults.bool(Key.copyAfterCapture, default: false)
         showsQuickActions = defaults.bool(Key.showsQuickActions, default: true)
         alwaysOnTop = defaults.bool(Key.alwaysOnTop, default: true)

@@ -37,7 +37,7 @@ extension PinCanvasView {
 
     // MARK: - お知らせ（画像の上）
 
-    func showOutsideHUD(_ text: String, progress: Double?, size: NSSize) {
+    func showOutsideHUD(_ text: String, progress: Double?, sticky: Bool = false, size: NSSize) {
         guard let window else { return }
         if outsideHUD == nil {
             let hud = HUDView(frame: NSRect(origin: .zero, size: size))
@@ -54,7 +54,7 @@ extension PinCanvasView {
             anchor = anchor.union(bar.frame)
         }
         accessory.show(around: anchor)
-        hud.show(text, progress: progress, in: container)
+        hud.show(text, progress: progress, sticky: sticky, in: container)
     }
 
     // MARK: - 書き込みのバー（画像の上）

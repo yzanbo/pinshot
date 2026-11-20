@@ -55,6 +55,14 @@ extension PinController {
         close()
     }
 
+    /// いまの見た目（書き込み・背景を反映）を上げて、共有リンクをコピーする（上げる先は設定の「共有」）
+    func uploadAndCopyLink() {
+        guard let output = exportImage() else { return }
+        UploadCenter.shared.shareImage(output.image, pointSize: output.pointSize) { [weak self] status in
+            self?.canvas.showUploadStatus(status)
+        }
+    }
+
     func save() {
         guard let output = exportImage() else { return }
         guard let data = ImageExporter.pngData(output.image, pointSize: output.pointSize) else { return }

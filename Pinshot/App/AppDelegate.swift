@@ -41,6 +41,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusMenu.install()
         // 録画を始めた・止めたら、メニューバーのアイコンと「画面を録画」の項目を変える
         RecordingController.shared.onStateChange = { [weak self] recording in self?.statusMenu.setRecording(recording) }
+        // 上げている間は、メニューバーのアイコンを「上げている」印にする
+        UploadCenter.shared.onActivityChange = { [weak self] uploading in self?.statusMenu.setUploading(uploading) }
         keyTap.onShortcut = { [weak self] action in self?.performFromShortcut(action) }
         registerHotKeys()
         keyTap.start()

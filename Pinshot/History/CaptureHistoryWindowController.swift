@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// 履歴のウィンドウ（撮った画像・読み取った文字の一覧）
+/// 履歴のウィンドウ（撮った画像・読み取った文字・上げたものの一覧）
 @MainActor
 final class CaptureHistoryWindowController: NSObject, NSWindowDelegate {
     static let shared = CaptureHistoryWindowController()
@@ -11,6 +11,7 @@ final class CaptureHistoryWindowController: NSObject, NSWindowDelegate {
     private let notice = HistoryNotice()
     private lazy var imageModel = CaptureHistoryViewModel(history: .shared, notice: notice)
     private lazy var textModel = TextHistoryViewModel(history: .shared, notice: notice)
+    private lazy var uploadModel = UploadHistoryViewModel(history: .shared, notice: notice)
     private var keyMonitor: Any?
 
     /// ウィンドウを開いて、tab の一覧を見せる（selecting を渡すと、文字の一覧でその 1 件を選ぶ）
@@ -18,7 +19,7 @@ final class CaptureHistoryWindowController: NSObject, NSWindowDelegate {
         state.tab = tab
         if tab == .texts, let id { textModel.reveal(id) }
         if window == nil {
-            let view = HistoryWindowView(state: state, notice: notice, imageModel: imageModel, textModel: textModel)
+            let view = HistoryWindowView(state: state, notice: notice, imageModel: imageModel, textModel: textModel, uploadModel: uploadModel)
             let window = NSWindow(contentViewController: NSHostingController(rootView: view))
             window.title = "履歴"
             window.styleMask = [.titled, .closable, .resizable, .miniaturizable]
@@ -42,6 +43,7 @@ final class CaptureHistoryWindowController: NSObject, NSWindowDelegate {
         stopKeyMonitor()
         imageModel.clearSelection()
         textModel.clearSelection()
+        uploadModel.clearSelection()
         textModel.discardDrafts()
     }
 
@@ -55,6 +57,7 @@ final class CaptureHistoryWindowController: NSObject, NSWindowDelegate {
             let handled = switch self.state.tab {
             case .images: self.imageModel.handleKey(event)
             case .texts: self.textModel.handleKey(event)
+            case .uploads: self.uploadModel.handleKey(event)
             }
             return handled ? nil : event
         }

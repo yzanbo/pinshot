@@ -6,6 +6,8 @@ enum HistoryTab: String, CaseIterable, Identifiable {
     case images
     /// 読み取った文字
     case texts
+    /// 上げたもの（共有リンク）
+    case uploads
 
     var id: String { rawValue }
 
@@ -13,6 +15,7 @@ enum HistoryTab: String, CaseIterable, Identifiable {
         switch self {
         case .images: "画像"
         case .texts: "文字"
+        case .uploads: "共有"
         }
     }
 
@@ -20,6 +23,7 @@ enum HistoryTab: String, CaseIterable, Identifiable {
         switch self {
         case .images: "photo.on.rectangle"
         case .texts: "text.viewfinder"
+        case .uploads: "link"
         }
     }
 }
@@ -30,14 +34,16 @@ final class HistoryWindowState: ObservableObject {
     @Published var tab: HistoryTab = .images
 }
 
-/// 履歴のウィンドウの中身。上の帯で「画像 / 文字」を切り替える
+/// 履歴のウィンドウの中身。上の帯で「画像 / 文字 / 共有」を切り替える
 struct HistoryWindowView: View {
     @ObservedObject var state: HistoryWindowState
     let notice: HistoryNotice
     @ObservedObject var imageModel: CaptureHistoryViewModel
     @ObservedObject var textModel: TextHistoryViewModel
+    @ObservedObject var uploadModel: UploadHistoryViewModel
     @ObservedObject var images = CaptureHistory.shared
     @ObservedObject var texts = TextHistory.shared
+    @ObservedObject var uploads = UploadHistory.shared
     @ObservedObject var settings = AppSettings.shared
 
     var body: some View {
@@ -47,6 +53,7 @@ struct HistoryWindowView: View {
             switch state.tab {
             case .images: CaptureHistoryView(history: images, model: imageModel)
             case .texts: TextHistoryView(history: texts, model: textModel)
+            case .uploads: UploadHistoryView(history: uploads, model: uploadModel)
             }
         }
         .overlay(alignment: .bottom) { HistoryNoticeView(notice: notice) }
@@ -76,6 +83,8 @@ struct HistoryWindowView: View {
                         .frame(maxWidth: 200)
                     layoutPicker($settings.textHistoryLayout)
                 }
+            case .uploads:
+                EmptyView()
             }
         }
         .padding(.horizontal, 14)
@@ -86,6 +95,7 @@ struct HistoryWindowView: View {
         switch tab {
         case .images: images.entries.count
         case .texts: texts.entries.count
+        case .uploads: uploads.entries.count
         }
     }
 

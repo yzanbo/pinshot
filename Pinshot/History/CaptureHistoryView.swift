@@ -130,6 +130,7 @@ private struct HistoryContextMenu: View {
         if targets.count == 1 {
             Button("コピー") { model.copy(entry) }
             Button("文字をコピー") { model.copyText(entry) }
+            Button("アップロードしてリンクをコピー") { model.upload(entry) }
         }
         Button("保存…\(suffix)") { model.save(targets) }
         Button("Finder で表示\(suffix)") { model.revealInFinder(targets) }

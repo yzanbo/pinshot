@@ -63,8 +63,9 @@ final class HUDView: NSView {
     // クリックは下の画像に通す
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
 
-    /// progress を渡すと、文字の下にゲージ（0〜1）も出す（透過度など）
-    func show(_ text: String, progress: Double? = nil, in container: NSView) {
+    /// progress を渡すと、文字の下にゲージ（0〜1）も出す（透過度など）。
+    /// sticky なら、次の知らせを出すまで消さない（アップロードの途中など）
+    func show(_ text: String, progress: Double? = nil, sticky: Bool = false, in container: NSView) {
         label.stringValue = text
         label.sizeToFit()
         let gaugeHeight = progress == nil ? 0 : Self.gaugeHeight
@@ -89,6 +90,7 @@ final class HUDView: NSView {
             context.duration = 0.1
             animator().alphaValue = 1
         }, completionHandler: nil)
+        guard !sticky else { return }
         Task { @MainActor [weak self] in
             try? await Task.sleep(for: .seconds(0.9))
             guard let self, self.generation == current else { return }

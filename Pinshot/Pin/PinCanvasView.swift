@@ -256,14 +256,21 @@ final class PinCanvasView: NSView, NSTextFieldDelegate, NSDraggingSource {
         needsDisplay = true
     }
 
-    /// 拡大率・不透明度・「コピーしました」などを出す（画像の中に入らないときは、画像の上に出す）
-    func showHUD(_ text: String, progress: Double? = nil) {
+    /// 拡大率・不透明度・「コピーしました」などを出す（画像の中に入らないときは、画像の上に出す）。
+    /// sticky なら、次の知らせを出すまで消さない（アップロードの途中など）
+    func showHUD(_ text: String, progress: Double? = nil, sticky: Bool = false) {
         let size = HUDView.size(for: text, progress: progress)
         if bounds.width >= size.width + 8, bounds.height >= size.height + 8 {
-            hud.show(text, progress: progress, in: self)
+            hud.show(text, progress: progress, sticky: sticky, in: self)
         } else {
-            showOutsideHUD(text, progress: progress, size: size)
+            showOutsideHUD(text, progress: progress, sticky: sticky, size: size)
         }
+    }
+
+    /// アップロードの進み具合（途中は、終わるまでゲージ付きで出したままにする）
+    func showUploadStatus(_ status: UploadStatus) {
+        let text = status.progress.map { "\(status.text) \(Int(($0 * 100).rounded()))%" } ?? status.text
+        showHUD(text, progress: status.progress, sticky: status.isWorking)
     }
 
     override func setFrameSize(_ newSize: NSSize) {

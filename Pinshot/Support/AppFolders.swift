@@ -16,4 +16,7 @@ enum AppFolders {
 
     /// 画面の録画（新しいものから 20 本を残す）
     static var recordings: URL { root.appendingPathComponent("Recordings", isDirectory: true) }
+
+    /// 上げたものの履歴（共有リンクの一覧と、小さな縮小画像）
+    static var uploads: URL { root.appendingPathComponent("Uploads", isDirectory: true) }
 }

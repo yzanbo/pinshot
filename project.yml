@@ -78,6 +78,11 @@ targets:
       - path: Pinshot/History/TextHistoryEntry.swift
       - path: Pinshot/History/ListSelection.swift
       - path: Pinshot/Pin/SavedPin.swift
+      - path: Pinshot/Upload/UploadTypes.swift
+      - path: Pinshot/Upload/UploadRules.swift
+      - path: Pinshot/Upload/UploadHistoryEntry.swift
+      - path: Pinshot/Upload/OAuth/PKCE.swift
+      - path: Pinshot/Upload/OAuth/OAuthConfiguration.swift
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES

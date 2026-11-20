@@ -7,9 +7,14 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     static let shared = SettingsWindowController()
 
     private var window: NSWindow?
+    private var tabs: NSTabViewController?
     private var shortcutRecorder: ShortcutRecorderModel?
 
-    func show() {
+    /// 共有リンクのタブの名前（ほかの場所から、このタブを開くときに使う）
+    static let shareTab = "共有"
+
+    /// 設定のウィンドウを出す。tab を渡すと、その名前のタブを開く
+    func show(tab: String? = nil) {
         if window == nil {
             let settings = AppSettings.shared
             let tabs = SettingsTabViewController()
@@ -22,6 +27,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             tabs.addTabViewItem(makeTab("画像", symbol: "photo.on.rectangle", view: PinSettingsView(settings: settings)))
             tabs.addTabViewItem(makeTab("保存", symbol: "square.and.arrow.down", view: ExportSettingsView(settings: settings)))
             tabs.addTabViewItem(makeTab("履歴", symbol: "clock.arrow.circlepath", view: HistorySettingsView(settings: settings)))
+            tabs.addTabViewItem(makeTab(Self.shareTab, symbol: "link", view: ShareSettingsView(settings: settings)))
             let recorder = ShortcutRecorderModel(settings: settings)
             tabs.addTabViewItem(makeTab("ショートカット", symbol: "keyboard", view: ShortcutSettingsView(
                 settings: settings,
@@ -37,7 +43,11 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             window.center()
             recorder.window = window
             self.window = window
+            self.tabs = tabs
             shortcutRecorder = recorder
+        }
+        if let tab, let tabs, let index = tabs.tabViewItems.firstIndex(where: { $0.label == tab }) {
+            tabs.selectedTabViewItemIndex = index
         }
         NSApp.activate()
         window?.makeKeyAndOrderFront(nil)

@@ -69,6 +69,14 @@ final class CaptureHistoryViewModel: ObservableObject {
         if history.copy(entry) { show("コピーしました") }
     }
 
+    /// 撮ったときの画像を上げて、共有リンクをコピーする（上げる先は設定の「共有」）
+    func upload(_ entry: CaptureHistoryEntry) {
+        guard let image = history.loadImage(for: entry) else { return NSSound.beep() }
+        UploadCenter.shared.shareImage(image, pointSize: entry.pointSize) { [weak self] status in
+            self?.notice.show(status.text, working: status.isWorking)
+        }
+    }
+
     /// 画像の文字を読み取ってコピーする
     func copyText(_ entry: CaptureHistoryEntry) {
         guard let image = history.loadImage(for: entry) else { return NSSound.beep() }

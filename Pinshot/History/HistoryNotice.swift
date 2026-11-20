@@ -4,11 +4,16 @@ import SwiftUI
 @MainActor
 final class HistoryNotice: ObservableObject {
     @Published private(set) var text: String?
+    /// 途中の知らせか（アップロードの途中など。印をくるくる回し、次の知らせまで消さない）
+    @Published private(set) var isWorking = false
     private var task: Task<Void, Never>?
 
-    func show(_ text: String) {
+    /// working なら、次の知らせを出すまで消さない
+    func show(_ text: String, working: Bool = false) {
         self.text = text
+        isWorking = working
         task?.cancel()
+        guard !working else { return }
         task = Task { [weak self] in
             try? await Task.sleep(for: .seconds(1.6))
             guard !Task.isCancelled else { return }
@@ -24,7 +29,15 @@ struct HistoryNoticeView: View {
     var body: some View {
         Group {
             if let text = notice.text {
-                Label(text, systemImage: "checkmark.circle.fill")
+                Label {
+                    Text(text)
+                } icon: {
+                    if notice.isWorking {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Image(systemName: "checkmark.circle.fill")
+                    }
+                }
                     .font(.callout.weight(.medium))
                     .padding(.horizontal, 14)
                     .padding(.vertical, 8)

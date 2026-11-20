@@ -19,6 +19,7 @@ extension PinController {
                 self?.copyAndClose()
             },
             .item(title: "保存…", image: symbol("square.and.arrow.down"), key: "s") { [weak self] in self?.save() },
+            .item(title: "アップロードしてリンクをコピー", image: symbol("link"), key: "u") { [weak self] in self?.uploadAndCopyLink() },
 
             .separator,
             .header("文字の読み取り"),
@@ -55,6 +56,7 @@ extension PinController {
             .item(title: "画像の下に操作バーを出す", image: symbol("rectangle.bottomthird.inset.filled"), isChecked: AppSettings.shared.showsQuickActions) {
                 AppSettings.shared.showsQuickActions.toggle()
             },
+
 
             .separator,
             .item(title: "撮った画像の履歴…", image: symbol("clock.arrow.circlepath")) { CaptureHistoryWindowController.shared.show() },

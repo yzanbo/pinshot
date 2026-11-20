@@ -24,6 +24,9 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
     private var clickThroughItem: NSMenuItem?
     /// 「撮った画像の履歴」の見出し（枚数を出す）
     private var historyHeaderItem: NSMenuItem?
+    /// 録画している・上げている途中か（メニューバーのアイコンを変える）
+    private var isRecording = false
+    private var isUploading = false
     /// 「読み取った文字 ▸」の項目と、その中のメニュー（開くたびに作り直す）
     private var textHistoryItem: NSMenuItem?
     private var textHistoryMenu: NSMenu?
@@ -153,18 +156,33 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
 
     /// 録画を始めた・止めたとき。録画中は、メニューバーのアイコンを赤い ● にし、「画面を録画」を「録画を止める」にする
     func setRecording(_ recording: Bool) {
-        if recording {
-            let image = NSImage(systemSymbolName: "record.circle.fill", accessibilityDescription: "Pinshot（録画中）")?
-                .withSymbolConfiguration(.init(paletteColors: [.systemRed]))
-            statusItem?.button?.image = image
-            statusItem?.button?.toolTip = "Pinshot（録画中。押して「録画を止める」）"
-        } else {
-            statusItem?.button?.image = NSImage(systemSymbolName: "camera.viewfinder", accessibilityDescription: "Pinshot")
-            statusItem?.button?.toolTip = "Pinshot"
-        }
+        isRecording = recording
+        updateStatusIcon()
         guard let item = actionItems[.recordScreen] else { return }
         item.title = recording ? "録画を止める" : (actionTitles[.recordScreen] ?? ShortcutAction.recordScreen.label)
         item.image = NSImage(systemSymbolName: recording ? "stop.circle" : ShortcutAction.recordScreen.symbolName, accessibilityDescription: nil)
+    }
+
+    /// 上げ始めた・上げ終えたとき。上げている間は、メニューバーのアイコンを「上げている」印にする
+    func setUploading(_ uploading: Bool) {
+        isUploading = uploading
+        updateStatusIcon()
+    }
+
+    /// メニューバーのアイコン（録画中は赤い ●、上げている間は ↑ の雲。どちらでもなければいつものカメラ）
+    private func updateStatusIcon() {
+        let button = statusItem?.button
+        if isRecording {
+            button?.image = NSImage(systemSymbolName: "record.circle.fill", accessibilityDescription: "Pinshot（録画中）")?
+                .withSymbolConfiguration(.init(paletteColors: [.systemRed]))
+            button?.toolTip = "Pinshot（録画中。押して「録画を止める」）"
+        } else if isUploading {
+            button?.image = NSImage(systemSymbolName: "icloud.and.arrow.up", accessibilityDescription: "Pinshot（アップロード中）")
+            button?.toolTip = "Pinshot（アップロード中）"
+        } else {
+            button?.image = NSImage(systemSymbolName: "camera.viewfinder", accessibilityDescription: "Pinshot")
+            button?.toolTip = "Pinshot"
+        }
     }
 
     /// メニューを開くたびに、いまの状態（許可・浮かせている画像の数・クリック透過）に合わせる

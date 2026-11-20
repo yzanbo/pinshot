@@ -123,6 +123,8 @@ extension PinCanvasView {
             controller?.copyRecognizedText()
         case "s":
             controller?.save()
+        case "u":
+            controller?.uploadAndCopyLink()
         case "w":
             controller?.close()
         case "e":
