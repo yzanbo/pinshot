@@ -1,21 +1,6 @@
 import AppKit
 import SwiftUI
 
-extension View {
-    /// マウスを乗せている間、カーソルを変える。
-    /// 一度だけ set すると下の画像のカーソル処理に上書きされるので、マウスが動くたびに設定し直す
-    func hoverCursor(_ cursor: NSCursor = .pointingHand) -> some View {
-        onContinuousHover { phase in
-            switch phase {
-            case .active:
-                cursor.set()
-            case .ended:
-                NSCursor.arrow.set()
-            }
-        }
-    }
-}
-
 /// 前に出ていないウィンドウでも、1 回のクリックでボタンが押せるようにする
 final class FirstMouseHostingView<Content: View>: NSHostingView<Content> {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }

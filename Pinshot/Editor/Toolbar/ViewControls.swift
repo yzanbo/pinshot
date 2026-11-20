@@ -47,7 +47,7 @@ struct ViewControls: View {
         }
         .foregroundStyle(foreground)
         .padding(.leading, 4)
-        .describe("画像の不透明度（⌘ か ⌥ を押しながらスクロールしても変えられる）", state: editorState, cursor: .arrow)
+        .describe("画像の不透明度（⌘ か ⌥ を押しながらスクロールしても変えられる）", state: editorState)
     }
 
     /// 表示の拡大率（🔍 数字 ▾。押すと一覧）
@@ -86,11 +86,11 @@ struct ViewControls: View {
 private extension View {
     /// ツールバーではツールバーの説明の欄に、操作バーではヘルプのタグに説明を出す
     @ViewBuilder
-    func describe(_ text: String, state: EditorState?, cursor: NSCursor = .pointingHand) -> some View {
+    func describe(_ text: String, state: EditorState?) -> some View {
         if let state {
-            hint(text, state: state, cursor: cursor)
+            hint(text, state: state)
         } else {
-            help(text).hoverCursor(cursor)
+            help(text).hoverRole()
         }
     }
 }

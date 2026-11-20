@@ -80,11 +80,13 @@ struct WelcomeView: View {
                 Button("設定を開く…") {
                     SettingsWindowController.shared.show()
                 }
+                .hoverRole()
                 Spacer()
                 Button(permission.granted ? "はじめる" : "あとで") {
                     close()
                 }
                 .keyboardShortcut(.defaultAction)
+                .hoverRole()
             }
         }
         .padding(28)
@@ -112,10 +114,12 @@ struct WelcomeView: View {
                         permission.request()
                     }
                     .buttonStyle(.borderedProminent)
+                    .hoverRole()
                     if permission.requested {
                         Button("Pinshot を再起動") {
                             AppRelauncher.relaunch()
                         }
+                        .hoverRole()
                     }
                 }
                 Text("すでに許可しているのにこの画面が出るときは、システム設定の一覧で Pinshot を選んで「−」で消し、もう一度「許可する…」を押してから再起動してください。")

@@ -312,7 +312,7 @@ struct ToolbarIconButton: View {
         .buttonStyle(.plain)
         .disabled(!isEnabled)
         .opacity(isEnabled ? 1 : 0.35)
-        .hint(hint, state: state, cursor: isEnabled ? .pointingHand : .arrow)
+        .hint(hint, state: state, role: isEnabled ? .pressable : .inactive)
     }
 }
 
@@ -335,8 +335,8 @@ struct ToolButton: View {
 // MARK: - 説明とカーソル
 
 extension View {
-    /// マウスを乗せている間、ツールバーの下の説明を差し替え、押せることが分かるカーソルにする
-    func hint(_ text: String, state: EditorState, cursor: NSCursor = .pointingHand) -> some View {
+    /// マウスを乗せている間、ツールバーの下の説明を差し替え、部品の種類（role）に合ったカーソルにする
+    func hint(_ text: String, state: EditorState, role: HoverRole = .pressable) -> some View {
         self
             .onHover { hovering in
                 if hovering {
@@ -345,6 +345,6 @@ extension View {
                     state.hoverHint = nil
                 }
             }
-            .hoverCursor(cursor)
+            .hoverRole(role)
     }
 }

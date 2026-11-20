@@ -64,7 +64,7 @@ struct QuickActionBar: View {
         }
         .buttonStyle(.plain)
         .help(Self.editHelp)
-        .hoverCursor()
+        .hoverRole()
     }
 
     private var divider: some View {
@@ -90,7 +90,7 @@ private struct QuickActionButton: View {
         }
         .buttonStyle(.plain)
         .help(help)
-        .hoverCursor()
+        .hoverRole()
     }
 }
 

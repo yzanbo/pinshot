@@ -55,6 +55,7 @@ struct GeneralSettingsView: View {
                         Spacer()
                         Button("Pinshot を再起動") { AppRelauncher.relaunch() }
                             .controlSize(.small)
+                            .hoverRole()
                     }
                 }
             }
@@ -73,6 +74,7 @@ struct GeneralSettingsView: View {
                 LabeledContent("バージョン", value: version)
                 LabeledContent("使い方") {
                     Button("使い方を見る…") { WelcomeWindowController.shared.show() }
+                        .hoverRole()
                 }
             }
         }
@@ -98,6 +100,7 @@ private struct PermissionRow: View {
                     .foregroundStyle(.green)
             } else {
                 Button("許可する…", action: request)
+                    .hoverRole()
             }
         }
     }

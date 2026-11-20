@@ -24,6 +24,7 @@ struct ShortcutSettingsView: View {
                         settings.resetShortcuts()
                     }
                     .controlSize(.small)
+                    .hoverRole()
                 }
             }
         }
@@ -58,6 +59,7 @@ struct ShortcutRecorder: View {
                         .foregroundStyle(settings.shortcut(for: action) == nil && !isRecording ? .secondary : .primary)
                         .frame(minWidth: 130)
                 }
+                .hoverRole()
                 Button {
                     settings.setShortcut(nil, for: action)
                 } label: {
@@ -66,6 +68,7 @@ struct ShortcutRecorder: View {
                 }
                 .buttonStyle(.plain)
                 .help("ショートカットを外す")
+                .hoverRole(settings.shortcut(for: action) == nil ? .inactive : .pressable)
                 .disabled(settings.shortcut(for: action) == nil)
                 .opacity(settings.shortcut(for: action) == nil ? 0.3 : 1)
             }

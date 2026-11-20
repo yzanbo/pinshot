@@ -83,7 +83,7 @@ extension PinCanvasView {
                 if !selection.contains(id) {
                     select(index)
                 }
-                NSCursor.closedHand.set()
+                HoverRole.movable.draggingCursor.set()
                 moveStart = point
                 moveOriginals = Dictionary(uniqueKeysWithValues: selectedIndices.map { (annotations[$0].id, annotations[$0]) })
                 document.beginChange()
@@ -272,7 +272,7 @@ extension PinCanvasView {
 
     /// 画像（ウィンドウ）をドラッグで動かす。動かしている間は握った手のカーソル
     private func moveWindow(with event: NSEvent) {
-        NSCursor.closedHand.set()
+        HoverRole.movable.draggingCursor.set()
         window?.performDrag(with: event)
         controller?.windowDidFinishMoving()
         updateCursor()

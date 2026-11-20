@@ -145,7 +145,7 @@ final class PinToolbarController {
     func moveWithMouse() {
         // 動かしている間は、マウスが画像の上に乗っても、つかんだ手のカーソルのままにする
         // （つまみから外れると矢印に、画像の上では描くツールの十字に変わってしまうため、動くたびに出し直す）
-        NSCursor.closedHand.set()
+        HoverRole.movable.draggingCursor.set()
         let mouse = NSEvent.mouseLocation
         // 切り離しているときはツールバーだけ、付いているときは画像ごと動かす
         let target: NSWindow? = state.isDetached ? toolbarPanel : pinPanel
@@ -153,7 +153,7 @@ final class PinToolbarController {
         guard let start = moveStartMouse else {
             moveStartMouse = mouse
             moveStartOrigin = target.frame.origin
-            NSCursor.closedHand.set()
+            HoverRole.movable.draggingCursor.set()
             // つまみの説明は、ドラッグを始めたら消す（動かしている間は出さない）
             hideHint()
             return

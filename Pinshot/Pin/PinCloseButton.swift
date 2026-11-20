@@ -18,12 +18,12 @@ class PinButtonView: NSView {
     }
 
     // 下の画像もカーソルを変えようとするので、マウスが動くたびに指のカーソルにし直す
-    override func cursorUpdate(with event: NSEvent) { NSCursor.pointingHand.set() }
-    override func mouseMoved(with event: NSEvent) { NSCursor.pointingHand.set() }
+    override func cursorUpdate(with event: NSEvent) { HoverRole.pressable.cursor.set() }
+    override func mouseMoved(with event: NSEvent) { HoverRole.pressable.cursor.set() }
 
     override func mouseEntered(with event: NSEvent) {
         isHovering = true
-        NSCursor.pointingHand.set()
+        HoverRole.pressable.cursor.set()
         needsDisplay = true
         onHoverChange?(true)
     }

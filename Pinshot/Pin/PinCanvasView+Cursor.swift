@@ -25,10 +25,12 @@ extension PinCanvasView {
     func updateCursor() {
         // ツールバーのつまみで画像を動かしている間は、画像の上でもつかんだ手のままにする
         if controller?.isMovingWithToolbarHandle == true {
-            NSCursor.closedHand.set()
+            HoverRole.movable.draggingCursor.set()
             return
         }
         guard let window, edgeResize == nil, moveStart == nil, dragStart == nil, handleDrag == nil else { return }
+        // 画像に重なったツールバー・操作バーの上では、そちらのボタンがカーソルを決める
+        guard isWindowFrontmostUnderMouse else { return }
         let viewPoint = convert(window.mouseLocationOutsideOfEventStream, from: nil)
         guard bounds.contains(viewPoint) else { return }
         // 捨てるボタン・書き込みのバーの上は、それぞれのボタンがカーソルを決める
@@ -52,16 +54,16 @@ extension PinCanvasView {
         let flags = NSEvent.modifierFlags
         if !state.isEditing {
             // ⌥ を押していればドラッグ＆ドロップ、そうでなければつかんで動かせる
-            return flags.contains(.option) ? .dragCopy : .openHand
+            return flags.contains(.option) ? .dragCopy : HoverRole.movable.cursor
         }
         if isSpaceHeld || flags.contains(.command) {
-            return .openHand
+            return HoverRole.movable.cursor
         }
         let point = imagePoint(viewPoint)
         switch state.tool {
         case .select:
             // 書き込み（文字も）の上なら、ドラッグで動かせることを示す手（文字はダブルクリックで直せる）
-            return hitAnnotation(at: point) == nil ? .arrow : .openHand
+            return hitAnnotation(at: point) == nil ? HoverRole.inactive.cursor : HoverRole.movable.cursor
         case .text:
             return .iBeam
         case .counter:

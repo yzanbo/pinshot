@@ -138,7 +138,7 @@ struct EditorToolbar: View {
                     ? "ドラッグでツールバーを移動（切り離し中）"
                     : "ドラッグで画像を移動（space か ⌘ を押しながら画像をドラッグしても動く）",
                 state: state,
-                cursor: .openHand
+                role: .movable
             )
     }
 
@@ -483,7 +483,7 @@ struct EditorToolbar: View {
             .padding(.horizontal, 8)
             .frame(height: ToolbarMetrics.segmentHeight + 4)
             .background(RoundedRectangle(cornerRadius: ToolbarMetrics.groupCorner).fill(ToolbarMetrics.groupFill))
-            .hint("書き込みの不透明度（選んでいる書き込みにも反映。画像そのものの不透明度は、画像の下のバーで変える）", state: state, cursor: .arrow)
+            .hint("書き込みの不透明度（選んでいる書き込みにも反映。画像そのものの不透明度は、画像の下のバーで変える）", state: state)
         }
     }
 

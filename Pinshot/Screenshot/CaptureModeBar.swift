@@ -87,11 +87,6 @@ private struct BarButton: View {
         }
         .buttonStyle(.plain)
         // 乗せている間は指、離れたらキャプチャ用のカーソル（矢印に戻すと、キャプチャ用のカーソルと取り合ってちらつく）
-        .onContinuousHover { phase in
-            switch phase {
-            case .active: NSCursor.pointingHand.set()
-            case .ended: exitCursor.set()
-            }
-        }
+        .hoverRole(exit: exitCursor)
     }
 }

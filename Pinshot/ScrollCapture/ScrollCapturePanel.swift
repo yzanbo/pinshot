@@ -73,7 +73,7 @@ struct ScrollCapturePanelView: View {
                         Toggle("自動でスクロールする", isOn: $model.autoScroll)
                             .toggleStyle(.switch)
                             .controlSize(.small)
-                            .hoverCursor()
+                            .hoverRole()
                     } else {
                         Text("自動でスクロールするには「アクセシビリティ」の許可が必要です。許可するまでは、自分でスクロールすると撮れます。")
                             .font(.caption)
@@ -83,7 +83,7 @@ struct ScrollCapturePanelView: View {
                             AccessibilityPermission.request()
                         }
                         .controlSize(.small)
-                        .hoverCursor()
+                        .hoverRole()
                     }
                 }
             }
@@ -94,10 +94,10 @@ struct ScrollCapturePanelView: View {
                     .foregroundStyle(.secondary)
                 Spacer()
                 Button("キャンセル") { model.cancel() }
-                    .hoverCursor()
+                    .hoverRole()
                 Button("完了") { model.finish() }
                     .buttonStyle(.borderedProminent)
-                    .hoverCursor()
+                    .hoverRole()
             }
         }
         .padding(14)

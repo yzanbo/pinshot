@@ -31,7 +31,9 @@ struct ExportSettingsView: View {
                         }
                         .buttonStyle(.borderless)
                         .help("Finder で開く")
+                        .hoverRole()
                         Button("選ぶ…") { chooseFolder() }
+                            .hoverRole()
                     }
                 }
                 SettingsNote("PNG で保存します。名前は「Pinshot 日付 時刻」の形で付きます。")

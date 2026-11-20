@@ -82,7 +82,7 @@ final class PinBackdropView: NSView {
         // 画像の上は、キャンバスがカーソルを決める
         if let content, content.frame.contains(point) { return nil }
         let edges = ResizeEdges.at(point, in: bounds, zone: edgeZone, flipped: false)
-        return edges.isEmpty ? .openHand : edges.cursor
+        return edges.isEmpty ? HoverRole.movable.cursor : edges.cursor
     }
 
     override func mouseMoved(with event: NSEvent) {
@@ -95,7 +95,9 @@ final class PinBackdropView: NSView {
 
     /// ツールバーのつまみで画像を動かしている間は、つかんだ手のままにする
     private func backdropCursor(at point: NSPoint) -> NSCursor? {
-        if controller?.isMovingWithToolbarHandle == true { return .closedHand }
+        if controller?.isMovingWithToolbarHandle == true { return HoverRole.movable.draggingCursor }
+        // 重なったツールバー・操作バーの上では、そちらのボタンがカーソルを決める
+        guard isWindowFrontmostUnderMouse else { return nil }
         return cursor(at: point)
     }
 
@@ -111,7 +113,7 @@ final class PinBackdropView: NSView {
             controller?.setEditing(true)
             return
         }
-        NSCursor.closedHand.set()
+        HoverRole.movable.draggingCursor.set()
         window?.performDrag(with: event)
         controller?.windowDidFinishMoving()
     }

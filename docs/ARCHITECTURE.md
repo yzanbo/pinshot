@@ -35,10 +35,11 @@ Pinshot/
 └── Support/        どこからも使う部品
     ├── OverlayPanel          枠のない、前面を奪わないパネルの土台
     ├── PopupMenu             項目の並びからメニューを作る
-    ├── ScreenGeometry        画面の座標の変換
+    ├── ScreenGeometry        画面の座標の変換・ツールバーと操作バーを画像の下に置く位置
     ├── Permissions           画面収録・アクセシビリティの許可
     ├── GraphicsHelpers       画像の描き先を作る
-    └── ViewHelpers           カーソルの切り替え・マウスの追跡など
+    ├── HoverCursor           部品の種類（押せる・動かせる・操作できない）で決めるカーソル
+    └── ViewHelpers           前に出ていなくても押せるビュー・マウスの追跡
 
 PinshotTests/       画面に関係ない処理のテスト（make test）
 ```
