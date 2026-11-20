@@ -13,11 +13,7 @@ struct ExportSettingsView: View {
     var body: some View {
         SettingsPane {
             Section("保存") {
-                Picker("保存の仕方", selection: $settings.saveMode) {
-                    ForEach(SaveMode.allCases) { mode in
-                        Text(mode.label).tag(mode)
-                    }
-                }
+                OptionPicker("保存の仕方", selection: $settings.saveMode)
                 LabeledContent(settings.saveMode == .folder ? "保存先のフォルダ" : "最初に開くフォルダ") {
                     HStack(spacing: 6) {
                         Text(folderPath)
@@ -40,21 +36,9 @@ struct ExportSettingsView: View {
             }
             Section {
                 Toggle("浮かせた画像に背景を付ける", isOn: $settings.exportDecoration.isEnabled)
-                Picker("背景", selection: $settings.exportDecoration.background) {
-                    ForEach(ExportBackground.allCases) { background in
-                        Text(background.label).tag(background)
-                    }
-                }
-                Picker("余白", selection: $settings.exportDecoration.padding) {
-                    ForEach(ExportPadding.allCases) { padding in
-                        Text(padding.label).tag(padding)
-                    }
-                }
-                Picker("角の丸み", selection: $settings.exportDecoration.corner) {
-                    ForEach(ExportCorner.allCases) { corner in
-                        Text(corner.label).tag(corner)
-                    }
-                }
+                OptionPicker("背景", selection: $settings.exportDecoration.background)
+                OptionPicker("余白", selection: $settings.exportDecoration.padding)
+                OptionPicker("角の丸み", selection: $settings.exportDecoration.corner)
                 Toggle("影を付ける", isOn: $settings.exportDecoration.shadow)
                 LabeledContent("見本") {
                     ExportDecorationPreview(decoration: settings.exportDecoration)

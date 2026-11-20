@@ -41,7 +41,7 @@ struct ViewControls: View {
             .controlSize(.mini)
             .frame(width: 48)
             .tint(style == .onDark ? .white : .accentColor)
-            Text(Self.percent(appearance.opacity))
+            Text(appearance.opacity.percentText)
                 .font(.system(size: 10, weight: .medium).monospacedDigit())
                 .frame(width: 30, alignment: .trailing)
         }
@@ -56,14 +56,14 @@ struct ViewControls: View {
             PopupMenu.popUp(
                 [.item(title: "実寸に戻す（100%）") { setZoom(1) }, .separator]
                     + Self.zoomPresets.map { value in
-                        .item(title: Self.percent(value), isChecked: abs(appearance.zoom - value) < 0.005) { setZoom(value) }
+                        .item(title: value.percentText, isChecked: abs(appearance.zoom - value) < 0.005) { setZoom(value) }
                     }
             )
         } label: {
             HStack(spacing: 3) {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 11, weight: .semibold))
-                Text(Self.percent(appearance.zoom))
+                Text(appearance.zoom.percentText)
                     .font(.system(size: 10, weight: .medium).monospacedDigit())
                     .frame(minWidth: 30, alignment: .trailing)
                 Image(systemName: "chevron.down")
@@ -76,10 +76,6 @@ struct ViewControls: View {
         }
         .buttonStyle(.plain)
         .describe("表示の拡大率（押すと一覧。画像の上でスクロール・ピンチ、端のドラッグでも変えられる）", state: editorState)
-    }
-
-    static func percent(_ value: Double) -> String {
-        "\(Int((value * 100).rounded()))%"
     }
 }
 

@@ -10,17 +10,9 @@ struct HistorySettingsView: View {
         SettingsPane {
             Section("残し方") {
                 Toggle("撮った画像を履歴に残す", isOn: $settings.historyEnabled)
-                Picker("残す期間", selection: $settings.historyPeriod) {
-                    ForEach(HistoryPeriod.allCases) { period in
-                        Text(period.label).tag(period)
-                    }
-                }
+                OptionPicker("残す期間", selection: $settings.historyPeriod)
                 .disabled(!settings.historyEnabled)
-                Picker("残す枚数", selection: $settings.historyLimit) {
-                    ForEach(HistoryLimit.allCases) { limit in
-                        Text(limit.label).tag(limit)
-                    }
-                }
+                OptionPicker("残す枚数", selection: $settings.historyLimit)
                 .disabled(!settings.historyEnabled)
             }
             Section("一覧") {

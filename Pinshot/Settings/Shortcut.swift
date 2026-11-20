@@ -67,36 +67,40 @@ struct Shortcut: Codable, Equatable {
 
     static let `default` = Shortcut(keyCode: UInt32(kVK_ANSI_2), modifiers: UInt32(cmdKey | shiftKey), key: "2")
 
+    /// 修飾キーの対応（Carbon の値・AppKit の値・表示の記号）。並びは表示の順（⌃⌥⇧⌘）
+    private static let modifierTable: [(carbon: UInt32, flag: NSEvent.ModifierFlags, symbol: String)] = [
+        (UInt32(controlKey), .control, "⌃"),
+        (UInt32(optionKey), .option, "⌥"),
+        (UInt32(shiftKey), .shift, "⇧"),
+        (UInt32(cmdKey), .command, "⌘"),
+    ]
+
+    /// AppKit の修飾キーを、Carbon の値にする
+    static func carbonModifiers(from flags: NSEvent.ModifierFlags) -> UInt32 {
+        modifierTable.reduce(0) { flags.contains($1.flag) ? $0 | $1.carbon : $0 }
+    }
+
     /// 例: "⇧⌘2"
     var displayString: String {
-        var text = ""
-        if modifiers & UInt32(controlKey) != 0 { text += "⌃" }
-        if modifiers & UInt32(optionKey) != 0 { text += "⌥" }
-        if modifiers & UInt32(shiftKey) != 0 { text += "⇧" }
-        if modifiers & UInt32(cmdKey) != 0 { text += "⌘" }
-        return text + key
+        Self.modifierTable.filter { modifiers & $0.carbon != 0 }.map(\.symbol).joined() + key
     }
 
     /// メニューに表示するための修飾キー
     var menuModifierMask: NSEvent.ModifierFlags {
-        var flags: NSEvent.ModifierFlags = []
-        if modifiers & UInt32(controlKey) != 0 { flags.insert(.control) }
-        if modifiers & UInt32(optionKey) != 0 { flags.insert(.option) }
-        if modifiers & UInt32(shiftKey) != 0 { flags.insert(.shift) }
-        if modifiers & UInt32(cmdKey) != 0 { flags.insert(.command) }
-        return flags
+        Self.modifierTable.reduce(into: []) { flags, entry in
+            if modifiers & entry.carbon != 0 { flags.insert(entry.flag) }
+        }
     }
 
     /// キーを押したイベントからショートカットを作る。⌘・⌥・⌃ のどれも押していなければ nil
     init?(event: NSEvent) {
         let flags = event.modifierFlags.intersection([.command, .option, .control, .shift])
         guard !flags.intersection([.command, .option, .control]).isEmpty else { return nil }
-        var carbon: UInt32 = 0
-        if flags.contains(.command) { carbon |= UInt32(cmdKey) }
-        if flags.contains(.option) { carbon |= UInt32(optionKey) }
-        if flags.contains(.control) { carbon |= UInt32(controlKey) }
-        if flags.contains(.shift) { carbon |= UInt32(shiftKey) }
-        self.init(keyCode: UInt32(event.keyCode), modifiers: carbon, key: Shortcut.keyName(for: event.keyCode))
+        self.init(
+            keyCode: UInt32(event.keyCode),
+            modifiers: Shortcut.carbonModifiers(from: flags),
+            key: Shortcut.keyName(for: event.keyCode)
+        )
     }
 
     init(keyCode: UInt32, modifiers: UInt32, key: String) {

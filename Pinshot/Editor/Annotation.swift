@@ -296,6 +296,18 @@ private func distance(from p: CGPoint, toSegment a: CGPoint, _ b: CGPoint) -> CG
     return hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy))
 }
 
+extension CGPoint {
+    /// origin から見た向きを 45° ごとにそろえた点（長さは変えない）。shift を押しながら矢印などを描くときに使う
+    func snappedTo45(from origin: CGPoint) -> CGPoint {
+        let dx = x - origin.x
+        let dy = y - origin.y
+        let length = hypot(dx, dy)
+        let step = CGFloat.pi / 4
+        let angle = (atan2(dy, dx) / step).rounded() * step
+        return CGPoint(x: origin.x + length * cos(angle), y: origin.y + length * sin(angle))
+    }
+}
+
 extension CGRect {
     /// 2 点を対角とする四角形
     init(corner a: CGPoint, _ b: CGPoint) {

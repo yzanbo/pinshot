@@ -128,7 +128,7 @@ final class SelectionView: NSView {
 
     // MARK: - カーソル
 
-    private var cursor: NSCursor { mode.selectsRegion ? CaptureCursors.selection : CaptureCursors.window }
+    private var cursor: NSCursor { CaptureCursors.cursor(for: mode) }
 
     override func updateTrackingAreas() {
         super.updateTrackingAreas()

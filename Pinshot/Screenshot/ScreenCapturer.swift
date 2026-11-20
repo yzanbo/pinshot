@@ -30,10 +30,7 @@ enum ScreenCapturer {
 
     /// 1 枚の画面を撮る
     static func capture(screen: NSScreen, content: SCShareableContent, excluding windowIDs: Set<CGWindowID> = []) async throws -> ScreenShot? {
-        guard
-            let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID,
-            let display = content.displays.first(where: { $0.displayID == number })
-        else { return nil }
+        guard let display = content.display(for: screen) else { return nil }
 
         let excluded = content.windows.filter { windowIDs.contains($0.windowID) }
         let filter = SCContentFilter(display: display, excludingWindows: excluded)
@@ -121,5 +118,13 @@ enum WindowList {
                 ownerPID: pid_t(pid)
             )
         }
+    }
+}
+
+extension SCShareableContent {
+    /// screen にあたる、ScreenCaptureKit のディスプレイ
+    func display(for screen: NSScreen) -> SCDisplay? {
+        guard let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID else { return nil }
+        return displays.first { $0.displayID == number }
     }
 }

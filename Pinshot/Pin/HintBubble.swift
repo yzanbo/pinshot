@@ -39,7 +39,7 @@ final class HintBubble {
         if origin.y + size.height > visible.maxY {
             origin.y = avoid.minY - size.height - 6
         }
-        origin.x = min(max(origin.x, visible.minX + 4), visible.maxX - size.width - 4)
+        origin.x = ScreenGeometry.clampedX(origin.x, width: size.width, in: visible)
         panel.setFrame(NSRect(origin: origin, size: size), display: true)
         panel.orderFrontRegardless()
     }

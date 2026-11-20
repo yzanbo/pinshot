@@ -239,16 +239,8 @@ extension PinCanvasView {
         case .arrowStart, .arrowEnd:
             guard case .arrow(let from, let to, let style) = original.shape else { return }
             let fixed = handle == .arrowStart ? to : from
-            var moved = point
-            if event.modifierFlags.contains(.shift) {
-                // shift で 45° ごとにそろえる
-                let dx = point.x - fixed.x
-                let dy = point.y - fixed.y
-                let length = hypot(dx, dy)
-                let step = CGFloat.pi / 4
-                let angle = (atan2(dy, dx) / step).rounded() * step
-                moved = CGPoint(x: fixed.x + length * cos(angle), y: fixed.y + length * sin(angle))
-            }
+            // shift で 45° ごとにそろえる
+            let moved = event.modifierFlags.contains(.shift) ? point.snappedTo45(from: fixed) : point
             updated.shape = handle == .arrowStart
                 ? .arrow(from: moved, to: to, style: style)
                 : .arrow(from: from, to: moved, style: style)
@@ -288,10 +280,7 @@ extension PinCanvasView {
             let side = max(abs(dx), abs(dy))
             return CGPoint(x: start.x + (dx < 0 ? -side : side), y: start.y + (dy < 0 ? -side : side))
         case .arrow, .highlight:
-            let length = hypot(dx, dy)
-            let step = CGFloat.pi / 4
-            let angle = (atan2(dy, dx) / step).rounded() * step
-            return CGPoint(x: start.x + length * cos(angle), y: start.y + length * sin(angle))
+            return point.snappedTo45(from: start)
         default:
             return point
         }

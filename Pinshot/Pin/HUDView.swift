@@ -27,11 +27,21 @@ final class HUDView: NSView {
     /// text と progress を出すときの大きさ
     static func size(for text: String, progress: Double?) -> NSSize {
         let label = NSTextField(labelWithString: text)
-        label.font = .systemFont(ofSize: 12, weight: .semibold)
+        label.font = labelFont
         label.sizeToFit()
-        let gaugeHeight: CGFloat = progress == nil ? 0 : 10
-        let width = max(label.frame.width + 20, progress == nil ? 0 : 140)
-        return NSSize(width: width, height: label.frame.height + 10 + gaugeHeight)
+        return size(labelSize: label.frame.size, hasGauge: progress != nil)
+    }
+
+    private static let labelFont = NSFont.systemFont(ofSize: 12, weight: .semibold)
+    /// ゲージを出すときに、文字の下に足す高さ
+    private static let gaugeHeight: CGFloat = 10
+
+    /// 文字の大きさから、HUD の大きさを決める（左右 10pt・上下 5pt の余白。ゲージを出すときは幅 140pt 以上）
+    private static func size(labelSize: NSSize, hasGauge: Bool) -> NSSize {
+        NSSize(
+            width: max(labelSize.width + 20, hasGauge ? 140 : 0),
+            height: labelSize.height + 10 + (hasGauge ? gaugeHeight : 0)
+        )
     }
 
     override init(frame frameRect: NSRect) {
@@ -39,7 +49,7 @@ final class HUDView: NSView {
         wantsLayer = true
         layer?.cornerRadius = 8
         layer?.backgroundColor = NSColor.black.withAlphaComponent(0.7).cgColor
-        label.font = .systemFont(ofSize: 12, weight: .semibold)
+        label.font = Self.labelFont
         label.textColor = .white
         label.alignment = .center
         addSubview(label)
@@ -57,9 +67,8 @@ final class HUDView: NSView {
     func show(_ text: String, progress: Double? = nil, in container: NSView) {
         label.stringValue = text
         label.sizeToFit()
-        let gaugeHeight: CGFloat = progress == nil ? 0 : 10
-        let width = max(label.frame.width + 20, progress == nil ? 0 : 140)
-        let size = NSSize(width: width, height: label.frame.height + 10 + gaugeHeight)
+        let gaugeHeight = progress == nil ? 0 : Self.gaugeHeight
+        let size = Self.size(labelSize: label.frame.size, hasGauge: progress != nil)
         frame = NSRect(
             x: ((container.bounds.width - size.width) / 2).rounded(),
             y: ((container.bounds.height - size.height) / 2).rounded(),

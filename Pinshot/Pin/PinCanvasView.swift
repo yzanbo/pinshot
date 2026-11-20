@@ -128,13 +128,7 @@ final class PinCanvasView: NSView, NSTextFieldDelegate, NSDraggingSource {
             return
         }
         if selectionBar == nil {
-            let bar = FirstMouseHostingView(rootView: SelectionActionBar(
-                duplicate: { [weak self] in self?.duplicateSelected() },
-                bringForward: { [weak self] in self?.reorderSelected(forward: true) },
-                sendBackward: { [weak self] in self?.reorderSelected(forward: false) },
-                delete: { [weak self] in self?.deleteSelected() }
-            ))
-            bar.frame.size = bar.fittingSize
+            let bar = makeSelectionActionBar()
             addSubview(bar, positioned: .below, relativeTo: hud)
             selectionBar = bar
         }
@@ -158,24 +152,6 @@ final class PinCanvasView: NSView, NSTextFieldDelegate, NSDraggingSource {
         if y + size.height > bounds.height - 4 { y = 4 }
         bar.frame.origin = NSPoint(x: x.rounded(), y: y.rounded())
         bar.isHidden = false
-    }
-
-    /// 操作バー（いつも画像の外の下に出す。PinCanvasView+Outside.swift）
-    func makeQuickActionBar(appearance: PinAppearance) -> QuickActionBar {
-        QuickActionBar(
-            appearance: appearance,
-            edit: { [weak self] in self?.controller?.setEditing(true) },
-            setOpacity: { [weak self] value in self?.controller?.setOpacity(CGFloat(value)) },
-            setZoom: { [weak self] value in self?.controller?.setZoom(CGFloat(value)) },
-            copy: { [weak self] in self?.controller?.copyToPasteboard() },
-            save: { [weak self] in self?.controller?.save() },
-            more: { [weak self] in
-                // 「…」のメニューは、マウスの位置に開く
-                guard let menu = self?.controller?.makeContextMenu() else { return }
-                menu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
-            },
-            history: { CaptureHistoryWindowController.shared.show() }
-        )
     }
 
     @available(*, unavailable)

@@ -87,7 +87,7 @@ final class ScrollCaptureSession {
                 // 前に出したウィンドウが描き終わるのを待つ
                 try await Task.sleep(for: .milliseconds(350))
             }
-            let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+            let content = try await ScreenCapturer.shareableContent()
             guard let filter = makeFilter(content: content) else {
                 model.message = "画面が見つかりませんでした"
                 return
@@ -222,10 +222,7 @@ final class ScrollCaptureSession {
 
     /// 自分のアプリのウィンドウ（操作パネル・枠・浮かせた画像）は写さない
     private func makeFilter(content: SCShareableContent) -> SCContentFilter? {
-        guard
-            let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID,
-            let display = content.displays.first(where: { $0.displayID == number })
-        else { return nil }
+        guard let display = content.display(for: screen) else { return nil }
         let myPID = ProcessInfo.processInfo.processIdentifier
         let mine = content.applications.filter { $0.processID == myPID }
         return SCContentFilter(display: display, excludingApplications: mine, exceptingWindows: [])
@@ -331,13 +328,13 @@ final class ScrollCaptureSession {
     private func installKeyMonitors() {
         // esc で終える（ほかのアプリが前に出ていても受けられるよう、両方で見る）
         let handler: (NSEvent) -> Void = { [weak self] event in
-            if event.keyCode == 53 {
+            if event.keyCode == KeyCode.escape {
                 Task { @MainActor in self?.end(keep: true) }
             }
         }
         if let local = NSEvent.addLocalMonitorForEvents(matching: .keyDown, handler: { event in
             handler(event)
-            return event.keyCode == 53 ? nil : event
+            return event.keyCode == KeyCode.escape ? nil : event
         }) {
             keyMonitors.append(local)
         }

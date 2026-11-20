@@ -89,3 +89,37 @@ struct ExportDecoration: Codable, Equatable {
     var corner: ExportCorner = .small
     var shadow = true
 }
+
+// MARK: - 描き方（浮かせた画像の背景と、書き出す画像で同じ見た目にするため、ここにそろえる）
+
+extension ExportDecoration {
+    /// 画像の角の丸み（scale は 1 ポイントあたりの描く大きさ。画像の短い辺の半分まで）
+    func cornerRadius(for imageRect: CGRect, scale: CGFloat) -> CGFloat {
+        min(corner.points * scale, min(imageRect.width, imageRect.height) / 2)
+    }
+
+    /// 背景を塗る（単色か、左上から右下へのグラデーション。座標は左下が原点）
+    func drawBackground(in ctx: CGContext, rect: CGRect) {
+        let colors = background.colors
+        if colors.count >= 2,
+           let space = CGColorSpace(name: CGColorSpace.sRGB),
+           let gradient = CGGradient(colorsSpace: space, colors: colors.map(\.cgColor) as CFArray, locations: [0, 1]) {
+            ctx.drawLinearGradient(gradient, start: CGPoint(x: rect.minX, y: rect.maxY), end: CGPoint(x: rect.maxX, y: rect.minY), options: [])
+        } else if let color = colors.first {
+            ctx.setFillColor(color.cgColor)
+            ctx.fill(rect)
+        }
+    }
+
+    /// 画像の下に落とす影（画像の形の板を描いて、その影を落とす）。影を付けない設定なら何もしない
+    func drawShadow(in ctx: CGContext, imageRect: CGRect, scale: CGFloat) {
+        guard shadow else { return }
+        let radius = cornerRadius(for: imageRect, scale: scale)
+        ctx.saveGState()
+        ctx.setShadow(offset: CGSize(width: 0, height: -8 * scale), blur: 28 * scale, color: NSColor.black.withAlphaComponent(0.35).cgColor)
+        ctx.addPath(CGPath(roundedRect: imageRect, cornerWidth: radius, cornerHeight: radius, transform: nil))
+        ctx.setFillColor(NSColor.white.cgColor)
+        ctx.fillPath()
+        ctx.restoreGState()
+    }
+}

@@ -62,7 +62,8 @@ final class ShortcutKeyTap {
     /// キーが押された（メインスレッドで呼ばれる）
     nonisolated private func received(type: CGEventType, event: CGEvent) {
         let keyCode = UInt32(event.getIntegerValueField(.keyboardEventKeycode))
-        let modifiers = Self.carbonModifiers(event.flags)
+        // CGEvent の修飾キーは、AppKit の修飾キーと同じ値
+        let modifiers = Shortcut.carbonModifiers(from: NSEvent.ModifierFlags(rawValue: UInt(event.flags.rawValue)))
         let isRepeat = event.getIntegerValueField(.keyboardEventAutorepeat) != 0
         MainActor.assumeIsolated {
             // 長く止まると macOS が止めるので、また動かす
@@ -74,15 +75,5 @@ final class ShortcutKeyTap {
             guard let action = shortcuts.first(where: { $0.value.keyCode == keyCode && $0.value.modifiers == modifiers })?.key else { return }
             onShortcut?(action)
         }
-    }
-
-    /// CGEvent の修飾キーを、Shortcut と同じ Carbon の形にする
-    nonisolated private static func carbonModifiers(_ flags: CGEventFlags) -> UInt32 {
-        var carbon: UInt32 = 0
-        if flags.contains(.maskCommand) { carbon |= UInt32(cmdKey) }
-        if flags.contains(.maskAlternate) { carbon |= UInt32(optionKey) }
-        if flags.contains(.maskControl) { carbon |= UInt32(controlKey) }
-        if flags.contains(.maskShift) { carbon |= UInt32(shiftKey) }
-        return carbon
     }
 }

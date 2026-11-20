@@ -47,6 +47,13 @@ final class ShortcutTests: XCTestCase {
         XCTAssertEqual(try JSONDecoder().decode(Shortcut.self, from: data), .default)
     }
 
+    func testModifierConversions() {
+        let flags: NSEvent.ModifierFlags = [.command, .shift]
+        XCTAssertEqual(Shortcut.carbonModifiers(from: flags), UInt32(cmdKey | shiftKey))
+        XCTAssertEqual(Shortcut.default.menuModifierMask, flags)
+        XCTAssertEqual(Shortcut.carbonModifiers(from: []), 0)
+    }
+
     func testMenuGroupsCoverEveryActionOnce() {
         let grouped = ShortcutAction.captureActions + ShortcutAction.pinActions + ShortcutAction.historyActions
         XCTAssertEqual(Set(grouped), Set(ShortcutAction.allCases))

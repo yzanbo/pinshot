@@ -158,16 +158,16 @@ final class CaptureHistoryViewModel: ObservableObject {
             return true
         }
         switch event.keyCode {
-        case 123: // ←
+        case KeyCode.leftArrow:
             moveSelection(by: -1, extending: flags.contains(.shift))
             return true
-        case 124: // →
+        case KeyCode.rightArrow:
             moveSelection(by: 1, extending: flags.contains(.shift))
             return true
-        case 125, 126 where AppSettings.shared.historyLayout == .list: // ↓ ↑（リストのとき）
-            moveSelection(by: event.keyCode == 125 ? 1 : -1, extending: flags.contains(.shift))
+        case KeyCode.downArrow, KeyCode.upArrow where AppSettings.shared.historyLayout == .list: // リストのときは ↓ ↑ でも動かす
+            moveSelection(by: event.keyCode == KeyCode.downArrow ? 1 : -1, extending: flags.contains(.shift))
             return true
-        case 53: // esc
+        case KeyCode.escape:
             guard !selection.isEmpty else { return false }
             clearSelection()
             return true
@@ -177,10 +177,10 @@ final class CaptureHistoryViewModel: ObservableObject {
         let selected = selectedEntries
         guard !selected.isEmpty else { return false }
         switch event.keyCode {
-        case 51, 117: // delete・forward delete
+        case KeyCode.delete, KeyCode.forwardDelete:
             remove(selected)
             return true
-        case 36, 76: // return・テンキーの enter
+        case KeyCode.return, KeyCode.keypadEnter:
             pin(selected)
             return true
         default:

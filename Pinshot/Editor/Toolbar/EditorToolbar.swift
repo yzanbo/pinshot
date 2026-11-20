@@ -474,7 +474,7 @@ struct EditorToolbar: View {
                 Slider(value: $state.opacity, in: 0.1...1)
                     .controlSize(.mini)
                     .frame(width: 80)
-                Text("\(Int((state.opacity * 100).rounded()))%")
+                Text(state.opacity.percentText)
                     .font(ToolbarMetrics.labelFont.monospacedDigit())
                     .frame(width: 32, alignment: .trailing)
             }

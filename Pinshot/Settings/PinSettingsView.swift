@@ -12,7 +12,7 @@ struct PinSettingsView: View {
                     HStack {
                         Slider(value: $settings.defaultOpacity, in: 0.2...1, step: 0.1)
                             .frame(width: 160)
-                        Text("\(Int((settings.defaultOpacity * 100).rounded()))%")
+                        Text(settings.defaultOpacity.percentText)
                             .monospacedDigit()
                             .frame(width: 40, alignment: .trailing)
                     }
@@ -20,11 +20,7 @@ struct PinSettingsView: View {
                 SettingsNote("どちらも、画像ごとに右クリックのメニューから変えられます。")
             }
             Section {
-                Picker("出し方", selection: $settings.closeButtonMode) {
-                    ForEach(CloseButtonMode.allCases) { mode in
-                        Text(mode.label).tag(mode)
-                    }
-                }
+                OptionPicker("出し方", selection: $settings.closeButtonMode)
                 Toggle("画像の下に操作バーを出す", isOn: $settings.showsQuickActions)
                     .disabled(settings.closeButtonMode == .hidden)
                 SettingsNote("不透明度・拡大率・コピー・保存・履歴・編集のバーです。オフにすると、ダブルクリックで編集するまで画像の下に何も出しません（編集モードのツールバーはいつも出ます）。画像の右クリックからも切り替えられます。")

@@ -27,7 +27,7 @@ extension PinController {
                     self?.setOpacity(CGFloat(percent) / 100)
                 }
             }),
-            .submenu(title: "拡大率（\(ViewControls.percent(Double(zoom)))）", image: symbol("magnifyingglass"), entries: zoomEntries),
+            .submenu(title: "拡大率（\(zoom.percentText)）", image: symbol("magnifyingglass"), entries: zoomEntries),
             .item(title: "背景を付ける（書き出しも同じ見た目）", image: symbol("photo.artframe"), isChecked: showsBackdrop) { [weak self] in
                 guard let self else { return }
                 self.setBackdropShown(!self.showsBackdrop)
@@ -60,7 +60,7 @@ extension PinController {
         let current = Double(zoom)
         return [.item(title: "実際のサイズ（100%）", key: "0") { [weak self] in self?.resetZoom() }, .separator]
             + ViewControls.zoomPresets.map { value in
-                .item(title: ViewControls.percent(value), isChecked: abs(current - value) < 0.005) { [weak self] in
+                .item(title: value.percentText, isChecked: abs(current - value) < 0.005) { [weak self] in
                     self?.setZoom(CGFloat(value))
                 }
             }

@@ -119,7 +119,7 @@ final class ShortcutRecorderModel: ObservableObject {
         monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self else { return event }
             if let window = self.window, event.window !== window { return event }
-            if event.keyCode == 53 { // esc
+            if event.keyCode == KeyCode.escape {
                 self.stop()
                 return nil
             }

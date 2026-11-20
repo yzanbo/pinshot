@@ -156,10 +156,10 @@ final class SelectionController {
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self else { return event }
             switch event.keyCode {
-            case 53: // esc
+            case KeyCode.escape:
                 self.finish(nil)
                 return nil
-            case 49: // space: 範囲 ⇄ ウィンドウ
+            case KeyCode.space: // 範囲 ⇄ ウィンドウ
                 self.options.mode = self.options.mode == .window ? .region : .window
                 return nil
             default:
@@ -230,7 +230,7 @@ final class SelectionController {
         guard !finished else { return }
         // モードバーの上では、ボタンのカーソル（指）を優先する
         guard !isMouseOverModeBar else { return }
-        (options.mode.selectsRegion ? CaptureCursors.selection : CaptureCursors.window).set()
+        CaptureCursors.cursor(for: options.mode).set()
     }
 
     private func finish(_ target: CaptureTarget?) {

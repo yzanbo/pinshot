@@ -26,6 +26,12 @@ final class ScreenGeometryTests: XCTestCase {
         XCTAssertEqual(origin, NSPoint(x: 200, y: 8))
     }
 
+    func testClampedXKeepsMarginFromBothEdges() {
+        XCTAssertEqual(ScreenGeometry.clampedX(-50, width: 200, in: screen), 4)
+        XCTAssertEqual(ScreenGeometry.clampedX(950, width: 200, in: screen), 1000 - 200 - 4)
+        XCTAssertEqual(ScreenGeometry.clampedX(300, width: 200, in: screen), 300)
+    }
+
     func testStaysInsideScreenHorizontally() {
         let image = NSRect(x: 900, y: 400, width: 100, height: 100)
         let origin = ScreenGeometry.originBelow(image, size: bar, gap: 8, in: screen)

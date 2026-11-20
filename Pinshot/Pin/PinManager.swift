@@ -129,8 +129,7 @@ final class PinManager {
     /// 画像を、マウスのある画面の真ん中に浮かせる（クリップボード・撮った画像の履歴から。履歴には残さない）。
     /// offset: 続けて浮かせるときに、右下へずらす量
     func pinAtMouseScreen(image: CGImage, imageSize size: CGSize, offset: CGFloat = 0) {
-        let screen = NSScreen.screens.first { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) } ?? NSScreen.main
-        let visible = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+        let visible = ScreenGeometry.screen(containing: NSEvent.mouseLocation)?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
         // 大きい画像は、画面の 7 割に収まるよう縮める
         let zoom = min(1, visible.width * 0.7 / size.width, visible.height * 0.7 / size.height)
         let frame = NSRect(

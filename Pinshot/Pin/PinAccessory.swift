@@ -123,7 +123,7 @@ final class PinAccessory {
         }
         if placement != .topLeftOutside {
             // 左右は画面の中に収める
-            origin.x = min(max(origin.x, visible.minX + 4), visible.maxX - size.width - 4)
+            origin.x = ScreenGeometry.clampedX(origin.x, width: size.width, in: visible)
         }
         panel.setFrameOrigin(NSPoint(x: origin.x.rounded(), y: origin.y.rounded()))
     }

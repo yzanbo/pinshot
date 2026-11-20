@@ -408,7 +408,7 @@ final class PinController: NSObject, NSWindowDelegate {
         backdrop.zoom = newZoom
         panel.setFrame(NSRect(origin: origin, size: newSize), display: true)
         toolbar.layout()
-        canvas.showHUD("\(Int((newZoom * 100).rounded()))%")
+        canvas.showHUD(newZoom.percentText)
     }
 
     /// トリミングの範囲が変わったら、画面上で絵が動かないようにウィンドウの位置と大きさを合わせる
@@ -426,7 +426,7 @@ final class PinController: NSObject, NSWindowDelegate {
         panel.alphaValue = min(max(value, 0.1), 1)
         appearance.opacity = Double(panel.alphaValue)
         guard showsHUD else { return }
-        canvas.showHUD("不透明度 \(Int((panel.alphaValue * 100).rounded()))%", progress: Double(panel.alphaValue))
+        canvas.showHUD("不透明度 \(panel.alphaValue.percentText)", progress: Double(panel.alphaValue))
     }
 
     func adjustOpacity(by delta: CGFloat) {

@@ -38,7 +38,7 @@ final class PinBackdropView: NSView {
         content.frame = bounds.insetBy(dx: inset, dy: inset)
         content.wantsLayer = true
         // 背景を付けるときは、書き出しと同じく画像の角を丸める
-        let radius = decoration.map { min($0.corner.points * zoom, min(content.frame.width, content.frame.height) / 2) } ?? 0
+        let radius = decoration?.cornerRadius(for: content.frame, scale: zoom) ?? 0
         content.layer?.cornerRadius = radius
         content.layer?.masksToBounds = radius > 0
     }
@@ -46,27 +46,11 @@ final class PinBackdropView: NSView {
     override func draw(_ dirtyRect: NSRect) {
         guard let decoration, let ctx = NSGraphicsContext.current?.cgContext else { return }
 
-        // 背景（単色か、左上から右下へのグラデーション）
-        let colors = decoration.background.colors
-        let space = CGColorSpace(name: CGColorSpace.sRGB)!
-        if colors.count >= 2,
-           let gradient = CGGradient(colorsSpace: space, colors: colors.map(\.cgColor) as CFArray, locations: [0, 1]) {
-            ctx.drawLinearGradient(gradient, start: CGPoint(x: 0, y: bounds.maxY), end: CGPoint(x: bounds.maxX, y: 0), options: [])
-        } else if let color = colors.first {
-            ctx.setFillColor(color.cgColor)
-            ctx.fill(bounds)
+        // 書き出しと同じ描き方（ExportDecoration）で、背景と、画像の下に落とす影を描く
+        decoration.drawBackground(in: ctx, rect: bounds)
+        if let content {
+            decoration.drawShadow(in: ctx, imageRect: content.frame, scale: zoom)
         }
-
-        // 画像の下に落とす影
-        guard decoration.shadow, let content else { return }
-        let frame = content.frame
-        let radius = min(decoration.corner.points * zoom, min(frame.width, frame.height) / 2)
-        ctx.saveGState()
-        ctx.setShadow(offset: CGSize(width: 0, height: -8 * zoom), blur: 28 * zoom, color: NSColor.black.withAlphaComponent(0.35).cgColor)
-        ctx.addPath(CGPath(roundedRect: frame, cornerWidth: radius, cornerHeight: radius, transform: nil))
-        ctx.setFillColor(NSColor.white.cgColor)
-        ctx.fillPath()
-        ctx.restoreGState()
     }
 
     // MARK: - 余白の部分の操作（画像の上の操作はキャンバスが受ける）

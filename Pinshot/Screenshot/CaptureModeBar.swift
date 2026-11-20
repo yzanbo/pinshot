@@ -7,9 +7,7 @@ struct CaptureModeBar: View {
     let cancel: () -> Void
 
     /// ボタンからマウスが離れたときに戻すカーソル（いまのモードのキャプチャ用のカーソル）
-    private var exitCursor: NSCursor {
-        options.mode.selectsRegion ? CaptureCursors.selection : CaptureCursors.window
-    }
+    private var exitCursor: NSCursor { CaptureCursors.cursor(for: options.mode) }
 
     var body: some View {
         VStack(spacing: 8) {

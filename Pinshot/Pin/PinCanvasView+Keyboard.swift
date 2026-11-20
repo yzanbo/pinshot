@@ -5,8 +5,8 @@ extension PinCanvasView {
 
     override func keyDown(with event: NSEvent) {
         let shift = event.modifierFlags.contains(.shift)
-        switch Int(event.keyCode) {
-        case 53: // esc: 選択を外す → 編集を終える
+        switch event.keyCode {
+        case KeyCode.escape: // 選択を外す → 編集を終える
             if !selection.isEmpty {
                 selection = []
                 needsDisplay = true
@@ -14,9 +14,9 @@ extension PinCanvasView {
                 controller?.setEditing(false)
             }
             return
-        case 51, 117: // delete / forward delete
+        case KeyCode.delete, KeyCode.forwardDelete:
             if state.isEditing, deleteSelected() { return }
-        case 49: // space: 押している間はドラッグで画像を動かす
+        case KeyCode.space: // 押している間はドラッグで画像を動かす
             if state.isEditing {
                 if !event.isARepeat {
                     isSpaceHeld = true
@@ -24,12 +24,12 @@ extension PinCanvasView {
                 }
                 return
             }
-        case 123, 124, 125, 126: // 矢印キー
+        case KeyCode.leftArrow, KeyCode.rightArrow, KeyCode.downArrow, KeyCode.upArrow:
             let step: CGFloat = shift ? 10 : 1
-            let (dx, dy): (CGFloat, CGFloat) = switch Int(event.keyCode) {
-            case 123: (-step, 0)
-            case 124: (step, 0)
-            case 125: (0, step) // 下（画像の座標は下が +）
+            let (dx, dy): (CGFloat, CGFloat) = switch event.keyCode {
+            case KeyCode.leftArrow: (-step, 0)
+            case KeyCode.rightArrow: (step, 0)
+            case KeyCode.downArrow: (0, step) // 下（画像の座標は下が +）
             default: (0, -step)
             }
             if state.isEditing, !selection.isEmpty {
@@ -66,7 +66,7 @@ extension PinCanvasView {
     }
 
     override func keyUp(with event: NSEvent) {
-        if event.keyCode == 49, isSpaceHeld {
+        if event.keyCode == KeyCode.space, isSpaceHeld {
             isSpaceHeld = false
             updateCursor()
             return

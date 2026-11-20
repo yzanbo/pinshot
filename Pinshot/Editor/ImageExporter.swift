@@ -67,30 +67,12 @@ enum ImageExporter {
         let height = Int((CGFloat(image.height) + padding * 2).rounded())
         guard let ctx = CGContext.makeRGBA(width: width, height: height) else { return nil }
 
-        // 背景（単色か、左上から右下へのグラデーション）
-        let full = CGRect(x: 0, y: 0, width: width, height: height)
-        let colors = decoration.background.colors
-        if colors.count >= 2,
-           let gradient = CGGradient(colorsSpace: ctx.colorSpace, colors: colors.map(\.cgColor) as CFArray, locations: [0, 1]) {
-            ctx.drawLinearGradient(gradient, start: CGPoint(x: 0, y: full.maxY), end: CGPoint(x: full.maxX, y: 0), options: [])
-        } else if let color = colors.first {
-            ctx.setFillColor(color.cgColor)
-            ctx.fill(full)
-        }
-
+        // 背景と影（浮かせた画像の背景と同じ描き方）
         let imageRect = CGRect(x: padding, y: padding, width: CGFloat(image.width), height: CGFloat(image.height))
-        let radius = min(decoration.corner.points * scale, min(imageRect.width, imageRect.height) / 2)
+        decoration.drawBackground(in: ctx, rect: CGRect(x: 0, y: 0, width: width, height: height))
+        decoration.drawShadow(in: ctx, imageRect: imageRect, scale: scale)
+        let radius = decoration.cornerRadius(for: imageRect, scale: scale)
         let path = CGPath(roundedRect: imageRect, cornerWidth: radius, cornerHeight: radius, transform: nil)
-
-        // 影（画像の形の板を描いて、その影を落とす）
-        if decoration.shadow {
-            ctx.saveGState()
-            ctx.setShadow(offset: CGSize(width: 0, height: -8 * scale), blur: 28 * scale, color: NSColor.black.withAlphaComponent(0.35).cgColor)
-            ctx.addPath(path)
-            ctx.setFillColor(NSColor.white.cgColor)
-            ctx.fillPath()
-            ctx.restoreGState()
-        }
 
         // 角を丸めた画像
         ctx.saveGState()

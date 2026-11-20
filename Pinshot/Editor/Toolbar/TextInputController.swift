@@ -29,7 +29,7 @@ final class TextInputController: NSObject, NSTextFieldDelegate, NSWindowDelegate
         var origin = NSPoint(x: mouse.x - size.width / 2, y: mouse.y - size.height - 6)
         if let visible = ScreenGeometry.screen(containing: mouse)?.visibleFrame {
             if origin.y < visible.minY { origin.y = mouse.y + 10 }
-            origin.x = min(max(origin.x, visible.minX + 4), visible.maxX - size.width - 4)
+            origin.x = ScreenGeometry.clampedX(origin.x, width: size.width, in: visible)
         }
         let panel = KeyableOverlayPanel(contentRect: NSRect(origin: origin, size: size), level: .popUpMenu)
         panel.delegate = self

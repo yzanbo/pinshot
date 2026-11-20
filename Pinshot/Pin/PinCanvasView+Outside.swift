@@ -27,8 +27,7 @@ extension PinCanvasView {
 
     func updateOutsideQuickBar(visible: Bool, hideDelay: TimeInterval) {
         if visible, outsideQuickBar == nil, let window, let controller {
-            let bar = FirstMouseHostingView(rootView: makeQuickActionBar(appearance: controller.appearance))
-            bar.frame.size = bar.fittingSize
+            let bar = makeQuickActionBar(appearance: controller.appearance)
             let accessory = PinAccessory(parent: window, placement: .below, content: bar)
             accessory.onHoverChange = { [weak self] in self?.updateChrome() }
             outsideQuickBar = accessory
@@ -63,16 +62,45 @@ extension PinCanvasView {
     func showOutsideSelectionBar() {
         guard let window else { return }
         if outsideSelectionBar == nil {
-            let bar = FirstMouseHostingView(rootView: SelectionActionBar(
-                duplicate: { [weak self] in self?.duplicateSelected() },
-                bringForward: { [weak self] in self?.reorderSelected(forward: true) },
-                sendBackward: { [weak self] in self?.reorderSelected(forward: false) },
-                delete: { [weak self] in self?.deleteSelected() }
-            ))
-            bar.frame.size = bar.fittingSize
-            outsideSelectionBar = PinAccessory(parent: window, placement: .above, content: bar)
+            outsideSelectionBar = PinAccessory(parent: window, placement: .above, content: makeSelectionActionBar())
         }
         outsideSelectionBar?.show()
+    }
+
+    // MARK: - 部品を作る
+
+    /// 操作バー（中身の大きさに合わせたビュー）
+    private func makeQuickActionBar(appearance: PinAppearance) -> NSView {
+        sized(FirstMouseHostingView(rootView: QuickActionBar(
+            appearance: appearance,
+            edit: { [weak self] in self?.controller?.setEditing(true) },
+            setOpacity: { [weak self] value in self?.controller?.setOpacity(CGFloat(value)) },
+            setZoom: { [weak self] value in self?.controller?.setZoom(CGFloat(value)) },
+            copy: { [weak self] in self?.controller?.copyToPasteboard() },
+            save: { [weak self] in self?.controller?.save() },
+            more: { [weak self] in
+                // 「…」のメニューは、マウスの位置に開く
+                guard let menu = self?.controller?.makeContextMenu() else { return }
+                menu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
+            },
+            history: { CaptureHistoryWindowController.shared.show() }
+        )))
+    }
+
+    /// 選んだ書き込みのバー（複製・前面へ・背面へ・削除。画像の中に出すときも、外に出すときも同じもの）
+    func makeSelectionActionBar() -> NSView {
+        sized(FirstMouseHostingView(rootView: SelectionActionBar(
+            duplicate: { [weak self] in self?.duplicateSelected() },
+            bringForward: { [weak self] in self?.reorderSelected(forward: true) },
+            sendBackward: { [weak self] in self?.reorderSelected(forward: false) },
+            delete: { [weak self] in self?.deleteSelected() }
+        )))
+    }
+
+    /// 中身に合った大きさにする
+    private func sized(_ view: NSView) -> NSView {
+        view.frame.size = view.fittingSize
+        return view
     }
 
     // MARK: - 置き直し

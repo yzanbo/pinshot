@@ -108,7 +108,7 @@ final class PinToolbarController {
             toolbar.setContentSize(size)
             layout()
             let visible = ScreenGeometry.screen(intersecting: toolbar.frame)?.visibleFrame ?? toolbar.frame
-            let x = min(max(left, visible.minX + 4), visible.maxX - size.width - 4)
+            let x = ScreenGeometry.clampedX(left, width: size.width, in: visible)
             toolbar.setFrameOrigin(NSPoint(x: x, y: toolbar.frame.minY))
         }
     }

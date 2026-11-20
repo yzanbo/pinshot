@@ -232,27 +232,39 @@ final class AppSettings: ObservableObject {
         } else {
             shortcuts = Self.defaultShortcuts
         }
-        appearance = defaults.string(forKey: Key.appearance).flatMap(AppearanceMode.init(rawValue:)) ?? .system
-        historyEnabled = defaults.object(forKey: Key.historyEnabled) as? Bool ?? true
-        historyPeriod = (defaults.object(forKey: Key.historyPeriod) as? Int).flatMap(HistoryPeriod.init(rawValue:)) ?? .month
-        historyLimit = (defaults.object(forKey: Key.historyLimit) as? Int).flatMap(HistoryLimit.init(rawValue:)) ?? .hundred
-        historyLayout = defaults.string(forKey: Key.historyLayout).flatMap(HistoryLayout.init(rawValue:)) ?? .largeGrid
-        restorePins = defaults.object(forKey: Key.restorePins) as? Bool ?? true
-        copyAfterCapture = defaults.object(forKey: Key.copyAfterCapture) as? Bool ?? false
-        showsQuickActions = defaults.object(forKey: Key.showsQuickActions) as? Bool ?? true
-        alwaysOnTop = defaults.object(forKey: Key.alwaysOnTop) as? Bool ?? true
-        detailedCaptureUI = defaults.bool(forKey: Key.detailedCaptureUI)
+        appearance = defaults.option(Key.appearance, default: .system)
+        historyEnabled = defaults.bool(Key.historyEnabled, default: true)
+        historyPeriod = defaults.option(Key.historyPeriod, default: .month)
+        historyLimit = defaults.option(Key.historyLimit, default: .hundred)
+        historyLayout = defaults.option(Key.historyLayout, default: .largeGrid)
+        restorePins = defaults.bool(Key.restorePins, default: true)
+        copyAfterCapture = defaults.bool(Key.copyAfterCapture, default: false)
+        showsQuickActions = defaults.bool(Key.showsQuickActions, default: true)
+        alwaysOnTop = defaults.bool(Key.alwaysOnTop, default: true)
+        detailedCaptureUI = defaults.bool(Key.detailedCaptureUI, default: false)
         exportDecoration = defaults.data(forKey: Key.exportDecoration)
             .flatMap { try? JSONDecoder().decode(ExportDecoration.self, from: $0) } ?? ExportDecoration()
-        closeButtonMode = defaults.string(forKey: Key.closeButtonMode).flatMap(CloseButtonMode.init(rawValue:)) ?? .always
+        closeButtonMode = defaults.option(Key.closeButtonMode, default: .always)
         defaultOpacity = defaults.object(forKey: Key.defaultOpacity) as? Double ?? 1
-        annotationShadow = defaults.object(forKey: Key.annotationShadow) as? Bool ?? true
-        saveMode = defaults.string(forKey: Key.saveMode).flatMap(SaveMode.init(rawValue:)) ?? .ask
+        annotationShadow = defaults.bool(Key.annotationShadow, default: true)
+        saveMode = defaults.option(Key.saveMode, default: .ask)
         if let path = defaults.string(forKey: Key.saveFolder) {
             saveFolder = URL(fileURLWithPath: path, isDirectory: true)
         } else {
             saveFolder = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first
                 ?? URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)
         }
+    }
+}
+
+private extension UserDefaults {
+    /// 保存した真偽値（まだ保存していなければ fallback）
+    func bool(_ key: String, default fallback: Bool) -> Bool {
+        object(forKey: key) as? Bool ?? fallback
+    }
+
+    /// 保存した選択肢（まだ保存していない・いまはない値なら fallback）
+    func option<Option: RawRepresentable>(_ key: String, default fallback: Option) -> Option {
+        (object(forKey: key) as? Option.RawValue).flatMap(Option.init(rawValue:)) ?? fallback
     }
 }

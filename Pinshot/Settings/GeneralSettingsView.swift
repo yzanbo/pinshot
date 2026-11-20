@@ -14,11 +14,7 @@ struct GeneralSettingsView: View {
     var body: some View {
         SettingsPane {
             Section("表示") {
-                Picker("見た目", selection: $settings.appearance) {
-                    ForEach(AppearanceMode.allCases) { mode in
-                        Text(mode.label).tag(mode)
-                    }
-                }
+                OptionPicker("見た目", selection: $settings.appearance)
                 .pickerStyle(.segmented)
                 SettingsNote("ツールバー・メニュー・設定などの色です。「システム」なら、Mac のライト / ダークの設定に合わせます。")
             }

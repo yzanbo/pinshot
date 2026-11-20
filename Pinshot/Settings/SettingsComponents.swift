@@ -29,3 +29,36 @@ struct SettingsNote: View {
             .fixedSize(horizontal: false, vertical: true)
     }
 }
+
+/// 設定の選択肢（名前を持ち、すべての値を並べられる）
+protocol SettingsOption: CaseIterable, Identifiable, Hashable {
+    var label: String { get }
+}
+
+extension AppearanceMode: SettingsOption {}
+extension CloseButtonMode: SettingsOption {}
+extension SaveMode: SettingsOption {}
+extension ExportBackground: SettingsOption {}
+extension ExportPadding: SettingsOption {}
+extension ExportCorner: SettingsOption {}
+extension HistoryPeriod: SettingsOption {}
+extension HistoryLimit: SettingsOption {}
+
+/// 選択肢をすべて並べた Picker（名前は選択肢の label）
+struct OptionPicker<Option: SettingsOption>: View where Option.AllCases: RandomAccessCollection {
+    let title: String
+    @Binding var selection: Option
+
+    init(_ title: String, selection: Binding<Option>) {
+        self.title = title
+        _selection = selection
+    }
+
+    var body: some View {
+        Picker(title, selection: $selection) {
+            ForEach(Option.allCases) { option in
+                Text(option.label).tag(option)
+            }
+        }
+    }
+}

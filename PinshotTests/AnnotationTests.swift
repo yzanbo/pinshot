@@ -97,6 +97,23 @@ final class AnnotationTests: XCTestCase {
         XCTAssertEqual(try JSONDecoder().decode(TextStyle.self, from: JSONEncoder().encode(style)), style)
     }
 
+    func testSnappedTo45KeepsLength() {
+        let origin = CGPoint(x: 10, y: 10)
+        // ほぼ右向きは、真横にそろう
+        let right = CGPoint(x: 110, y: 18).snappedTo45(from: origin)
+        XCTAssertEqual(right.y, 10, accuracy: 0.001)
+        XCTAssertEqual(hypot(right.x - 10, right.y - 10), hypot(100, 8), accuracy: 0.001)
+        // ほぼ斜めは、45° にそろう
+        let diagonal = CGPoint(x: 60, y: 70).snappedTo45(from: origin)
+        XCTAssertEqual(diagonal.x - 10, diagonal.y - 10, accuracy: 0.001)
+    }
+
+    func testPercentText() {
+        XCTAssertEqual(0.8.percentText, "80%")
+        XCTAssertEqual(CGFloat(1.5).percentText, "150%")
+        XCTAssertEqual(0.666.percentText, "67%")
+    }
+
     func testTranslated() {
         let moved = arrow.translated(by: CGVector(dx: 5, dy: -3))
         guard case .arrow(let from, let to, _) = moved.shape else { return XCTFail() }
