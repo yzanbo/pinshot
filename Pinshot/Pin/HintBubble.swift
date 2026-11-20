@@ -26,8 +26,10 @@ final class HintBubble {
         panel.contentView = background
     }
 
-    /// anchor（マウスの位置）の横あたりで、avoiding（ツールバー）の上に出す。上に入らなければ下
-    func show(_ text: String, at anchor: NSPoint, avoiding avoid: NSRect) {
+    /// anchor（マウスの位置）の横あたりで、avoiding（ツールバー）の上に出す。上に入らなければ下。
+    /// keepOut を渡すと、その四角（録画している範囲など）に重ならない側に出し、どちらも重なるときは出さない。出したら true
+    @discardableResult
+    func show(_ text: String, at anchor: NSPoint, avoiding avoid: NSRect, keepOut: NSRect? = nil) -> Bool {
         label.stringValue = text
         label.preferredMaxLayoutWidth = maxTextWidth
         let textSize = label.sizeThatFits(NSSize(width: maxTextWidth, height: 200))
@@ -36,13 +38,24 @@ final class HintBubble {
 
         let screen = ScreenGeometry.screen(containing: anchor)
         let visible = screen?.visibleFrame ?? NSRect(origin: .zero, size: size)
-        var origin = NSPoint(x: anchor.x - size.width / 2, y: avoid.maxY + 6)
-        if origin.y + size.height > visible.maxY {
-            origin.y = avoid.minY - size.height - 6
+        let x = ScreenGeometry.clampedX(anchor.x - size.width / 2, width: size.width, in: visible)
+        let above = NSRect(origin: NSPoint(x: x, y: avoid.maxY + 6), size: size)
+        let below = NSRect(origin: NSPoint(x: x, y: avoid.minY - size.height - 6), size: size)
+        let frame: NSRect
+        if let keepOut {
+            // 画面に収まり、keepOut に重ならない側（上を先に見る）。どちらもだめなら出さない
+            let fits = { (rect: NSRect) in rect.minY >= visible.minY && rect.maxY <= visible.maxY && !rect.intersects(keepOut) }
+            guard let chosen = [above, below].first(where: fits) else {
+                hide()
+                return false
+            }
+            frame = chosen
+        } else {
+            frame = above.maxY > visible.maxY ? below : above
         }
-        origin.x = ScreenGeometry.clampedX(origin.x, width: size.width, in: visible)
-        panel.setFrame(NSRect(origin: origin, size: size), display: true)
+        panel.setFrame(frame, display: true)
         panel.orderFrontRegardless()
+        return true
     }
 
     func hide() {
@@ -70,19 +83,20 @@ final class HoverHints {
         }
     }
 
-    /// text を出す。avoiding は出す直前に聞く、重ねたくない窓の位置（その上に出し、上に入らなければ下）。nil なら出さない
-    func show(_ text: String, avoiding: @escaping @MainActor () -> NSRect?) {
+    /// text を出す。avoiding は出す直前に聞く、重ねたくない窓の位置（その上に出し、上に入らなければ下）。nil なら出さない。
+    /// keepOut も出す直前に聞く、決して重ねない四角（録画している範囲など。重ならずに出せなければ出さない）
+    func show(_ text: String, avoiding: @escaping @MainActor () -> NSRect?, keepOut: (@MainActor () -> NSRect?)? = nil) {
         task?.cancel()
         current = text
         if bubble.isShown {
             guard let rect = avoiding() else { return hide() }
-            bubble.show(text, at: NSEvent.mouseLocation, avoiding: rect)
+            bubble.show(text, at: NSEvent.mouseLocation, avoiding: rect, keepOut: keepOut?())
             return
         }
         task = Task { @MainActor [weak self] in
             try? await Task.sleep(for: .milliseconds(450))
             guard let self, !Task.isCancelled, self.current == text, let rect = avoiding() else { return }
-            self.bubble.show(text, at: NSEvent.mouseLocation, avoiding: rect)
+            self.bubble.show(text, at: NSEvent.mouseLocation, avoiding: rect, keepOut: keepOut?())
         }
     }
 
@@ -100,22 +114,23 @@ final class HoverHints {
 
     /// マウスの真下にある自分の窓（ボタンのあるバーなど）に重ならないよう、text を出す。
     /// 編集ツールバーの表示メニューの「ボタンに乗せたら説明を出す」をオフにしていたら出さない
-    func showOverWindowUnderMouse(_ text: String) {
+    func showOverWindowUnderMouse(_ text: String, keepOut: (@MainActor () -> NSRect?)? = nil) {
         guard EditorState.savedShowsHints else { return }
-        show(text) {
+        show(text, avoiding: {
             let number = NSWindow.windowNumber(at: NSEvent.mouseLocation, belowWindowWithWindowNumber: 0)
             return NSApp.window(withWindowNumber: number)?.frame
-        }
+        }, keepOut: keepOut)
     }
 }
 
 extension View {
-    /// マウスを乗せている間、説明のポップアップを出す（Pinshot が前面にないときも出る）
-    func hoverHint(_ text: String) -> some View {
+    /// マウスを乗せている間、説明のポップアップを出す（Pinshot が前面にないときも出る）。
+    /// keepOut を渡すと、その四角に重ならない所にだけ出す（録画の操作パネルの説明を、録画に写さないため）
+    func hoverHint(_ text: String, keepOut: (@MainActor () -> NSRect?)? = nil) -> some View {
         self
             .onHover { hovering in
                 if hovering {
-                    HoverHints.shared.showOverWindowUnderMouse(text)
+                    HoverHints.shared.showOverWindowUnderMouse(text, keepOut: keepOut)
                 } else {
                     HoverHints.shared.end(text)
                 }

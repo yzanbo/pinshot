@@ -28,6 +28,13 @@ final class RecordingController {
 
     var isRecording: Bool { isActive }
 
+    /// 録画に写る範囲（赤い点線の枠を含む）。操作パネルの説明の吹き出しは、ここに重ねない
+    /// （枠と操作パネルは録画から除いているが、吹き出しは録画の途中で新しく出る窓なので、重なると写ってしまう）
+    var hintKeepOutRect: NSRect? {
+        guard isActive else { return nil }
+        return border?.frame ?? rect
+    }
+
     /// rect（スクリーン座標）の録画を始める。画面をまたぐときは、screen の中だけにする
     func start(screen: NSScreen, rect: NSRect) {
         guard !isActive else { return }
@@ -220,11 +227,11 @@ private struct RecordingPanelView: View {
                     .contentShape(Capsule())
             }
             .buttonStyle(.plain)
-            .hoverHint("録画を止めて、浮かせて再生する（メニューバー・ショートカットでも止められる）")
+            .hoverHint("録画を止めて、浮かせて再生する（メニューバー・ショートカットでも止められる）", keepOut: { RecordingController.shared.hintKeepOutRect })
             .hoverRole()
             Button("やめる", action: model.cancel)
                 .controlSize(.small)
-                .hoverHint("録画を止めて、捨てる")
+                .hoverHint("録画を止めて、捨てる", keepOut: { RecordingController.shared.hintKeepOutRect })
                 .hoverRole()
         }
         .padding(.horizontal, 12)
