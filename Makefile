@@ -58,7 +58,13 @@ dist:
 	mkdir -p dist/dmg-root
 	ditto "$(RELEASE_APP)" dist/dmg-root/Pinshot.app
 	ln -s /Applications dist/dmg-root/Applications
-	hdiutil create -volname "Pinshot" -srcfolder dist/dmg-root -ov -format UDZO "$(DIST_DMG)"
+	@# macOS 26 以降は diskutil image で作る（hdiutil create は「使わなくなる」と警告が出るため）。ない版では hdiutil で作る
+	rm -f "$(DIST_DMG)"
+	if diskutil image create from -h >/dev/null 2>&1; then \
+		diskutil image create from --format UDZO --volumeName "Pinshot" dist/dmg-root "$(DIST_DMG)"; \
+	else \
+		hdiutil create -volname "Pinshot" -srcfolder dist/dmg-root -ov -format UDZO "$(DIST_DMG)"; \
+	fi
 	rm -rf dist/dmg-root
 	cd dist && shasum -a 256 "Pinshot-$(RELEASE_NAME).dmg" "Pinshot-$(RELEASE_NAME).zip" > "Pinshot-$(RELEASE_NAME).sha256"
 	@echo ""
