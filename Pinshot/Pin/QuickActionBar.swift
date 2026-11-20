@@ -1,19 +1,6 @@
 import AppKit
 import SwiftUI
 
-/// 浮かせた画像の見た目（操作バーのスライダーと、⌥ + スクロールなどで変えた値を同じにする）
-@MainActor
-final class PinAppearance: ObservableObject {
-    @Published var opacity: Double
-    /// 表示の拡大率（1 が実寸）
-    @Published var zoom: Double
-
-    init(opacity: Double, zoom: Double = 1) {
-        self.opacity = opacity
-        self.zoom = zoom
-    }
-}
-
 /// 浮かせた画像の下側に出す、よく使う操作のバー（不透明度・拡大率・コピー・保存・履歴・そのほか・編集）。
 /// 並びは編集モードのツールバー（… 不透明度・拡大率 | コピー・保存 | 履歴 表示 完了）とそろえ、
 /// 「…」を表示のメニュー、「編集」を「完了」と同じ位置に置く（編集に入る前と後で、同じ場所に同じ役割のボタンがある）。
