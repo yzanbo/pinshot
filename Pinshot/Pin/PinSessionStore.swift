@@ -28,7 +28,8 @@ final class PinSessionStore {
         let folder = folder
         let sessionURL = sessionURL
         let keep = session.imageFileNames
-        let work = {
+        // 裏の列（io）で動かすので @Sendable にする（Swift の並行処理のチェックで警告にならないように）
+        let work: @Sendable () -> Void = {
             let fileManager = FileManager.default
             try? fileManager.createDirectory(at: folder, withIntermediateDirectories: true)
             for (name, item) in missing {
@@ -66,7 +67,7 @@ final class PinSessionStore {
     func clear(wait: Bool = false) {
         lastSaved = nil
         let folder = folder
-        let work: () -> Void = { try? FileManager.default.removeItem(at: folder) }
+        let work: @Sendable () -> Void = { try? FileManager.default.removeItem(at: folder) }
         if wait { io.sync(execute: work) } else { io.async(execute: work) }
     }
 }

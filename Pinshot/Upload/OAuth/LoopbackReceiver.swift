@@ -88,19 +88,19 @@ final class LoopbackReceiver: @unchecked Sendable {
             self?.handle(connection)
         }
         return await withCheckedContinuation { continuation in
-            var resumed = false
+            // 知らせは queue の上で 1 つずつ届くので、最初の結果だけを返す
+            let once = ResumeOnce()
             listener.stateUpdateHandler = { state in
-                guard !resumed else { return }
                 switch state {
                 case .ready:
-                    resumed = true
+                    guard once.claim() else { return }
                     continuation.resume(returning: .success(listener))
                 case .failed(let error), .waiting(let error):
-                    resumed = true
+                    guard once.claim() else { return }
                     listener.cancel()
                     continuation.resume(returning: .failure(error))
                 case .cancelled:
-                    resumed = true
+                    guard once.claim() else { return }
                     continuation.resume(returning: .failure(UploadError.cancelled))
                 default:
                     break
@@ -174,5 +174,17 @@ final class LoopbackReceiver: @unchecked Sendable {
         <style>body{font:16px -apple-system,sans-serif;margin:4em auto;max-width:32em;padding:0 1em;color:#333}</style>
         </head><body><p>\(message)</p></body></html>
         """
+    }
+}
+
+/// 一度だけ通す印（受け口の準備ができた・失敗した、の最初の知らせだけを返す）。
+/// 触るのは LoopbackReceiver の queue の上だけなので、鍵は掛けない
+private final class ResumeOnce: @unchecked Sendable {
+    private var claimed = false
+
+    func claim() -> Bool {
+        guard !claimed else { return false }
+        claimed = true
+        return true
     }
 }

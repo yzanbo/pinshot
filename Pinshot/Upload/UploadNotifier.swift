@@ -1,5 +1,5 @@
 import AppKit
-import UserNotifications
+@preconcurrency import UserNotifications
 
 /// 上げ終えたときの macOS の通知（設定の「上げ終えたら通知する」）。
 /// 通知を押すと、共有リンクをブラウザで開く。通知を許可していなければ、何もしない（画像の上のお知らせだけになる）
@@ -8,7 +8,8 @@ final class UploadNotifier: NSObject, UNUserNotificationCenterDelegate {
     static let shared = UploadNotifier()
 
     private var center: UNUserNotificationCenter { .current() }
-    private static let linkKey = "link"
+    /// 通知に付けるリンクの名前（裏から呼ばれる通知の受け口でも読む）
+    private nonisolated static let linkKey = "link"
 
     /// 通知の許可を求める（まだ決めていなければ、macOS が確かめる画面を出す）
     func requestPermission() {
@@ -25,14 +26,15 @@ final class UploadNotifier: NSObject, UNUserNotificationCenterDelegate {
         content.body = body
         if let link { content.userInfo = [Self.linkKey: link.absoluteString] }
         let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
-        center.getNotificationSettings { [center] settings in
-            switch settings.authorizationStatus {
+        let center = center
+        Task {
+            switch await center.notificationSettings().authorizationStatus {
             case .authorized, .provisional:
-                center.add(request)
+                try? await center.add(request)
             case .notDetermined:
                 // 初めて上げたときに許可を求め、許されたら出す
-                center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
-                    if granted { center.add(request) }
+                if (try? await center.requestAuthorization(options: [.alert, .sound])) == true {
+                    try? await center.add(request)
                 }
             default:
                 break
