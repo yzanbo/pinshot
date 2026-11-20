@@ -46,6 +46,12 @@ final class PinManager {
         // 履歴の印を付けておく（あとで履歴から同じ画像を浮かせたときに、増やさずこの画像を前に出す）
         let historyID = CaptureHistory.shared.add(image: image, pointSize: imageSize)
         let controller = show(image: image, imageSize: imageSize, frame: frame, zoom: zoom, origin: historyID.map(PinOrigin.captureHistory))
+        // 設定の「撮ったら、クリップボードにもコピーする」（初期設定はオフ）。
+        // 撮ったときだけ（履歴・クリップボードから浮かせたときは、クリップボードを上書きしない）
+        if AppSettings.shared.copyAfterCapture {
+            ImageExporter.writeToPasteboard(image, pointSize: imageSize)
+            controller.canvas.showHUD("コピーしました")
+        }
         // 設定の「撮ったら自動で上げる」（初期設定はオフ）。上げるのは撮ったままの画像
         if AppSettings.shared.autoUploadCaptures {
             UploadCenter.shared.shareImage(image, pointSize: imageSize, automatic: true) { [weak controller] status in
@@ -61,11 +67,6 @@ final class PinManager {
         controller.origin = origin
         controller.show()
         scheduleSave()
-
-        if AppSettings.shared.copyAfterCapture {
-            ImageExporter.writeToPasteboard(image, pointSize: imageSize)
-            controller.canvas.showHUD("コピーしました")
-        }
         return controller
     }
 
