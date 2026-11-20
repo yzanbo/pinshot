@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// 浮かせた画像の下側に出す、よく使う操作のバー（不透明度・拡大率・コピー・保存・履歴・そのほか・編集）。
+/// 浮かせた画像の下側に出す、よく使う操作のバー（不透明度・拡大率・コピー・保存・保存先を開く・文字・履歴・そのほか・編集）。
 /// 左端に動かすつまみ ✙ を置く。編集モードでも、ツールバーの上のバーとしてこのバーをそのまま出し（isEditing）、
 /// 違うのは「編集」が「完了」になることだけ（編集に入る前と後で、同じ場所に同じ見た目・同じ役割のボタンがある）。
 /// 閉じるボタン（×）は、画像の左上の外側に別に出す
@@ -38,6 +38,8 @@ struct QuickActionBar: View {
             divider
             QuickActionButton(symbol: "doc.on.doc", help: "コピー（⌘C）", action: copy)
             QuickActionButton(symbol: "square.and.arrow.down", help: "保存（⌘S）", action: save)
+            // 保存した画像を見に行けるよう、保存先のフォルダを開く（どの画像からでも同じフォルダ）
+            QuickActionButton(symbol: "folder", help: "保存先のフォルダを Finder で開く", action: { ImageSaver.openSaveFolder() })
             QuickActionButton(symbol: "text.viewfinder", help: "文字をコピー（⇧⌘T）：画像の文字を読み取る。範囲を選ぶときは「…」から", action: copyText)
             divider
             QuickActionButton(symbol: "clock.arrow.circlepath", help: "撮った画像の履歴", action: history)

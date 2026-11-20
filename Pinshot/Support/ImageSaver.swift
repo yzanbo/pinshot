@@ -5,6 +5,11 @@ import UniformTypeIdentifiers
 /// 保存先（親）の中を、設定に合わせて種類ごと・月ごとに分ける（SaveLocation）。浮かせた画像・撮った画像の履歴・録画から使う
 @MainActor
 enum ImageSaver {
+    /// kind を保存するフォルダを Finder で開く（まだ保存していなくても開けるよう、なければ作る）
+    static func openSaveFolder(for kind: ExportKind = .image) {
+        NSWorkspace.shared.open(AppSettings.shared.prepareSaveFolder(for: kind))
+    }
+
     /// 保存できたら onSaved を呼ぶ。保存できなかったときは、理由を知らせる
     static func save(_ data: Data, suggestedName: String = ImageExporter.defaultFileName(), onSaved: (() -> Void)? = nil) {
         chooseDestination(for: .image, suggestedName: suggestedName) { url in
