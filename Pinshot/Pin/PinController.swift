@@ -328,6 +328,10 @@ final class PinController: NSObject, NSWindowDelegate {
             setOpacity: { [weak self] value in self?.setOpacity(CGFloat(value)) },
             setZoom: { [weak self] value in self?.setZoom(CGFloat(value)) },
             openHistory: { CaptureHistoryWindowController.shared.show() },
+            setTextMarkLinePosition: { [weak self] position in
+                self?.state.textMarkStyle.linePosition = position
+                self?.canvas.unifyTextMarkLinePosition(position)
+            },
             move: { [weak self] in self?.toolbar.moveWithMouse() },
             endMove: { [weak self] in self?.toolbar.endMoveWithMouse() }
         )

@@ -13,6 +13,8 @@ struct ToolbarActions {
     var setZoom: (Double) -> Void
     /// 撮った画像の履歴を開く
     var openHistory: @MainActor () -> Void
+    /// 文字マーカーの線の位置を変える（この画像のすべての文字マーカーをそろえる）
+    var setTextMarkLinePosition: @MainActor (TextMarkLinePosition) -> Void
     /// つまみのドラッグで動かす（最初の呼び出しでマウスと位置を覚え、そこからの差で動かす）。
     /// ツールバーが画像に付いているときは画像ごと、切り離しているときはツールバーだけを動かす
     var move: @MainActor () -> Void
@@ -364,6 +366,28 @@ struct EditorToolbar: View {
                     ForEach(TextMarkKind.allCases) { kind in
                         SegmentButton(state: state, symbol: kind.symbolName, text: kind.label, hint: "文字マーカーの種類：\(kind.label)", isSelected: state.textMarkStyle.kind == kind) {
                             state.textMarkStyle.kind = kind
+                        }
+                    }
+                }
+            }
+            switch state.textMarkStyle.kind {
+            case .highlight, .box:
+                OptionSection(label: "余白") {
+                    SegmentedGroup {
+                        ForEach(TextMarkPadding.allCases) { padding in
+                            SegmentButton(state: state, text: padding.label, hint: "文字からの余白：\(padding.label)（選んでいる文字マーカーにも反映）", isSelected: state.textMarkStyle.padding == padding) {
+                                state.textMarkStyle.padding = padding
+                            }
+                        }
+                    }
+                }
+            case .underline, .strikethrough:
+                OptionSection(label: "線の位置") {
+                    SegmentedGroup {
+                        ForEach(TextMarkLinePosition.allCases) { position in
+                            SegmentButton(state: state, text: position.label, hint: "線の位置：\(position.label)（この画像のすべての文字マーカーをそろえる）", isSelected: state.textMarkStyle.linePosition == position) {
+                                actions.setTextMarkLinePosition(position)
+                            }
                         }
                     }
                 }

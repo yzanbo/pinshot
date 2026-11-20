@@ -369,6 +369,83 @@ enum TextMarkKind: String, CaseIterable, Identifiable, Codable {
     var usesLineWidth: Bool { self != .highlight }
 }
 
+/// 蛍光ペン・囲みの、文字からの余白（中が標準）
+enum TextMarkPadding: String, CaseIterable, Identifiable, Codable {
+    case none
+    case small
+    case medium
+    case large
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .none: "なし"
+        case .small: "小"
+        case .medium: "中"
+        case .large: "大"
+        }
+    }
+
+    /// 標準（中）の余白に掛ける倍率
+    var scale: CGFloat {
+        switch self {
+        case .none: 0
+        case .small: 0.5
+        case .medium: 1
+        case .large: 2
+        }
+    }
+}
+
+/// 下線・取り消し線の位置（標準から、1 段ずつ文字の高さの 6% 上げ下げする）
+enum TextMarkLinePosition: Int, CaseIterable, Identifiable, Codable {
+    case higher = -2
+    case high = -1
+    case standard = 0
+    case low = 1
+    case lower = 2
+
+    var id: Int { rawValue }
+
+    var label: String {
+        switch self {
+        case .higher: "高め"
+        case .high: "やや高め"
+        case .standard: "標準"
+        case .low: "やや低め"
+        case .lower: "低め"
+        }
+    }
+
+    /// 標準からずらす量（文字の高さ height に対して。下が正）
+    func offset(height: CGFloat) -> CGFloat {
+        CGFloat(rawValue) * height * 0.06
+    }
+}
+
 struct TextMarkStyle: Codable, Equatable {
     var kind: TextMarkKind = .highlight
+    /// 蛍光ペン・囲みの、文字からの余白
+    var padding: TextMarkPadding = .medium
+    /// 下線・取り消し線の位置（画像の中のすべての文字マーカーで、そろえて使う）
+    var linePosition: TextMarkLinePosition = .standard
+
+    init(kind: TextMarkKind = .highlight, padding: TextMarkPadding = .medium, linePosition: TextMarkLinePosition = .standard) {
+        self.kind = kind
+        self.padding = padding
+        self.linePosition = linePosition
+    }
+
+    // 余白と線の位置を足す前に残したもの（浮かせていた画像・ツールバーの設定）も読めるよう、ないときは標準にする
+    private enum CodingKeys: String, CodingKey {
+        case kind, padding, linePosition
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        kind = try container.decodeIfPresent(TextMarkKind.self, forKey: .kind) ?? .highlight
+        padding = try container.decodeIfPresent(TextMarkPadding.self, forKey: .padding) ?? .medium
+        linePosition = try container.decodeIfPresent(TextMarkLinePosition.self, forKey: .linePosition) ?? .standard
+    }
 }

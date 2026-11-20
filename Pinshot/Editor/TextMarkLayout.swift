@@ -183,35 +183,40 @@ enum TextInk {
 
 /// 文字マーカーの形（描く・当たりを見る・範囲を出すのに使う）
 enum TextMarkGeometry {
-    /// 蛍光ペンで塗る四角（文字より少し大きく）
-    static func highlightRect(_ rect: CGRect) -> CGRect {
-        rect.insetBy(dx: -rect.height * 0.08, dy: -rect.height * 0.1)
+    /// 蛍光ペンで塗る四角（標準の余白は、左右に高さの 8%・上下に 10%）
+    static func highlightRect(_ rect: CGRect, padding: TextMarkPadding = .medium) -> CGRect {
+        rect.insetBy(dx: -rect.height * 0.08 * padding.scale, dy: -rect.height * 0.1 * padding.scale)
     }
 
-    /// 下線の高さ（文字の下の辺から少し下）
-    static func underlineY(_ rect: CGRect, lineWidth: CGFloat) -> CGFloat {
-        rect.maxY + lineWidth / 2 + max(1, rect.height * 0.06)
+    /// 下線の高さ（標準は、文字の下の辺から少し下）
+    static func underlineY(_ rect: CGRect, lineWidth: CGFloat, position: TextMarkLinePosition = .standard) -> CGFloat {
+        rect.maxY + lineWidth / 2 + max(1, rect.height * 0.06) + position.offset(height: rect.height)
     }
 
-    /// 囲みの四角
-    static func boxRect(_ rect: CGRect, lineWidth: CGFloat) -> CGRect {
-        let pad = max(2, rect.height * 0.15) + lineWidth / 2
+    /// 取り消し線の高さ（標準は、文字の真ん中）
+    static func strikethroughY(_ rect: CGRect, position: TextMarkLinePosition = .standard) -> CGFloat {
+        rect.midY + position.offset(height: rect.height)
+    }
+
+    /// 囲みの四角（標準の余白は、高さの 15%。最低 2pt）
+    static func boxRect(_ rect: CGRect, lineWidth: CGFloat, padding: TextMarkPadding = .medium) -> CGRect {
+        let pad = max(2, rect.height * 0.15) * padding.scale + lineWidth / 2
         return rect.insetBy(dx: -pad, dy: -pad)
     }
 
     /// 描いたときに占める範囲（線の太さも含む）
-    static func outer(_ rect: CGRect, kind: TextMarkKind, lineWidth: CGFloat) -> CGRect {
-        switch kind {
+    static func outer(_ rect: CGRect, style: TextMarkStyle, lineWidth: CGFloat) -> CGRect {
+        switch style.kind {
         case .highlight:
-            return highlightRect(rect)
-        case .underline:
-            let y = underlineY(rect, lineWidth: lineWidth)
-            return CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: y + lineWidth / 2 - rect.minY)
-                .insetBy(dx: -lineWidth / 2, dy: 0)
-        case .strikethrough:
-            return rect.insetBy(dx: -lineWidth / 2, dy: 0)
+            return highlightRect(rect, padding: style.padding)
+        case .underline, .strikethrough:
+            let y = style.kind == .underline
+                ? underlineY(rect, lineWidth: lineWidth, position: style.linePosition)
+                : strikethroughY(rect, position: style.linePosition)
+            let line = CGRect(x: rect.minX, y: y - lineWidth / 2, width: rect.width, height: lineWidth)
+            return rect.union(line).insetBy(dx: -lineWidth / 2, dy: 0)
         case .box:
-            return boxRect(rect, lineWidth: lineWidth).insetBy(dx: -lineWidth / 2, dy: -lineWidth / 2)
+            return boxRect(rect, lineWidth: lineWidth, padding: style.padding).insetBy(dx: -lineWidth / 2, dy: -lineWidth / 2)
         }
     }
 }

@@ -56,6 +56,25 @@ extension PinCanvasView {
         needsDisplay = true
     }
 
+    /// 線の位置を、この画像のすべての文字マーカーでそろえる（1 回で元に戻せる）。
+    /// 線の位置は 1 枚の中でばらばらだと見苦しいので、選んでいるものだけでなく全体を変える
+    func unifyTextMarkLinePosition(_ position: TextMarkLinePosition) {
+        let targets = annotations.compactMap { annotation -> Annotation? in
+            guard case .textMark(let rects, var style) = annotation.shape, style.linePosition != position else { return nil }
+            style.linePosition = position
+            var changed = annotation
+            changed.shape = .textMark(rects, style: style)
+            return changed
+        }
+        guard !targets.isEmpty else { return }
+        document.beginChange()
+        targets.forEach { document.replace($0) }
+        document.endChange(keep: true)
+        historyChanged()
+        needsDisplay = true
+        showHUD("線の位置：\(position.label)（すべての文字マーカー）")
+    }
+
     /// 文字のない所でまっすぐ引くときの高さ（画像の文字の行の高さの真ん中。文字がなければ 18）
     private func typicalLineHeight(_ lines: [TextLineBoxes]) -> CGFloat {
         let heights = lines.map(\.box.height).sorted()

@@ -9,11 +9,15 @@ enum EditHandle: Equatable {
 }
 
 extension Annotation {
-    /// 四角い範囲で表せる書き込みの範囲（四角・楕円・モザイク・ぼかし・スポットライト）
+    /// 四角い範囲で表せる書き込みの範囲（四角・楕円・モザイク・ぼかし・スポットライト・文字マーカー）。
+    /// 文字マーカーは、行ごとの四角をまとめた範囲（つまみで、文字との位置を手で直せるように）
     var editableRect: CGRect? {
         switch shape {
         case .rectangle(let rect, _), .ellipse(let rect, _), .mosaic(let rect), .blur(let rect), .spotlight(let rect):
             return rect.standardized
+        case .textMark(let rects, _):
+            let union = rects.reduce(CGRect.null) { $0.union($1) }
+            return union.isNull ? nil : union
         default:
             return nil
         }
@@ -27,6 +31,19 @@ extension Annotation {
         case .mosaic: copy.shape = .mosaic(rect)
         case .blur: copy.shape = .blur(rect)
         case .spotlight: copy.shape = .spotlight(rect)
+        case .textMark(let rects, let style):
+            // 行ごとの四角を、まとめた範囲の伸び縮みに合わせて動かす（1 行ならその四角がそのまま rect になる）
+            guard let old = editableRect, old.width > 0, old.height > 0 else { break }
+            let sx = rect.width / old.width
+            let sy = rect.height / old.height
+            copy.shape = .textMark(rects.map { r in
+                CGRect(
+                    x: rect.minX + (r.minX - old.minX) * sx,
+                    y: rect.minY + (r.minY - old.minY) * sy,
+                    width: r.width * sx,
+                    height: r.height * sy
+                )
+            }, style: style)
         default: break
         }
         return copy

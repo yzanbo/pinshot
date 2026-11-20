@@ -97,7 +97,7 @@ enum AnnotationRenderer {
             drawHighlight(points, color: annotation.color, lineWidth: annotation.lineWidth, in: ctx)
 
         case .textMark(let rects, let style):
-            drawTextMark(rects, kind: style.kind, color: annotation.color, lineWidth: annotation.lineWidth, in: ctx)
+            drawTextMark(rects, style: style, color: annotation.color, lineWidth: annotation.lineWidth, in: ctx)
 
         case .counter(let number, let center, let radius, let style):
             drawCounter(number, center: center, radius: radius, style: style, color: annotation.color, in: ctx)
@@ -158,15 +158,19 @@ enum AnnotationRenderer {
     }
 
     /// 文字マーカー（行ごとの四角に、蛍光ペン・下線・取り消し線・囲み）
-    private static func drawTextMark(_ rects: [CGRect], kind: TextMarkKind, color: RGBAColor, lineWidth: CGFloat, in ctx: CGContext) {
+    private static func drawTextMark(_ rects: [CGRect], style: TextMarkStyle, color: RGBAColor, lineWidth: CGFloat, in ctx: CGContext) {
         guard !rects.isEmpty else { return }
+        // 線の端・色などを、あとに描く文字（文字に付けるマーカーのとき）に残さない
+        ctx.saveGState()
+        defer { ctx.restoreGState() }
+        let kind = style.kind
         ctx.setLineCap(.butt)
         switch kind {
         case .highlight:
             // 蛍光ペンと同じ塗り方（下の文字が透けて読める）
             let path = CGMutablePath()
             for rect in rects {
-                let r = TextMarkGeometry.highlightRect(rect)
+                let r = TextMarkGeometry.highlightRect(rect, padding: style.padding)
                 let radius = min(r.height * 0.15, r.width / 2)
                 path.addRoundedRect(in: r, cornerWidth: radius, cornerHeight: radius)
             }
@@ -186,7 +190,9 @@ enum AnnotationRenderer {
             ctx.setStrokeColor(color.cgColor)
             ctx.setLineWidth(lineWidth)
             for rect in rects {
-                let y = kind == .underline ? TextMarkGeometry.underlineY(rect, lineWidth: lineWidth) : rect.midY
+                let y = kind == .underline
+                    ? TextMarkGeometry.underlineY(rect, lineWidth: lineWidth, position: style.linePosition)
+                    : TextMarkGeometry.strikethroughY(rect, position: style.linePosition)
                 ctx.move(to: CGPoint(x: rect.minX, y: y))
                 ctx.addLine(to: CGPoint(x: rect.maxX, y: y))
             }
@@ -195,7 +201,7 @@ enum AnnotationRenderer {
             ctx.setStrokeColor(color.cgColor)
             ctx.setLineWidth(lineWidth)
             for rect in rects {
-                let r = TextMarkGeometry.boxRect(rect, lineWidth: lineWidth)
+                let r = TextMarkGeometry.boxRect(rect, lineWidth: lineWidth, padding: style.padding)
                 let radius = min(6, r.height * 0.25)
                 ctx.addPath(CGPath(roundedRect: r, cornerWidth: radius, cornerHeight: radius, transform: nil))
             }

@@ -188,7 +188,7 @@ extension Annotation {
             return CGRect(x: center.x - r, y: center.y - r, width: r * 2, height: r * 2)
         case .textMark(let rects, let style):
             return rects
-                .map { TextMarkGeometry.outer($0, kind: style.kind, lineWidth: lineWidth) }
+                .map { TextMarkGeometry.outer($0, style: style, lineWidth: lineWidth) }
                 .reduce(CGRect.null) { $0.union($1) }
         }
     }
@@ -226,7 +226,7 @@ extension Annotation {
             return distance(from: point, toSegment: from, to) <= reach + 2
         case .textMark(let rects, let style):
             return rects.contains {
-                TextMarkGeometry.outer($0, kind: style.kind, lineWidth: lineWidth).insetBy(dx: -tolerance, dy: -tolerance).contains(point)
+                TextMarkGeometry.outer($0, style: style, lineWidth: lineWidth).insetBy(dx: -tolerance, dy: -tolerance).contains(point)
             }
         case .pen(let points), .highlight(let points):
             if points.count == 1 { return hypot(point.x - points[0].x, point.y - points[0].y) <= reach }

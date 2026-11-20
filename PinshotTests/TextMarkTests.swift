@@ -114,3 +114,62 @@ final class TextInkTests: XCTestCase {
         XCTAssertEqual(TextInk.fitted([line], image: image, imageSize: CGSize(width: 50, height: 50)), [line])
     }
 }
+
+/// 文字マーカーの位置を、つまみで手で直す
+final class TextMarkHandleTests: XCTestCase {
+    func testSingleLineMarkResizesDirectly() {
+        let mark = Annotation(shape: .textMark([CGRect(x: 10, y: 20, width: 100, height: 20)], style: TextMarkStyle()), color: .red, lineWidth: 2)
+        XCTAssertEqual(mark.editableRect, CGRect(x: 10, y: 20, width: 100, height: 20))
+        XCTAssertEqual(mark.editHandles.count, 8)
+        // 上の辺を 3pt 上げる → 高さが 3pt 増える
+        let moved = mark.withEditableRect(CGRect(x: 10, y: 17, width: 100, height: 23))
+        XCTAssertEqual(moved.shape, .textMark([CGRect(x: 10, y: 17, width: 100, height: 23)], style: TextMarkStyle()))
+    }
+
+    func testMultiLineMarkScalesEveryLine() {
+        let rects = [CGRect(x: 50, y: 0, width: 50, height: 20), CGRect(x: 0, y: 30, width: 80, height: 20)]
+        let mark = Annotation(shape: .textMark(rects, style: TextMarkStyle()), color: .red, lineWidth: 2)
+        XCTAssertEqual(mark.editableRect, CGRect(x: 0, y: 0, width: 100, height: 50))
+        // まとめた範囲を下へ 10pt ずらし、横を 2 倍にする
+        let moved = mark.withEditableRect(CGRect(x: 0, y: 10, width: 200, height: 50))
+        XCTAssertEqual(moved.shape, .textMark([CGRect(x: 100, y: 10, width: 100, height: 20), CGRect(x: 0, y: 40, width: 160, height: 20)], style: TextMarkStyle()))
+    }
+}
+
+/// 文字マーカーの余白と線の位置
+final class TextMarkStyleTests: XCTestCase {
+    private let rect = CGRect(x: 0, y: 100, width: 200, height: 50)
+
+    func testPaddingScalesHighlightAndBox() {
+        // 中が標準。なしは文字ぴったり、大は標準の 2 倍
+        XCTAssertEqual(TextMarkGeometry.highlightRect(rect, padding: .none), rect)
+        XCTAssertEqual(TextMarkGeometry.highlightRect(rect, padding: .medium), rect.insetBy(dx: -4, dy: -5))
+        XCTAssertEqual(TextMarkGeometry.highlightRect(rect, padding: .large), rect.insetBy(dx: -8, dy: -10))
+        XCTAssertEqual(TextMarkGeometry.boxRect(rect, lineWidth: 2, padding: .none), rect.insetBy(dx: -1, dy: -1))
+        XCTAssertEqual(TextMarkGeometry.boxRect(rect, lineWidth: 2, padding: .medium), rect.insetBy(dx: -8.5, dy: -8.5))
+    }
+
+    func testLinePositionMovesLinesBySteps() {
+        // 1 段は文字の高さの 6%（50pt なら 3pt）。下が正
+        XCTAssertEqual(TextMarkGeometry.strikethroughY(rect, position: .standard), 125)
+        XCTAssertEqual(TextMarkGeometry.strikethroughY(rect, position: .higher), 119)
+        XCTAssertEqual(TextMarkGeometry.strikethroughY(rect, position: .low), 128)
+        let standard = TextMarkGeometry.underlineY(rect, lineWidth: 2, position: .standard)
+        XCTAssertEqual(TextMarkGeometry.underlineY(rect, lineWidth: 2, position: .lower), standard + 6, accuracy: 0.001)
+    }
+
+    func testOuterIncludesMovedLine() {
+        // 取り消し線を高めにしても、線が範囲に入る（選ぶ・当たりを見るため）
+        let style = TextMarkStyle(kind: .underline, linePosition: .lower)
+        let outer = TextMarkGeometry.outer(rect, style: style, lineWidth: 2)
+        XCTAssertGreaterThanOrEqual(outer.maxY, TextMarkGeometry.underlineY(rect, lineWidth: 2, position: .lower) + 1)
+    }
+
+    func testOldStyleWithoutPaddingAndPositionStillDecodes() throws {
+        // 余白と線の位置を足す前に残したもの（種類だけ）も読める
+        let decoded = try JSONDecoder().decode(TextMarkStyle.self, from: Data(#"{"kind":"box"}"#.utf8))
+        XCTAssertEqual(decoded, TextMarkStyle(kind: .box, padding: .medium, linePosition: .standard))
+        let roundTrip = try JSONDecoder().decode(TextMarkStyle.self, from: JSONEncoder().encode(TextMarkStyle(kind: .underline, padding: .large, linePosition: .high)))
+        XCTAssertEqual(roundTrip, TextMarkStyle(kind: .underline, padding: .large, linePosition: .high))
+    }
+}
