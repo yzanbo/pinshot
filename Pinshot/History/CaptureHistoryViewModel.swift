@@ -147,7 +147,10 @@ final class CaptureHistoryViewModel: ObservableObject {
         case KeyCode.rightArrow:
             moveSelection(by: 1, extending: flags.contains(.shift))
             return true
-        case KeyCode.downArrow, KeyCode.upArrow where AppSettings.shared.historyLayout == .list: // リストのときは ↓ ↑ でも動かす
+        case KeyCode.downArrow, KeyCode.upArrow:
+            // リストのときだけ ↓ ↑ でも動かす（サムネイルでは扱わず、一覧のスクロールに任せる）。
+            // 「case ↓, ↑ where 条件」と書くと、条件が ↑ にしか効かないので、ここで確かめる
+            guard AppSettings.shared.historyLayout == .list else { return false }
             moveSelection(by: event.keyCode == KeyCode.downArrow ? 1 : -1, extending: flags.contains(.shift))
             return true
         case KeyCode.escape:

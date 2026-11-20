@@ -117,7 +117,10 @@ final class UploadHistoryViewModel: ObservableObject {
         case KeyCode.leftArrow, KeyCode.rightArrow:
             selection.move(by: event.keyCode == KeyCode.rightArrow ? 1 : -1, extending: flags.contains(.shift), order: order)
             return true
-        case KeyCode.downArrow, KeyCode.upArrow where AppSettings.shared.uploadHistoryLayout == .list: // リストのときは ↓ ↑ でも動かす
+        case KeyCode.downArrow, KeyCode.upArrow:
+            // リストのときだけ ↓ ↑ でも動かす（サムネイルでは扱わず、一覧のスクロールに任せる）。
+            // 「case ↓, ↑ where 条件」と書くと、条件が ↑ にしか効かないので、ここで確かめる
+            guard AppSettings.shared.uploadHistoryLayout == .list else { return false }
             selection.move(by: event.keyCode == KeyCode.downArrow ? 1 : -1, extending: flags.contains(.shift), order: order)
             return true
         case KeyCode.escape:
