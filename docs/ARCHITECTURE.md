@@ -5,7 +5,8 @@ Pinshot/
 ├── App/            起動と、アプリ全体に関わるもの
 │   ├── AppDelegate           起動・グローバルショートカットの登録・操作の振り分け
 │   ├── HotKey・ShortcutKeyTap  グローバルショートカット（Carbon）と、メニューを開いている間もショートカットを受けるキーの見張り
-│   ├── StatusMenuController  メニューバーのアイコンとメニュー
+│   ├── StatusMenuController  メニューバーのアイコン（録画中・アップロード中で変える）とメニュー
+│   ├── DockIcon              設定・履歴などのウィンドウを開いている間だけ、Dock にアイコンを出す
 │   └── AppSupport・AppRelauncher  メインメニュー・アプリのアイコン・⌘Q の扱い、起動し直し
 ├── Screenshot/     画面の撮影（ScreenCaptureKit）と範囲の選択
 │   ├── CaptureController     撮る流れ（選ぶ → タイマー → 浮かせる）
@@ -38,16 +39,25 @@ Pinshot/
 │   ├── HUDView・HintBubble   「コピーしました」などのお知らせ、ボタンの説明のポップアップ（HoverHints。Pinshot が前面になくても出る）
 │   ├── TextScanOverlay・RecognizedTextPopover  文字を読み取っている間・読み取ったあとの見た目と、読み取った文字の吹き出し（直してコピーし直せる）
 │   └── ResizeEdges           端のドラッグで大きさを変える計算（テストあり）
-├── History/        撮った画像と読み取った文字の履歴
+├── Upload/         アップロードして共有リンク（いまは Gyazo。ほかの保存先を足せるように分けてある）
+│   ├── UploadTypes・UploadRules  保存先の種類・できること・上げたファイル・共有リンク・コピーする形・失敗の知らせ、コピーする文・ファイル名・トークンらしさ・multipart の本文（テストあり）
+│   ├── UploadDestination     保存先の protocol（上げる・共有リンク・消す・ログアウト）と、使える保存先の一覧
+│   ├── UploadCenter          どの保存先でも同じ流れ（上げる → リンク → コピー → 履歴 → 知らせる・進み具合・自動で上げる）
+│   ├── UploadHistoryEntry・UploadHistory  上げたものの 1 件と決まり（テストあり）、その保存（~/Library/Application Support/Pinshot/Uploads に一覧の JSON と縮小画像）
+│   ├── UploadHTTP・UploadNotifier  通信と返事の番号の読み替え・送った割合、macOS の通知
+│   ├── Destinations/GyazoDestination  Gyazo（利用者が貼ったアクセストークンで上げる・消す）
+│   └── OAuth/                OAuth 2.0 の共通の部品（PKCE・ログインの画面・localhost の受け口・許可証の取り直し・キーチェーン）。いまは使う保存先がないが、ほかの保存先を足すときに使う（テストあり）
+├── History/        撮った画像・読み取った文字・上げたものの履歴
 │   ├── CaptureHistoryEntry   履歴の 1 枚と、残し方（期間・数）・日付ごとのまとめ方・表示の文字の決まり（テストあり）。期間と日付は文字の履歴にも使う
 │   ├── CaptureHistory        画像の履歴の保存と読み込み（~/Library/Application Support/Pinshot/History に PNG・縮小画像・一覧の JSON）
 │   ├── TextHistoryEntry・TextHistory  読み取った文字の履歴の 1 件と決まり（同じ文字はまとめる・探す。テストあり）と、その保存（同じフォルダに texts.json と、読み取った範囲の画像）
 │   ├── ListSelection         一覧の選び方（クリック・⌘・shift・⌘A・矢印）。画像と文字の一覧で同じ（テストあり）
-│   ├── CaptureHistoryWindowController・HistoryWindowView  履歴のウィンドウ（キー操作の振り分け・すべて消す前の確認）と、その中身（上の「画像 / 文字」の切り替え・表示方法・探す欄）
+│   ├── CaptureHistoryWindowController・HistoryWindowView  履歴のウィンドウ（開くときに編集中の画像の編集を終える・キー操作の振り分け）と、その中身（上の「画像 / 文字 / 共有」の切り替え・表示方法・探す欄）
 │   ├── CaptureHistoryViewModel・CaptureHistoryView  画像の一覧（複数選択・浮かせる・コピー・保存・消す）
 │   ├── TextHistoryViewModel・TextHistoryView  文字の一覧と右の全文の欄（探す・複数選択・コピー・消す・直す・読み取った画像を浮かせる）
+│   ├── UploadHistoryViewModel・UploadHistoryView  上げたものの一覧（複数選択・リンクをコピー・ブラウザで開く・Gyazo からも削除）
 │   ├── HistoryComponents     画像と文字の一覧で同じ部品（日付の見出し・空のときの案内・小さな画像・行の背景・乗せたときのボタン・下の帯）
-│   └── HistoryNotice         一覧の下に出す短い知らせ（「コピーしました」など）
+│   └── HistoryNotice         一覧の下に出す短い知らせ（「コピーしました」など。アップロードの途中は消さずに出す）
 ├── Editor/         書き込みのデータ、描画、書き出し
 │   ├── Annotation・AnnotationStyles・Tool・ToolGroup・RGBAColor   書き込みのデータ（Windows 版と形式をそろえる）と、ツールの組
 │   ├── AnnotationRenderer・ImageEffects・ImageExporter 描画・モザイクとぼかし・書き出し
@@ -64,7 +74,8 @@ Pinshot/
 ├── Assets.xcassets/ アプリのアイコン（scripts/make-app-icon.swift で描いて書き出す）
 ├── Settings/       設定の値（AppSettings・Shortcut・ExportDecoration）と画面
 │   ├── SettingsWindowController  設定のウィンドウ（タブ）
-│   ├── General・Pin・Export・History・ShortcutSettingsView   タブごとの画面
+│   ├── General・Pin・Export・History・Share・ShortcutSettingsView   タブごとの画面
+│   ├── GyazoSetupView        Gyazo につなぐまでの案内の窓（アプリの登録 → トークンを作る → 貼ってつなぐ）
 │   ├── SettingsComponents    設定の画面の共通の部品（枠・説明の文字・選択肢の Picker）
 │   └── WelcomeView           使い方と許可の案内
 └── Support/        どこからも使う部品
@@ -78,7 +89,7 @@ Pinshot/
     ├── HoverCursor           部品の種類（押せる・動かせる・操作できない）で決めるカーソル
     ├── KeyCode・PercentText  キーの番号の名前、「80%」の表示
     ├── ImageSaver            PNG と録画のファイルを設定に合わせて保存する（浮かせた画像・履歴・録画から使う）
-    ├── AppFolders            アプリのデータを置くフォルダ（履歴・浮かせていた画像・録画）
+    ├── AppFolders            アプリのデータを置くフォルダ（履歴・浮かせていた画像・録画・上げたもの）
     ├── SaveLocation          保存したもの（画像・GIF・動画）を置く場所の決まり（保存先の中を種類ごと・月ごとに分ける。テストあり）
     └── ViewHelpers           前に出ていなくても押せるビュー・マウスの追跡・角の丸い枠（framedBox）・ドラッグで窓を動かす所（WindowDragArea）
 
