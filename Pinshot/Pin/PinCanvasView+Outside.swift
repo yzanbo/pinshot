@@ -79,12 +79,10 @@ extension PinCanvasView {
             copy: { [weak self] in self?.controller?.copyToPasteboard() },
             save: { [weak self] in self?.controller?.save() },
             copyText: { [weak self] in self?.controller?.copyRecognizedText() },
-            more: { [weak self] in
-                // 「…」のメニューは、マウスの位置に開く
-                guard let menu = self?.controller?.makeContextMenu() else { return }
-                menu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
-            },
-            history: { CaptureHistoryWindowController.shared.show() }
+            more: { [weak self] in self?.controller?.showMoreMenu() },
+            history: { CaptureHistoryWindowController.shared.show() },
+            move: { [weak self] in self?.controller?.moveWithHandle() },
+            endMove: { [weak self] in self?.controller?.endMoveWithHandle() }
         )))
     }
 

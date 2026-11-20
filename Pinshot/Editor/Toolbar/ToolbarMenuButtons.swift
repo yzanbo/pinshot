@@ -80,30 +80,6 @@ struct ToolGroupButton: View {
     }
 }
 
-/// 文字を読み取ってコピーするボタン（押すと全体、▾ で全体・範囲を選ぶ）
-struct TextRecognitionButton: View {
-    @ObservedObject var state: EditorState
-    let copyText: @MainActor () -> Void
-    let copyTextInRegion: @MainActor () -> Void
-
-    var body: some View {
-        SplitMenuButton(
-            state: state,
-            hint: "文字をコピー（⇧⌘T）：画像の文字を読み取ってクリップボードへ。▾ で範囲を選んで読み取る",
-            primaryAction: copyText,
-            menu: {
-                [
-                    .item(title: "文字をコピー", image: MenuEntry.symbol("text.viewfinder"), key: "t", modifiers: [.command, .shift], action: copyText),
-                    .item(title: "範囲を選んで文字をコピー…", image: MenuEntry.symbol("text.magnifyingglass"), action: copyTextInRegion),
-                ]
-            }
-        ) {
-            Image(systemName: "text.viewfinder")
-                .font(ToolbarMetrics.iconFont)
-        }
-    }
-}
-
 /// 色のボタン（押すと色の一覧）
 struct ColorMenuButton: View {
     @ObservedObject var state: EditorState

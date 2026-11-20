@@ -12,7 +12,6 @@ enum ToolbarMetrics {
     static var groupCellWidth: CGFloat { iconWidth + chevronWidth }
     static let chevronFont = Font.system(size: 8, weight: .bold)
     /// 左のつまみの幅
-    static let handleWidth: CGFloat = 24
     /// 部品どうしの間隔と、区切り線の左右の余白
     static let itemSpacing: CGFloat = 3
     static let dividerPadding: CGFloat = 6

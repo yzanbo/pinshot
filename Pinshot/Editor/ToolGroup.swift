@@ -6,6 +6,8 @@ enum ToolGroup: String, CaseIterable, Identifiable {
     case shape
     case arrow
     case draw
+    /// 文字マーカー（自由に描くペンとは使い方が違うので、組に入れず 1 つのボタンにする）
+    case textMark
     case text
     case counter
     case hide
@@ -18,7 +20,8 @@ enum ToolGroup: String, CaseIterable, Identifiable {
         case .select: [.select]
         case .shape: [.rectangle, .ellipse]
         case .arrow: [.arrow]
-        case .draw: [.pen, .highlight, .textMark]
+        case .draw: [.pen, .highlight]
+        case .textMark: [.textMark]
         case .text: [.text]
         case .counter: [.counter]
         case .hide: [.spotlight, .mosaic, .blur]
@@ -32,6 +35,7 @@ enum ToolGroup: String, CaseIterable, Identifiable {
         case .shape: "図形"
         case .arrow: "矢印"
         case .draw: "描く"
+        case .textMark: "文字マーカー"
         case .text: "文字"
         case .counter: "番号"
         case .hide: "隠す・目立たせる"

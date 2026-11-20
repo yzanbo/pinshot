@@ -2,8 +2,8 @@ import AppKit
 import SwiftUI
 
 /// 浮かせた画像の下側に出す、よく使う操作のバー（不透明度・拡大率・コピー・保存・履歴・そのほか・編集）。
-/// 並びは編集モードのツールバー（… 不透明度・拡大率 | コピー・保存 | 履歴 表示 完了）とそろえ、
-/// 「…」を表示のメニュー、「編集」を「完了」と同じ位置に置く（編集に入る前と後で、同じ場所に同じ役割のボタンがある）。
+/// 左端に動かすつまみ ✙ を置く。編集モードでも、ツールバーの上のバーとしてこのバーをそのまま出し（isEditing）、
+/// 違うのは「編集」が「完了」になることだけ（編集に入る前と後で、同じ場所に同じ見た目・同じ役割のボタンがある）。
 /// 閉じるボタン（×）は、画像の左上の外側に別に出す
 /// 画像を隠さないよう、いつも画像の外（下）に出す（PinCanvasView+Outside.swift）
 struct QuickActionBar: View {
@@ -18,13 +18,21 @@ struct QuickActionBar: View {
     var more: () -> Void
     /// 撮った画像の履歴を開く
     var history: () -> Void
+    /// 編集中の形にする（「編集」の代わりに「完了」。edit は編集を終える）
+    var isEditing = false
+    /// ✙ のドラッグで動かす
+    var move: () -> Void
+    var endMove: () -> Void
+    var moveHelp = "ドラッグで画像を移動"
 
     private static let editHelp = "編集する（ダブルクリック・⌘E でも入れる）"
 
     var body: some View {
         HStack(spacing: 2) {
+            moveHandle
+            divider
             // 画像の不透明度と表示の拡大率（編集モードのツールバーにも、同じ位置に同じ形で出す）
-            ViewControls(appearance: appearance, style: .onDark, setOpacity: setOpacity, setZoom: setZoom)
+            ViewControls(appearance: appearance, setOpacity: setOpacity, setZoom: setZoom)
                 .padding(.leading, 2)
 
             divider
@@ -42,10 +50,26 @@ struct QuickActionBar: View {
         .fixedSize()
     }
 
-    /// 編集モードに入るボタン（文字も付けて分かりやすくする。編集モードの「完了」と同じ位置・形）
+    /// ドラッグで画像（ツールバーを切り離しているときはツールバー）を動かすつまみ
+    private var moveHandle: some View {
+        Image(systemName: "arrow.up.and.down.and.arrow.left.and.right")
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundStyle(.white.opacity(0.85))
+            .frame(width: 22, height: 22)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0, coordinateSpace: .global)
+                    .onChanged { _ in move() }
+                    .onEnded { _ in endMove() }
+            )
+            .help(moveHelp)
+            .hoverRole(.movable)
+    }
+
+    /// 編集モードに入るボタン（文字も付けて分かりやすくする）。編集中は、同じ位置・形の「完了」
     private var editButton: some View {
         Button(action: edit) {
-            Label("編集", systemImage: "pencil")
+            Label(isEditing ? "完了" : "編集", systemImage: isEditing ? "checkmark" : "pencil")
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(.white)
                 .padding(.horizontal, 8)
@@ -54,7 +78,7 @@ struct QuickActionBar: View {
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .help(Self.editHelp)
+        .help(isEditing ? "編集を終える（esc・⌘E）" : Self.editHelp)
         .hoverRole()
     }
 

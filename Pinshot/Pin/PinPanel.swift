@@ -17,7 +17,9 @@ final class PinPanel: OverlayPanel {
 /// 編集ツールバーを載せる、キー入力を奪わないウィンドウ
 final class ToolbarPanel: OverlayPanel {
     init(contentRect: NSRect) {
-        super.init(contentRect: contentRect)
+        // 影は付けない（上のバーは編集前の操作バーと同じ見た目にしたいが、ウィンドウの影が縁に重なって濃く見えるため。
+        // 操作バーのウィンドウも影なし）
+        super.init(contentRect: contentRect, hasShadow: false)
         animationBehavior = .none
     }
 

@@ -5,14 +5,15 @@ struct ToolbarActions {
     var redo: @MainActor () -> Void
     var copy: @MainActor () -> Void
     var save: @MainActor () -> Void
-    /// 画像の文字を読み取ってコピーする（全体）・範囲を選んで読み取る
+    /// 画像の文字を読み取ってコピーする（範囲を選ぶときは「…」から）
     var copyText: @MainActor () -> Void
-    var copyTextInRegion: @MainActor () -> Void
     var done: @MainActor () -> Void
     var setOpacity: (Double) -> Void
     var setZoom: (Double) -> Void
     /// 撮った画像の履歴を開く
     var openHistory: @MainActor () -> Void
+    /// 「…」のメニュー（右クリックと同じもの）を開く
+    var more: @MainActor () -> Void
     /// 文字マーカーの線の位置を変える（この画像のすべての文字マーカーをそろえる）
     var setTextMarkLinePosition: @MainActor (TextMarkLinePosition) -> Void
     /// つまみのドラッグで動かす（最初の呼び出しでマウスと位置を覚え、そこからの差で動かす）。
@@ -21,8 +22,11 @@ struct ToolbarActions {
     var endMove: @MainActor () -> Void
 }
 
-/// 編集モードのときに出るツールバー。
-/// 幅は 1 行目（ツール・色・操作）で決まり、2 行目（オプション）は入りきらなければまとまりごとに折り返す
+/// 編集モードのときに出るツールバー。2 つのバーに分けて出す。
+/// 上は、編集に入る前と同じ操作バー（不透明度・拡大率・コピー・保存・文字・履歴・…）をそのまま出し、左端に動かすつまみ ✙、
+/// 「編集」の位置に「完了」を置く（編集に入っても、同じ場所に同じ見た目のバーが残る）。
+/// 下は道具のバー（ツール・色・スタイル・背景・元に戻す / やり直す・表示）。幅は道具の段で決まり、
+/// その下の 2 行目（オプション）は入りきらなければまとまりごとに折り返す
 struct EditorToolbar: View {
     @ObservedObject var state: EditorState
     /// 画像の不透明度・拡大率（操作バーと同じものを見る）
@@ -30,10 +34,42 @@ struct EditorToolbar: View {
     let actions: ToolbarActions
 
     var body: some View {
+        VStack(spacing: 6) {
+            imageBar
+            toolPanel
+        }
+        .fixedSize(horizontal: true, vertical: true)
+    }
+
+    // MARK: - 上のバー（編集に入る前と同じ操作バー）
+
+    private var imageBar: some View {
+        QuickActionBar(
+            appearance: appearance,
+            edit: { actions.done() },
+            setOpacity: actions.setOpacity,
+            setZoom: actions.setZoom,
+            copy: { actions.copy() },
+            save: { actions.save() },
+            copyText: { actions.copyText() },
+            more: { actions.more() },
+            history: { actions.openHistory() },
+            isEditing: true,
+            move: { actions.move() },
+            endMove: { actions.endMove() },
+            moveHelp: state.isDetached
+                ? "ドラッグでツールバーを移動（切り離し中）"
+                : "ドラッグで画像を移動（space か ⌘ を押しながら画像をドラッグしても動く）"
+        )
+    }
+
+    // MARK: - 下のバー（道具と、そのオプション）
+
+    private var toolPanel: some View {
         VStack(alignment: .leading, spacing: 2) {
-            mainContent
+            toolRow
                 .background(
-                    // 1 行目の幅を測って、2 行目の折り返しの幅にする
+                    // 道具の段の幅を測って、2 行目の折り返しの幅にする
                     GeometryReader { proxy in
                         Color.clear.preference(key: ToolbarRowWidthKey.self, value: proxy.size.width)
                     }
@@ -56,17 +92,11 @@ struct EditorToolbar: View {
         .padding(ToolbarMetrics.toolbarPadding)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
         .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.primary.opacity(0.12)))
-        .fixedSize(horizontal: true, vertical: true)
     }
 
-    // MARK: - 1 行目
-
-    private var mainContent: some View {
+    /// 道具の段（ツール・色とスタイルと背景・元に戻す / やり直す・表示）
+    private var toolRow: some View {
         HStack(spacing: ToolbarMetrics.itemSpacing) {
-            moveHandle
-
-            ToolbarDivider()
-
             ToolbarSection {
                 ForEach(ToolGroup.allCases) { group in
                     ToolGroupButton(state: state, group: group)
@@ -92,58 +122,9 @@ struct EditorToolbar: View {
 
             ToolbarDivider()
 
-            // 画像の不透明度と表示の拡大率（操作バーと同じく、コピー・保存の左に置く）
-            ViewControls(appearance: appearance, style: .toolbar, editorState: state, setOpacity: actions.setOpacity, setZoom: actions.setZoom)
-
-            ToolbarDivider()
-
-            ToolbarSection {
-                ToolbarIconButton(state: state, symbol: "doc.on.doc", hint: "コピー（⌘C）：書き込みごとクリップボードへ", action: actions.copy)
-                ToolbarIconButton(state: state, symbol: "square.and.arrow.down", hint: "保存（⌘S）：PNG で保存", action: actions.save)
-                TextRecognitionButton(state: state, copyText: actions.copyText, copyTextInRegion: actions.copyTextInRegion)
-            }
-
-            ToolbarDivider()
-
-            ToolbarIconButton(state: state, symbol: "clock.arrow.circlepath", hint: "撮った画像の履歴：これまでに撮った画像を一覧で見る・もう一度浮かせる", action: actions.openHistory)
+            // ツールバーの表示（画像から切り離す・乗せたら説明を出す）
             layoutMenu
-
-            Button {
-                actions.done()
-            } label: {
-                Label("完了", systemImage: "checkmark")
-                    .font(ToolbarMetrics.buttonFont)
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 10)
-                    .frame(height: 24)
-                    .background(Capsule().fill(Color.accentColor))
-                    .contentShape(Capsule())
-            }
-            .buttonStyle(.plain)
-            .padding(.leading, 4)
-            .hint("編集を終える（esc・⌘E）", state: state)
         }
-    }
-
-    /// ドラッグすると画像ごと（切り離しているときはツールバーだけ）動かせるつまみ
-    private var moveHandle: some View {
-        Image(systemName: state.isDetached ? "hand.draw" : "arrow.up.and.down.and.arrow.left.and.right")
-            .font(.system(size: 12, weight: .medium))
-            .foregroundStyle(.secondary)
-            .frame(width: ToolbarMetrics.handleWidth, height: ToolbarMetrics.cell.height)
-            .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 0, coordinateSpace: .global)
-                    .onChanged { _ in actions.move() }
-                    .onEnded { _ in actions.endMove() }
-            )
-            .hint(
-                state.isDetached
-                    ? "ドラッグでツールバーを移動（切り離し中）"
-                    : "ドラッグで画像を移動（space か ⌘ を押しながら画像をドラッグしても動く）",
-                state: state,
-                role: .movable
-            )
     }
 
     /// ツールバーの表示（画像から切り離す・乗せたときの説明を出す）

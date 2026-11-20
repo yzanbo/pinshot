@@ -8,9 +8,10 @@ final class PinToolbarController {
     private let state: EditorState
     private var toolbarPanel: ToolbarPanel?
 
-    /// つまみで動かし始めたときの、マウスと（画像かツールバーの）位置
+    /// つまみで動かし始めたときの、マウスと（画像かツールバーの）位置と、動かしているウィンドウ
     private var moveStartMouse: NSPoint?
     private var moveStartOrigin: NSPoint = .zero
+    private weak var moveTarget: NSWindow?
     /// 切り離したツールバーを置いた位置（次に編集モードに入ったときも同じ場所に出す）
     private var detachedOrigin: NSPoint?
     /// この時刻までは、ツールバーの大きさが変わるたびに中央に置き直す（出した直後のため）
@@ -123,7 +124,7 @@ final class PinToolbarController {
         let screen = ScreenGeometry.screen(containing: NSPoint(x: frame.midX, y: frame.midY), orMain: false)
             ?? pinPanel.screen ?? NSScreen.main
         let visible = screen?.visibleFrame ?? frame
-        toolbar.setFrameOrigin(ScreenGeometry.originBelow(frame, size: size, gap: 8, in: visible))
+        toolbar.setFrameOrigin(ScreenGeometry.originBelow(frame, size: size, gap: 6, in: visible))
     }
 
     private func keepOnScreen() {
@@ -141,18 +142,19 @@ final class PinToolbarController {
     /// つまみで動かしている最中か
     var isMovingWithHandle: Bool { moveStartMouse != nil }
 
-    /// つまみのドラッグで動かす（最初の呼び出しでマウスと位置を覚え、そこからの差で動かす）
+    /// つまみのドラッグで動かす（最初の呼び出しでマウスと位置を覚え、そこからの差で動かす）。
+    /// 編集中でツールバーを切り離しているときはツールバーだけ、そのほか（編集していないときも）は画像ごと動かす
     func moveWithMouse() {
         // 動かしている間は、マウスが画像の上に乗っても、つかんだ手のカーソルのままにする
         // （つまみから外れると矢印に、画像の上では描くツールの十字に変わってしまうため、動くたびに出し直す）
         HoverRole.movable.draggingCursor.set()
         let mouse = NSEvent.mouseLocation
-        // 切り離しているときはツールバーだけ、付いているときは画像ごと動かす
-        let target: NSWindow? = state.isDetached ? toolbarPanel : pinPanel
-        guard let target else { return }
-        guard let start = moveStartMouse else {
+        guard let start = moveStartMouse, let target = moveTarget else {
+            // 切り離しているツールバーを出しているときはツールバーだけ、そうでなければ画像ごと動かす
+            let target: NSWindow = state.isEditing && state.isDetached ? (toolbarPanel ?? pinPanel) : pinPanel
             moveStartMouse = mouse
             moveStartOrigin = target.frame.origin
+            moveTarget = target
             // つまみの説明は、ドラッグを始めたら消す（動かしている間は出さない）
             hideHint()
             return
@@ -161,8 +163,10 @@ final class PinToolbarController {
     }
 
     func endMoveWithMouse() {
+        let movedToolbar = moveTarget != nil && moveTarget === toolbarPanel
         moveStartMouse = nil
-        if state.isDetached {
+        moveTarget = nil
+        if movedToolbar {
             keepOnScreen()
         } else {
             layout()

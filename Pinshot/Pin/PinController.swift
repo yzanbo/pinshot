@@ -323,21 +323,36 @@ final class PinController: NSObject, NSWindowDelegate {
             copy: { [weak self] in self?.copyToPasteboard() },
             save: { [weak self] in self?.save() },
             copyText: { [weak self] in self?.copyRecognizedText() },
-            copyTextInRegion: { [weak self] in self?.canvas.beginPickingTextRegion() },
             done: { [weak self] in self?.setEditing(false) },
             setOpacity: { [weak self] value in self?.setOpacity(CGFloat(value)) },
             setZoom: { [weak self] value in self?.setZoom(CGFloat(value)) },
             openHistory: { CaptureHistoryWindowController.shared.show() },
+            more: { [weak self] in self?.showMoreMenu() },
             setTextMarkLinePosition: { [weak self] position in
                 self?.state.textMarkStyle.linePosition = position
                 self?.canvas.unifyTextMarkLinePosition(position)
             },
-            move: { [weak self] in self?.toolbar.moveWithMouse() },
-            endMove: { [weak self] in self?.toolbar.endMoveWithMouse() }
+            move: { [weak self] in self?.moveWithHandle() },
+            endMove: { [weak self] in self?.endMoveWithHandle() }
         )
     }
 
+    /// 操作バーの「…」のメニュー（右クリックと同じもの）を、マウスの位置に開く
+    func showMoreMenu() {
+        makeContextMenu().popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
+    }
+
     // MARK: - 移動
+
+    /// 操作バーの ✙ のドラッグで動かす（編集中でツールバーを切り離しているときはツールバーだけ、そのほかは画像ごと）
+    func moveWithHandle() {
+        toolbar.moveWithMouse()
+    }
+
+    func endMoveWithHandle() {
+        toolbar.endMoveWithMouse()
+        windowDidFinishMoving()
+    }
 
     /// 矢印キーで少しずつ動かす
     func moveBy(dx: CGFloat, dy: CGFloat) {

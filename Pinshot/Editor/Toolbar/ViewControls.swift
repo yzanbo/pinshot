@@ -1,26 +1,14 @@
 import SwiftUI
 
 /// 浮かせた画像の見た目（不透明度と表示の拡大率）を、いつでも見て変えられる部品。
-/// 操作バー（編集していないとき）と編集モードのツールバーの両方に、同じ形・同じ位置（コピー・保存の左）で置く
+/// 操作バー（黒い半透明の台に白い文字）の、コピー・保存の左に置く。編集中もツールバーの上のバーとして同じ操作バーを出す
 struct ViewControls: View {
-    enum Style {
-        /// 操作バー（黒い半透明の台に白い文字）
-        case onDark
-        /// 編集モードのツールバー（ふつうの文字の色）
-        case toolbar
-    }
-
     @ObservedObject var appearance: PinAppearance
-    let style: Style
-    /// ツールバーのときは、ボタンに乗せたときの説明をツールバーの説明のポップアップに出す（操作バーはヘルプのタグ）
-    var editorState: EditorState?
     var setOpacity: (Double) -> Void
     var setZoom: (Double) -> Void
 
     /// 拡大率の一覧
     static let zoomPresets: [Double] = [0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4]
-
-    private var foreground: Color { style == .onDark ? .white : .primary }
 
     var body: some View {
         HStack(spacing: 6) {
@@ -40,14 +28,15 @@ struct ViewControls: View {
             )
             .controlSize(.mini)
             .frame(width: 48)
-            .tint(style == .onDark ? .white : .accentColor)
+            .tint(.white)
             Text(appearance.opacity.percentText)
                 .font(.system(size: 10, weight: .medium).monospacedDigit())
                 .frame(width: 30, alignment: .trailing)
         }
-        .foregroundStyle(foreground)
+        .foregroundStyle(.white)
         .padding(.leading, 4)
-        .describe("画像の不透明度（⌘ か ⌥ を押しながらスクロールしても変えられる）", state: editorState)
+        .help("画像の不透明度（⌘ か ⌥ を押しながらスクロールしても変えられる）")
+        .hoverRole()
     }
 
     /// 表示の拡大率（🔍 数字 ▾。押すと一覧）
@@ -69,24 +58,13 @@ struct ViewControls: View {
                 Image(systemName: "chevron.down")
                     .font(.system(size: 7, weight: .bold))
             }
-            .foregroundStyle(foreground)
+            .foregroundStyle(.white)
             .padding(.horizontal, 6)
             .frame(height: 22)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .describe("表示の拡大率（押すと一覧。画像の上でスクロール・ピンチ、端のドラッグでも変えられる）", state: editorState)
-    }
-}
-
-private extension View {
-    /// ツールバーでは説明のポップアップに、操作バーではヘルプのタグに説明を出す
-    @ViewBuilder
-    func describe(_ text: String, state: EditorState?) -> some View {
-        if let state {
-            hint(text, state: state)
-        } else {
-            help(text).hoverRole()
-        }
+        .help("表示の拡大率（押すと一覧。画像の上でスクロール・ピンチ、端のドラッグでも変えられる）")
+        .hoverRole()
     }
 }
