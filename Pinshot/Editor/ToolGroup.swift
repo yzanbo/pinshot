@@ -43,7 +43,18 @@ enum ToolGroup: String, CaseIterable, Identifiable {
         }
     }
 
+    /// tool が入る組（ツールを足したら、ここに書かないとコンパイルエラーになる。tools にも並べる。テストで確かめる）
     static func group(of tool: Tool) -> ToolGroup {
-        allCases.first { $0.tools.contains(tool) } ?? .select
+        switch tool {
+        case .select: .select
+        case .rectangle, .ellipse: .shape
+        case .arrow: .arrow
+        case .pen, .highlight: .draw
+        case .textMark: .textMark
+        case .text: .text
+        case .counter: .counter
+        case .spotlight, .mosaic, .blur: .hide
+        case .crop: .crop
+        }
     }
 }

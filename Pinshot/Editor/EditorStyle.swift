@@ -26,7 +26,7 @@ struct EditorStyle: Equatable {
     var counterSize: CounterSize
     var counter: CounterStyle
     var text: TextStyle
-    var textMark: TextMarkStyle = TextMarkStyle()
+    var textMark: TextMarkStyle
     /// 書き込みの不透明度（0.1〜1）
     var opacity: CGFloat
 

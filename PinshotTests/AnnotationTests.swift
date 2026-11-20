@@ -14,6 +14,7 @@ final class AnnotationTests: XCTestCase {
             counterSize: .large,
             counter: CounterStyle(),
             text: TextStyle(),
+            textMark: TextMarkStyle(),
             opacity: opacity
         )
     }

@@ -146,7 +146,7 @@ struct EditorToolbar: View {
         if state.showsBackdropOptions { return true }
         switch state.optionsTool {
         case .rectangle, .ellipse, .arrow, .pen, .highlight, .textMark, .counter, .text: return true
-        default: return false
+        case .select, .spotlight, .mosaic, .blur, .crop: return false
         }
     }
 

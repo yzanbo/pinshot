@@ -18,7 +18,7 @@ extension Annotation {
         case .textMark(let rects, _):
             let union = rects.reduce(CGRect.null) { $0.union($1) }
             return union.isNull ? nil : union
-        default:
+        case .arrow, .pen, .highlight, .text, .counter:
             return nil
         }
     }
@@ -44,7 +44,8 @@ extension Annotation {
                     height: r.height * sy
                 )
             }, style: style)
-        default: break
+        case .arrow, .pen, .highlight, .text, .counter:
+            break
         }
         return copy
     }

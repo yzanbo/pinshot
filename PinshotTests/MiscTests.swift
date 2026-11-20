@@ -121,3 +121,23 @@ final class ImageLoadingTests: XCTestCase {
         XCTAssertEqual(pixels[3], 255, "透明になっていない")
     }
 }
+
+/// ツールのまとめ方（ツールバーのボタン）とキー。ツールを足したときの足し忘れに気づけるようにする
+final class ToolGroupTests: XCTestCase {
+    /// どのツールも、ちょうど 1 つの組のボタンに入る（入れ忘れると、ツールバーにボタンが出ない）
+    func testEveryToolIsInExactlyOneGroup() {
+        for tool in Tool.allCases {
+            let groups = ToolGroup.allCases.filter { $0.tools.contains(tool) }
+            XCTAssertEqual(groups, [ToolGroup.group(of: tool)], "\(tool) の組")
+        }
+    }
+
+    /// ツールのキーは重ならない（重なると、先に見つけたツールしか選べない）。色の 1〜6 と太さの [ ] とも重ならない
+    func testToolShortcutsAreUnique() {
+        let keys = Tool.allCases.map(\.shortcut)
+        XCTAssertEqual(Set(keys).count, keys.count)
+        for reserved in ["1", "2", "3", "4", "5", "6", "[", "]"] {
+            XCTAssertFalse(keys.contains(reserved), reserved)
+        }
+    }
+}

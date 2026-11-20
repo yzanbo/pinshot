@@ -113,7 +113,7 @@ enum LineWidths {
         switch tool {
         case .highlight: highlight
         case .textMark: textMark
-        default: line
+        case .select, .rectangle, .ellipse, .arrow, .pen, .text, .counter, .spotlight, .mosaic, .blur, .crop: line
         }
     }
 
@@ -121,7 +121,7 @@ enum LineWidths {
         switch tool {
         case .highlight: 18
         case .textMark: 2
-        default: 4
+        case .select, .rectangle, .ellipse, .arrow, .pen, .text, .counter, .spotlight, .mosaic, .blur, .crop: 4
         }
     }
 }

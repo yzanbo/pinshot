@@ -62,7 +62,7 @@ extension PinCanvasView {
             return .iBeam
         case .counter:
             return .pointingHand
-        default:
+        case .rectangle, .ellipse, .arrow, .pen, .highlight, .spotlight, .mosaic, .blur, .crop:
             return .crosshair
         }
     }

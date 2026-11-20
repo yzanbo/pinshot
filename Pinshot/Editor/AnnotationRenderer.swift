@@ -35,7 +35,7 @@ enum AnnotationRenderer {
     private static func effectRect(of annotation: Annotation) -> CGRect? {
         switch annotation.shape {
         case .mosaic(let rect), .blur(let rect): rect
-        default: nil
+        case .rectangle, .ellipse, .arrow, .pen, .highlight, .textMark, .text, .counter, .spotlight: nil
         }
     }
 

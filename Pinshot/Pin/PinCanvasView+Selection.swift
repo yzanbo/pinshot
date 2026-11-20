@@ -26,7 +26,8 @@ extension PinCanvasView {
             state.ellipseStyle = style
         case .textMark(_, let style):
             state.textMarkStyle = style
-        default:
+        case .pen, .highlight, .mosaic, .blur, .spotlight:
+            // 太さ（上で反映）のほかにオプションがない・色と太さを持たない
             break
         }
     }

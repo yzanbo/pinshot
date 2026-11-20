@@ -123,7 +123,7 @@ extension PinCanvasView {
         case .crop:
             dragStart = point
             cropDraft = CGRect(origin: point, size: .zero)
-        default:
+        case .rectangle, .ellipse, .arrow, .spotlight, .mosaic, .blur:
             selectedID = nil
             dragStart = point
             drafting = makeAnnotation(from: point, to: point)
@@ -311,7 +311,7 @@ extension PinCanvasView {
             return CGPoint(x: start.x + (dx < 0 ? -side : side), y: start.y + (dy < 0 ? -side : side))
         case .arrow, .highlight:
             return point.snappedTo45(from: start)
-        default:
+        case .select, .pen, .textMark, .text, .counter, .crop:
             return point
         }
     }
@@ -320,14 +320,18 @@ extension PinCanvasView {
         Annotation(shape: shape, color: state.drawColor, lineWidth: state.lineWidth(for: state.tool))
     }
 
-    private func makeAnnotation(from start: CGPoint, to end: CGPoint) -> Annotation {
-        let shape: Annotation.Shape = switch state.tool {
-        case .ellipse: .ellipse(CGRect(corner: start, end), style: state.ellipseStyle)
-        case .arrow: .arrow(from: start, to: end, style: state.arrowStyle)
-        case .mosaic: .mosaic(CGRect(corner: start, end))
-        case .blur: .blur(CGRect(corner: start, end))
-        case .spotlight: .spotlight(CGRect(corner: start, end))
-        default: .rectangle(CGRect(corner: start, end), style: state.rectangleStyle)
+    /// start から end までドラッグして描く書き込み（ドラッグで描くツールでなければ nil）
+    private func makeAnnotation(from start: CGPoint, to end: CGPoint) -> Annotation? {
+        let shape: Annotation.Shape
+        switch state.tool {
+        case .rectangle: shape = .rectangle(CGRect(corner: start, end), style: state.rectangleStyle)
+        case .ellipse: shape = .ellipse(CGRect(corner: start, end), style: state.ellipseStyle)
+        case .arrow: shape = .arrow(from: start, to: end, style: state.arrowStyle)
+        case .mosaic: shape = .mosaic(CGRect(corner: start, end))
+        case .blur: shape = .blur(CGRect(corner: start, end))
+        case .spotlight: shape = .spotlight(CGRect(corner: start, end))
+        // 押したときに別の描き方を始めるツール（mouseDown）
+        case .select, .pen, .highlight, .textMark, .text, .counter, .crop: return nil
         }
         return makeAnnotation(shape)
     }

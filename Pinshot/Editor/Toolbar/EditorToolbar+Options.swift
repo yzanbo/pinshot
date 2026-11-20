@@ -285,7 +285,7 @@ extension EditorToolbar {
             }
             opacitySection
 
-        default:
+        case .select, .spotlight, .mosaic, .blur, .crop:
             EmptyView()
         }
     }

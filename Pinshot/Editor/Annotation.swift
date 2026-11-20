@@ -51,7 +51,7 @@ struct Annotation: Codable, Identifiable, Equatable {
         switch shape {
         case .highlight: true
         case .textMark(_, let style): style.kind == .highlight
-        default: false
+        case .rectangle, .ellipse, .arrow, .pen, .text, .counter, .mosaic, .blur, .spotlight: false
         }
     }
 
@@ -335,7 +335,8 @@ extension Annotation {
         case .text(let runs, let origin, _, let width):
             // 文字の大きさは、文字の大きさの欄で変える（withFontSize）
             if aspects.contains(.text) { copy.shape = .text(runs: runs, origin: origin, style: style.text, width: width) }
-        default:
+        case .mosaic, .blur, .spotlight:
+            // 色と太さを持たない（上の isEffect で返している）
             break
         }
         return copy

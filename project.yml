@@ -53,6 +53,7 @@ targets:
       - path: PinshotTests
       - path: Pinshot/Editor/RGBAColor.swift
       - path: Pinshot/Editor/Tool.swift
+      - path: Pinshot/Editor/ToolGroup.swift
       - path: Pinshot/Editor/AnnotationStyles.swift
       - path: Pinshot/Editor/Annotation.swift
       - path: Pinshot/Editor/EditorStyle.swift
