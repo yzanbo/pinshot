@@ -115,9 +115,10 @@ final class TextHistory: ObservableObject {
     /// 画像を書く（大きいときは縮める。重いので裏で行い、書き終えたら一覧を描き直す）
     private func writeImage(_ image: CGImage, pointSize: CGSize, to url: URL) {
         let folder = folder
+        let maxSide = Self.maxImageSide
         io.async { [weak self] in
             let pixelSize = CGSize(width: image.width, height: image.height)
-            let size = pixelSize.fittingLongestSide(Self.maxImageSide)
+            let size = pixelSize.fittingLongestSide(maxSide)
             let stored = size == pixelSize ? image : (image.scaled(to: size) ?? image)
             guard let png = ImageExporter.pngData(stored, pointSize: pointSize) else { return }
             try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
