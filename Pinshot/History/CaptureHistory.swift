@@ -1,6 +1,5 @@
 import AppKit
 import Combine
-import ImageIO
 
 /// 撮った画像の履歴。画像（PNG）と縮小画像と一覧（JSON）を、アプリ用のフォルダに置く。
 /// 置き場所の決まり（AppFolders）は、浮かせた画像を終了後も戻す機能でも使う
@@ -114,8 +113,7 @@ final class CaptureHistory: ObservableObject {
 
     /// 画像を読む（浮かせる・コピーするとき）
     func loadImage(for entry: CaptureHistoryEntry) -> CGImage? {
-        guard let source = CGImageSourceCreateWithURL(imageURL(for: entry) as CFURL, nil) else { return nil }
-        return CGImageSourceCreateImageAtIndex(source, 0, nil)
+        CGImage.load(contentsOf: imageURL(for: entry))
     }
 
     // MARK: - 浮かせる・コピーする（一覧・メニューバーから）
@@ -198,16 +196,4 @@ final class CaptureHistory: ObservableObject {
             try? data.write(to: url, options: .atomic)
         }
     }
-}
-
-/// アプリのデータを置くフォルダ（~/Library/Application Support/Pinshot）
-enum AppFolders {
-    static var root: URL {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-            ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Application Support")
-        return base.appendingPathComponent("Pinshot", isDirectory: true)
-    }
-
-    /// 撮った画像の履歴
-    static var history: URL { root.appendingPathComponent("History", isDirectory: true) }
 }
