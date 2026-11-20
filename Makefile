@@ -83,8 +83,9 @@ test: generate
 run: build stop
 	open $(APP)
 
+# 浮かせている画像を保存してから終わるので、終わり切るまで（最大 5 秒）待つ
 stop:
-	-@killall Pinshot 2>/dev/null; sleep 0.5
+	-@killall Pinshot 2>/dev/null; for i in $$(seq 1 50); do pgrep -x Pinshot >/dev/null || break; sleep 0.1; done
 
 clean:
 	xcodebuild -project Pinshot.xcodeproj -scheme Pinshot -derivedDataPath $(DERIVED_DATA) clean
