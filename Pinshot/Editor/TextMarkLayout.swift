@@ -101,6 +101,86 @@ enum TextMarkLayout {
     }
 }
 
+// MARK: - 文字の線がある高さに合わせる
+
+/// Vision の行の範囲は、英字の下に出る部分（g・y など）のぶん下に余白を含むので、日本語では文字より下にずれる。
+/// 画像の画素を見て、実際に文字の線がある上端と下端に合わせる（テストで確かめる）
+enum TextInk {
+    /// 明るさとの差がこれより大きい画素を、文字の線とみなす（0〜255）
+    static let threshold = 48
+
+    /// 明るさの並び（上の行から。1 行 width 画素）から、文字の線がある行の範囲。見つからなければ nil。
+    /// 背景は、いちばん多い明るさとみなす（文字は背景より少ないので）
+    static func verticalRange(luminance: [UInt8], width: Int, height: Int) -> ClosedRange<Int>? {
+        guard width > 0, height > 0, luminance.count >= width * height else { return nil }
+        var histogram = [Int](repeating: 0, count: 256)
+        for value in luminance.prefix(width * height) { histogram[Int(value)] += 1 }
+        let background = histogram.indices.max { histogram[$0] < histogram[$1] } ?? 255
+        // 1〜2 画素の汚れは文字とみなさない
+        let minimum = max(2, width / 300)
+        var top: Int?
+        var bottom: Int?
+        for y in 0..<height {
+            var count = 0
+            for x in 0..<width where abs(Int(luminance[y * width + x]) - background) > threshold {
+                count += 1
+                if count >= minimum { break }
+            }
+            if count >= minimum {
+                if top == nil { top = y }
+                bottom = y
+            }
+        }
+        guard let top, let bottom else { return nil }
+        return top...bottom
+    }
+
+    /// 行ごとに、画像の文字の線がある高さに合わせ直す（横の位置は変えない）。
+    /// Vision の範囲より少し上下に広げて探す（上が文字にかかって切れていることもあるため）。
+    /// 見つからない・低すぎる（記号だけなど）ときは、元のまま
+    static func fitted(_ lines: [TextLineBoxes], image: CGImage, imageSize: CGSize) -> [TextLineBoxes] {
+        let scale = CGFloat(image.width) / max(imageSize.width, 1)
+        let bounds = CGRect(x: 0, y: 0, width: image.width, height: image.height)
+        return lines.map { line in
+            let pad = line.box.height * 0.12
+            let pixels = CGRect(
+                x: line.box.minX * scale,
+                y: (line.box.minY - pad) * scale,
+                width: line.box.width * scale,
+                height: (line.box.height + pad * 2) * scale
+            ).integral.intersection(bounds)
+            guard !pixels.isEmpty, let crop = image.cropping(to: pixels), let gray = luminance(of: crop),
+                  let range = verticalRange(luminance: gray, width: crop.width, height: crop.height) else { return line }
+            let top = (pixels.minY + CGFloat(range.lowerBound)) / scale
+            let bottom = (pixels.minY + CGFloat(range.upperBound + 1)) / scale
+            guard bottom - top >= line.box.height * 0.3 else { return line }
+            var fitted = line
+            fitted.box = CGRect(x: line.box.minX, y: top, width: line.box.width, height: bottom - top)
+            fitted.characters = line.characters.map { CGRect(x: $0.minX, y: top, width: $0.width, height: bottom - top) }
+            return fitted
+        }
+    }
+
+    /// 画像の明るさ（グレー 8 ビット。上の行から）
+    static func luminance(of image: CGImage) -> [UInt8]? {
+        let width = image.width
+        let height = image.height
+        guard width > 0, height > 0,
+              let ctx = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width,
+                                  space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue)
+        else { return nil }
+        ctx.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        guard let data = ctx.data else { return nil }
+        let bytesPerRow = ctx.bytesPerRow
+        let buffer = data.bindMemory(to: UInt8.self, capacity: bytesPerRow * height)
+        var result = [UInt8](repeating: 0, count: width * height)
+        for y in 0..<height {
+            for x in 0..<width { result[y * width + x] = buffer[y * bytesPerRow + x] }
+        }
+        return result
+    }
+}
+
 /// 文字マーカーの形（描く・当たりを見る・範囲を出すのに使う）
 enum TextMarkGeometry {
     /// 蛍光ペンで塗る四角（文字より少し大きく）

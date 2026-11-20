@@ -12,9 +12,12 @@ extension PinCanvasView {
         let size = imageSize
         Task { @MainActor [weak self] in
             let recognized = await TextRecognizer.recognizeLines(image)
+            // 画素を見て、文字の線がある高さに合わせる（Vision の範囲のままだと下にずれる）。重いので裏で行う
+            let lines = await Task.detached(priority: .userInitiated) {
+                TextInk.fitted(TextMarkLayout.lines(from: recognized, imageSize: size), image: image, imageSize: size)
+            }.value
             guard let self else { return }
             self.isFindingTextMarkLines = false
-            let lines = TextMarkLayout.lines(from: recognized, imageSize: size)
             self.textMarkLines = lines
             if lines.isEmpty, self.state.isEditing, self.state.tool == .textMark {
                 self.showHUD("文字が見つかりませんでした（まっすぐ引きます）")

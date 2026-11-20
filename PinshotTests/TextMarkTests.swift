@@ -74,3 +74,43 @@ final class TextMarkLayoutTests: XCTestCase {
         XCTAssertEqual(decoded, mark)
     }
 }
+
+/// 文字の線がある高さに合わせる（Vision の行の範囲は、日本語では下に余白があり、下にずれるため）
+final class TextInkTests: XCTestCase {
+    func testVerticalRangeFindsInkRows() {
+        // 背景 250 の 40×20 に、5〜12 行目だけ暗い線
+        let width = 40, height = 20
+        var pixels = [UInt8](repeating: 250, count: width * height)
+        for y in 5...12 { for x in 4..<36 { pixels[y * width + x] = 20 } }
+        XCTAssertEqual(TextInk.verticalRange(luminance: pixels, width: width, height: height), 5...12)
+    }
+
+    func testVerticalRangeWorksOnDarkBackgroundAndIgnoresSpecks() {
+        // 暗い背景に明るい文字。1 画素だけの汚れは文字とみなさない
+        let width = 40, height = 20
+        var pixels = [UInt8](repeating: 30, count: width * height)
+        pixels[1 * width + 3] = 255
+        for y in 8...14 { for x in 0..<20 { pixels[y * width + x] = 240 } }
+        XCTAssertEqual(TextInk.verticalRange(luminance: pixels, width: width, height: height), 8...14)
+        XCTAssertNil(TextInk.verticalRange(luminance: [UInt8](repeating: 128, count: 100), width: 10, height: 10))
+    }
+
+    func testFittedMovesBoxToInk() {
+        // 文字の線は 20〜34 行目。Vision の範囲は 18〜44（下に余白がある）とする
+        let image = TestImages.make(width: 100, height: 60) { x, y in
+            (20...34).contains(y) && (10..<90).contains(x) ? 0 : 255
+        }
+        let box = CGRect(x: 5, y: 18, width: 90, height: 26)
+        let line = TextLineBoxes(box: box, characters: [CGRect(x: 5, y: 18, width: 45, height: 26), CGRect(x: 50, y: 18, width: 45, height: 26)])
+        let fitted = TextInk.fitted([line], image: image, imageSize: CGSize(width: 100, height: 60))
+        XCTAssertEqual(fitted.first?.box, CGRect(x: 5, y: 20, width: 90, height: 15))
+        XCTAssertEqual(fitted.first?.characters.map(\.minY), [20, 20])
+        XCTAssertEqual(fitted.first?.characters.map(\.minX), [5, 50], "横の位置は変えない")
+    }
+
+    func testFittedKeepsLineWithoutInk() {
+        let image = TestImages.make(width: 50, height: 50) { _, _ in 255 }
+        let line = TextLineBoxes(box: CGRect(x: 5, y: 10, width: 40, height: 20), characters: [CGRect(x: 5, y: 10, width: 40, height: 20)])
+        XCTAssertEqual(TextInk.fitted([line], image: image, imageSize: CGSize(width: 50, height: 50)), [line])
+    }
+}
