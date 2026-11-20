@@ -39,33 +39,11 @@ struct UploadHistoryView: View {
         CaptureHistoryRules.groupedByDay(history.entries)
     }
 
-    @ViewBuilder
     private var content: some View {
-        switch layout {
-        case .largeGrid, .smallGrid:
-            LazyVGrid(columns: layout.gridColumns, alignment: .leading, spacing: layout.gridSpacing, pinnedViews: [.sectionHeaders]) {
-                ForEach(groups, id: \.day) { group in
-                    Section {
-                        ForEach(group.entries) { entry in
-                            UploadHistoryCell(entry: entry, model: model, compact: layout == .smallGrid)
-                        }
-                    } header: {
-                        HistoryDayHeader(day: group.day, countText: "\(group.entries.count) 件")
-                    }
-                }
-            }
-        case .list:
-            LazyVStack(alignment: .leading, spacing: 2, pinnedViews: [.sectionHeaders]) {
-                ForEach(groups, id: \.day) { group in
-                    Section {
-                        ForEach(group.entries) { entry in
-                            UploadHistoryRow(entry: entry, model: model)
-                        }
-                    } header: {
-                        HistoryDayHeader(day: group.day, countText: "\(group.entries.count) 件")
-                    }
-                }
-            }
+        HistoryDayGroupedList(groups: groups, layout: layout, unit: "件") { entry, compact in
+            UploadHistoryCell(entry: entry, model: model, compact: compact)
+        } row: { entry in
+            UploadHistoryRow(entry: entry, model: model)
         }
     }
 

@@ -129,6 +129,40 @@ struct HistoryGridThumbnail<Buttons: View>: View {
     private var cornerRadius: CGFloat { compact ? 7 : 10 }
 }
 
+/// 日付ごとに並べる一覧の中身（表示方法に合わせて、サムネイルかリスト）。
+/// 撮った画像の一覧と、上げたものの一覧で同じ並べ方にする（見出しはスクロールしても上に残す）。
+/// unit は見出しの数の単位（「枚」「件」）。cell の 2 つ目は小さいサムネイルか
+struct HistoryDayGroupedList<Entry: HistoryItem, Cell: View, Row: View>: View {
+    let groups: [(day: Date, entries: [Entry])]
+    let layout: HistoryLayout
+    let unit: String
+    @ViewBuilder let cell: (Entry, Bool) -> Cell
+    @ViewBuilder let row: (Entry) -> Row
+
+    var body: some View {
+        switch layout {
+        case .largeGrid, .smallGrid:
+            LazyVGrid(columns: layout.gridColumns, alignment: .leading, spacing: layout.gridSpacing, pinnedViews: [.sectionHeaders]) {
+                sections { cell($0, layout == .smallGrid) }
+            }
+        case .list:
+            LazyVStack(alignment: .leading, spacing: 2, pinnedViews: [.sectionHeaders]) {
+                sections(row)
+            }
+        }
+    }
+
+    private func sections<Item: View>(@ViewBuilder _ item: @escaping (Entry) -> Item) -> some View {
+        ForEach(groups, id: \.day) { group in
+            Section {
+                ForEach(group.entries) { entry in item(entry) }
+            } header: {
+                HistoryDayHeader(day: group.day, countText: "\(group.entries.count) \(unit)")
+            }
+        }
+    }
+}
+
 extension HistoryLayout {
     /// サムネイルで並べるときの列（大きい・小さいサムネイル）
     var gridColumns: [GridItem] {
