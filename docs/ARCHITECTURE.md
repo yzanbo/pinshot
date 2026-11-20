@@ -15,13 +15,21 @@ Pinshot/
 │   ├── SelectionController   範囲を選ぶ画面（画面ごとのウィンドウ・モードの切り替え）
 │   ├── SelectionView(+Drawing)  選ぶ操作（マウス・スクロール領域を探す）と、範囲・ルーペ・座標の描画
 │   ├── CaptureModeBar・CountdownPanel  モードとタイマーを選ぶバー（SwiftUI）、タイマーの秒読み
-│   └── CaptureCursors        キャプチャ中のカーソル
+│   ├── CaptureCursors        キャプチャ中のカーソル
+│   └── CaptureOutline        撮っている・録画している範囲の外側の点線の枠（スクロールキャプチャと録画で共通）
 ├── ScrollCapture/  スクロールキャプチャ
 │   ├── ScrollCaptureController  始める・終わったら浮かせる
 │   ├── ScrollTargetFinder    スクロール領域を探す（アクセシビリティ）
 │   ├── ScrollCaptureSession  自動スクロールしながら撮る 1 回ぶんの流れ
 │   ├── ScrollStitcher        撮った画像をつなぐ
-│   └── ScrollCapturePanel    操作パネルと点線の枠
+│   └── ScrollCapturePanel    操作パネル
+├── Recording/      画面の録画
+│   ├── RecordingRules        録画の決まり（大きさを偶数に・座標・時間の表示・ファイル名・GIF のコマ数と大きさ・古い録画の整理。テストあり）
+│   ├── ScreenRecorder        画面を受け取って MP4 に書く（ScreenCaptureKit の SCStream → AVAssetWriter）
+│   ├── RecordingController   録画を始める・止める入口（赤い点線の枠・操作パネル・上限）
+│   ├── RecordingStore        アプリの中に残す録画（期間と数で古いものを削除・本数と容量）
+│   ├── RecordingPlayer       録画を浮かせてくり返し再生する窓（コピー・MP4 / GIF で保存・Finder で表示）
+│   └── GIFExporter           録画から GIF を作る（テストあり）
 ├── Pin/            最前面に浮かぶウィンドウと、画像の表示・操作
 │   ├── PinManager            浮かせている画像の一覧（閉じた画像を戻す・すべて閉じる・終了後も戻すための保存と復元 など）
 │   ├── SavedPin・PinSessionStore  終了・再起動のあとも戻す状態（テストあり）と、その保存先（~/Library/Application Support/Pinshot/Pins に PNG と session.json）
@@ -69,15 +77,16 @@ Pinshot/
     ├── OverlayPanel          枠のない、前面を奪わないパネルの土台
     ├── PopupMenu・OpenMenus  項目の並びからメニューを作る、開いているメニューを覚えて閉じる
     ├── AppAlert              確かめる・知らせるダイアログ（アプリのアイコン・ウィンドウのシート）
-    ├── ScreenGeometry        画面の座標の変換・部品を画面に収める位置・ツールバーと操作バーを画像の下に置く位置（テストあり）
+    ├── ScreenGeometry        画面の座標の変換・部品を画面に収める位置・ツールバーと操作バーを画像の下に置く位置・操作パネルを置く位置（テストあり）
     ├── Permissions           画面収録・アクセシビリティの許可
     ├── GraphicsHelpers       画像の描き先を作る・画像のファイルを読む（読んだ時点で展開する。あとでファイルが消えても描ける）・縮める
     ├── EditableText          直せる文字の欄（右クリックは、短い日本語のメニューと、呼ぶ側が足す項目）
     ├── HoverCursor           部品の種類（押せる・動かせる・操作できない）で決めるカーソル
     ├── KeyCode・PercentText  キーの番号の名前、「80%」の表示
-    ├── ImageSaver            PNG を設定に合わせて保存する（浮かせた画像と履歴から使う）
-    ├── AppFolders            アプリのデータを置くフォルダ（履歴・浮かせていた画像）
-    └── ViewHelpers           前に出ていなくても押せるビュー・マウスの追跡・角の丸い枠（framedBox）
+    ├── ImageSaver            PNG と録画のファイルを設定に合わせて保存する（浮かせた画像・履歴・録画から使う）
+    ├── AppFolders            アプリのデータを置くフォルダ（履歴・浮かせていた画像・録画）
+    ├── SaveLocation          保存したもの（画像・GIF・動画）を置く場所の決まり（保存先の中を種類ごと・月ごとに分ける。テストあり）
+    └── ViewHelpers           前に出ていなくても押せるビュー・マウスの追跡・角の丸い枠（framedBox）・ドラッグで窓を動かす所（WindowDragArea）
 
 PinshotTests/       画面に関係ない処理のテスト（make test）
 ```
