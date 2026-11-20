@@ -10,6 +10,8 @@ final class UploadHistoryViewModel: ObservableObject {
     /// マウスを乗せている 1 件
     @Published var hovered: UUID?
     let notice: HistoryNotice
+    /// 縮小画像（読み込んだものを覚えておく）
+    private let thumbnails = NSCache<NSUUID, NSImage>()
 
     init(history: UploadHistory, notice: HistoryNotice) {
         self.history = history
@@ -24,6 +26,13 @@ final class UploadHistoryViewModel: ObservableObject {
     /// entry に対する操作の対象（entry を選んでいれば、選んでいるものすべて。そうでなければ entry だけ）
     func targets(for entry: UploadHistoryEntry) -> [UploadHistoryEntry] {
         selection.contains(entry.id) ? selectedEntries : [entry]
+    }
+
+    func thumbnail(for entry: UploadHistoryEntry) -> NSImage? {
+        if let cached = thumbnails.object(forKey: entry.id as NSUUID) { return cached }
+        guard let image = history.thumbnail(for: entry) else { return nil }
+        thumbnails.setObject(image, forKey: entry.id as NSUUID)
+        return image
     }
 
     // MARK: - 選ぶ
@@ -105,7 +114,10 @@ final class UploadHistoryViewModel: ObservableObject {
             return true
         }
         switch event.keyCode {
-        case KeyCode.downArrow, KeyCode.upArrow:
+        case KeyCode.leftArrow, KeyCode.rightArrow:
+            selection.move(by: event.keyCode == KeyCode.rightArrow ? 1 : -1, extending: flags.contains(.shift), order: order)
+            return true
+        case KeyCode.downArrow, KeyCode.upArrow where AppSettings.shared.uploadHistoryLayout == .list: // リストのときは ↓ ↑ でも動かす
             selection.move(by: event.keyCode == KeyCode.downArrow ? 1 : -1, extending: flags.contains(.shift), order: order)
             return true
         case KeyCode.escape:

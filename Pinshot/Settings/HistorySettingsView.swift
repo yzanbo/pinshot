@@ -55,6 +55,7 @@ struct HistorySettingsView: View {
             Section("一覧の表示") {
                 layoutPicker("撮った画像", selection: $settings.historyLayout)
                 layoutPicker("読み取った文字", selection: $settings.textHistoryLayout)
+                layoutPicker("上げたもの", selection: $settings.uploadHistoryLayout)
             }
         }
     }

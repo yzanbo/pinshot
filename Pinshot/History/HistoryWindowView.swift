@@ -84,7 +84,7 @@ struct HistoryWindowView: View {
                     layoutPicker($settings.textHistoryLayout)
                 }
             case .uploads:
-                EmptyView()
+                if !uploads.entries.isEmpty { layoutPicker($settings.uploadHistoryLayout) }
             }
         }
         .padding(.horizontal, 14)
@@ -99,7 +99,7 @@ struct HistoryWindowView: View {
         }
     }
 
-    /// 一覧の表示方法の切り替え（画像・文字）
+    /// 一覧の表示方法の切り替え（画像・文字・共有）
     private func layoutPicker<Layout: HistoryLayoutOption>(_ selection: Binding<Layout>) -> some View {
         HStack(spacing: 8) {
             Text(selection.wrappedValue.label)

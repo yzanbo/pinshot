@@ -191,13 +191,8 @@ final class UploadHistoryTests: XCTestCase {
         XCTAssertEqual(list.first?.fileName, "new.png")
     }
 
-    func testSubtitle() {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(identifier: "Asia/Tokyo")!
-        let date = Date(timeIntervalSince1970: 1_795_000_000) // 2026-11-18 20:06（東京）
-        let item = entry(date: date)
-        XCTAssertEqual(UploadHistoryRules.subtitle(for: item, now: date.addingTimeInterval(60), calendar: calendar), "今日 20:06・Gyazo")
-        XCTAssertEqual(UploadHistoryRules.subtitle(for: item, now: date.addingTimeInterval(86_400 * 3), calendar: calendar), "11月18日 20:06・Gyazo")
-        XCTAssertEqual(UploadHistoryRules.subtitle(for: item, now: date.addingTimeInterval(86_400 * 400), calendar: calendar), "2026年11月18日 20:06・Gyazo")
+    func testShortLink() {
+        XCTAssertEqual(UploadHistoryRules.shortLink(URL(string: "https://gyazo.com/8980c524")!), "gyazo.com/8980c524")
+        XCTAssertEqual(UploadHistoryRules.shortLink(URL(string: "https://example.com/")!), "example.com")
     }
 }

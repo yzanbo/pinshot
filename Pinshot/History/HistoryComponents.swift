@@ -75,6 +75,71 @@ struct HistoryThumbnail: View {
     }
 }
 
+/// サムネイルで並べるときの 1 件の縮小画像（枠・選んでいる印・乗せている間のボタン）。
+/// 撮った画像の一覧と、上げたものの一覧で同じ見た目にする。compact は小さいサムネイル
+struct HistoryGridThumbnail<Buttons: View>: View {
+    let image: NSImage?
+    let compact: Bool
+    let isSelected: Bool
+    let isHovered: Bool
+    /// 乗せている間だけ、縮小画像の上に出すボタン
+    @ViewBuilder let buttons: () -> Buttons
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: cornerRadius)
+                .fill(Color.primary.opacity(isHovered ? 0.09 : 0.05))
+            if let image {
+                Image(nsImage: image)
+                    .resizable()
+                    .interpolation(.high)
+                    .aspectRatio(contentMode: .fit)
+                    .padding(compact ? 5 : 8)
+            } else {
+                Image(systemName: "photo")
+                    .font(compact ? .body : .title2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(height: compact ? 76 : 130)
+        .overlay(
+            RoundedRectangle(cornerRadius: cornerRadius)
+                .strokeBorder(isSelected ? Color.accentColor : Color.primary.opacity(isHovered ? 0.25 : 0.12), lineWidth: isSelected ? 3 : 1)
+        )
+        .overlay(alignment: .topLeading) {
+            // 選んでいることが分かる印
+            if isSelected {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: compact ? 14 : 18))
+                    .symbolRenderingMode(.palette)
+                    .foregroundStyle(.white, Color.accentColor)
+                    .padding(compact ? 4 : 7)
+            }
+        }
+        .overlay(alignment: compact ? .bottomTrailing : .topTrailing) {
+            if isHovered {
+                buttons()
+                    .padding(compact ? 4 : 6)
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeOut(duration: 0.12), value: isHovered)
+    }
+
+    private var cornerRadius: CGFloat { compact ? 7 : 10 }
+}
+
+extension HistoryLayout {
+    /// サムネイルで並べるときの列（大きい・小さいサムネイル）
+    var gridColumns: [GridItem] {
+        let large = self == .largeGrid
+        return [GridItem(.adaptive(minimum: large ? 170 : 110, maximum: large ? 260 : 150), spacing: gridSpacing)]
+    }
+
+    /// サムネイルの間
+    var gridSpacing: CGFloat { self == .largeGrid ? 16 : 10 }
+}
+
 /// 一覧の下の帯。選んでいないときは数と操作の説明と「すべて消す…」、選んでいるときは選んだ数と、選んだものへの操作
 struct HistoryFooter<Actions: View>: View {
     /// 選んでいる数（0 なら選んでいない）

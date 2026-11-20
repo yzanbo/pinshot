@@ -2,7 +2,7 @@ import Foundation
 
 /// 上げたものの履歴の 1 件（画面やネットに関わらない。テストにも入れる）。
 /// 一覧（uploads.json）と、小さな縮小画像（id の名前の PNG）を、アプリ用のフォルダに置く
-struct UploadHistoryEntry: Codable, Identifiable, Equatable {
+struct UploadHistoryEntry: Codable, HistoryItem, Equatable {
     var id: UUID
     /// 上げた日時
     var date: Date
@@ -29,19 +29,10 @@ enum UploadHistoryRules {
         [entry] + entries.filter { $0.id != entry.id }
     }
 
-    /// 一覧に出す、日時と保存先（例: 「11月20日 15:40・Gyazo」）
-    static func subtitle(for entry: UploadHistoryEntry, now: Date = Date(), calendar: Calendar = .current) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ja_JP")
-        formatter.calendar = calendar
-        formatter.timeZone = calendar.timeZone
-        if calendar.isDate(entry.date, inSameDayAs: now) {
-            formatter.dateFormat = "'今日' H:mm"
-        } else if calendar.isDate(entry.date, equalTo: now, toGranularity: .year) {
-            formatter.dateFormat = "M月d日 H:mm"
-        } else {
-            formatter.dateFormat = "yyyy年M月d日 H:mm"
-        }
-        return "\(formatter.string(from: entry.date))・\(entry.destination.label)"
+    /// サムネイルの下に出す、短いリンク（例: 「gyazo.com/8980c524…」。https:// を外す）
+    static func shortLink(_ url: URL) -> String {
+        let host = url.host ?? ""
+        let path = url.path
+        return path.isEmpty || path == "/" ? host : host + path
     }
 }

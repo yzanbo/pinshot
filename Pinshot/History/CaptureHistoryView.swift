@@ -36,13 +36,11 @@ struct CaptureHistoryView: View {
     private var content: some View {
         switch layout {
         case .largeGrid, .smallGrid:
-            let large = layout == .largeGrid
-            let columns = [GridItem(.adaptive(minimum: large ? 170 : 110, maximum: large ? 260 : 150), spacing: large ? 16 : 10)]
-            LazyVGrid(columns: columns, alignment: .leading, spacing: large ? 16 : 10, pinnedViews: [.sectionHeaders]) {
+            LazyVGrid(columns: layout.gridColumns, alignment: .leading, spacing: layout.gridSpacing, pinnedViews: [.sectionHeaders]) {
                 ForEach(groups, id: \.day) { group in
                     Section {
                         ForEach(group.entries) { entry in
-                            CaptureHistoryCell(entry: entry, model: model, compact: !large)
+                            CaptureHistoryCell(entry: entry, model: model, compact: layout == .smallGrid)
                         }
                     } header: {
                         HistoryDayHeader(day: group.day, countText: "\(group.entries.count) 枚")
@@ -182,44 +180,9 @@ private struct CaptureHistoryCell: View {
     }
 
     private var thumbnail: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: compact ? 7 : 10)
-                .fill(Color.primary.opacity(isHovered ? 0.09 : 0.05))
-            if let image = model.thumbnail(for: entry) {
-                Image(nsImage: image)
-                    .resizable()
-                    .interpolation(.high)
-                    .aspectRatio(contentMode: .fit)
-                    .padding(compact ? 5 : 8)
-            } else {
-                Image(systemName: "photo")
-                    .font(compact ? .body : .title2)
-                    .foregroundStyle(.secondary)
-            }
+        HistoryGridThumbnail(image: model.thumbnail(for: entry), compact: compact, isSelected: isSelected, isHovered: isHovered) {
+            HistoryItemButtons(entry: entry, model: model)
         }
-        .frame(height: compact ? 76 : 130)
-        .overlay(
-            RoundedRectangle(cornerRadius: compact ? 7 : 10)
-                .strokeBorder(isSelected ? Color.accentColor : Color.primary.opacity(isHovered ? 0.25 : 0.12), lineWidth: isSelected ? 3 : 1)
-        )
-        .overlay(alignment: .topLeading) {
-            // 選んでいることが分かる印
-            if isSelected {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: compact ? 14 : 18))
-                    .symbolRenderingMode(.palette)
-                    .foregroundStyle(.white, Color.accentColor)
-                    .padding(compact ? 4 : 7)
-            }
-        }
-        .overlay(alignment: compact ? .bottomTrailing : .topTrailing) {
-            if isHovered {
-                HistoryItemButtons(entry: entry, model: model)
-                    .padding(compact ? 4 : 6)
-                    .transition(.opacity)
-            }
-        }
-        .animation(.easeOut(duration: 0.12), value: isHovered)
     }
 }
 
