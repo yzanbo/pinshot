@@ -171,6 +171,8 @@ final class UploadAccountModel: ObservableObject {
                 AppAlert.inform("\(destination.id.label) にログインできませんでした", detail: error.localizedDescription)
             }
             refresh(for: destinationID)
+            // ほかの画面（Gyazo の案内の窓など）にも知らせる
+            NotificationCenter.default.post(name: .uploadAccountDidChange, object: nil)
         }
     }
 
@@ -181,6 +183,8 @@ final class UploadAccountModel: ObservableObject {
             await destination.signOut()
             workingText = nil
             refresh(for: destinationID)
+            // ほかの画面（Gyazo の案内の窓など）にも知らせる
+            NotificationCenter.default.post(name: .uploadAccountDidChange, object: nil)
         }
     }
 }

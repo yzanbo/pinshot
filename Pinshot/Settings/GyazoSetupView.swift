@@ -6,13 +6,16 @@ import SwiftUI
 /// 利用者が自分の Gyazo にアプリを登録して、アクセストークンを作り、ここに貼る
 /// （Pinshot の合言葉 client_secret は作らない・配らない）
 @MainActor
-final class GyazoSetupWindowController: NSObject, NSWindowDelegate {
+final class GyazoSetupWindowController {
     static let shared = GyazoSetupWindowController()
 
     private var window: NSWindow?
     private var model: GyazoSetupModel?
 
     func show() {
+        // 閉じていた窓を開き直すときは、前に開いたときの状態（打ちかけのトークン・使えなかった知らせ）を捨て、
+        // つながっているかを取り直す（設定の「外す」で外したあとに開くと、手順から出す）
+        if let window, !window.isVisible { model?.reset() }
         if window == nil {
             let model = GyazoSetupModel()
             model.close = { [weak self] in self?.window?.close() }
@@ -22,7 +25,6 @@ final class GyazoSetupWindowController: NSObject, NSWindowDelegate {
             window.styleMask = [.titled, .closable]
             window.title = "Gyazo につなぐ"
             window.isReleasedWhenClosed = false
-            window.delegate = self
             window.center()
             self.window = window
             self.model = model
@@ -54,11 +56,32 @@ final class GyazoSetupModel: ObservableObject {
     static let callbackURL = "http://localhost"
 
     private var destination: UploadDestination? { UploadDestinations.destination(for: .gyazo) }
+    private var accountObserver: AnyCancellable?
 
     init() {
-        if destination?.isSignedIn == true {
+        syncConnection()
+        // 設定の「外す」など、ほかの所でつないだ・外したら、出している中身も合わせる
+        accountObserver = NotificationCenter.default.publisher(for: .uploadAccountDidChange)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.syncConnection() }
+    }
+
+    /// 開き直したとき、前の状態を捨てる（打ちかけのトークン・使えなかった知らせ・コピーの知らせ）
+    func reset() {
+        tokenText = ""
+        errorText = nil
+        copiedValue = nil
+        syncConnection()
+    }
+
+    /// つながっているかを、上げる先から取り直す
+    private func syncConnection() {
+        let signedIn = destination?.isSignedIn == true
+        if signedIn, connectedName == nil {
             connectedName = ""
             Task { await loadName() }
+        } else if !signedIn, connectedName != nil {
+            connectedName = nil
         }
     }
 
