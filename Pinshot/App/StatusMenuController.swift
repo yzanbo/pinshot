@@ -15,9 +15,11 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
     private var statusItem: NSStatusItem?
     private var statusMenu: NSMenu?
     private var windowListMenu: NSMenu?
-    /// ショートカットを表示するメニュー項目（操作ごと）と、そのもとの名前
+    /// ショートカットを表示するメニュー項目（操作ごと）と、そのもとの名前（タイマーの項目は「5 秒後」）
     private var actionItems: [ShortcutAction: NSMenuItem] = [:]
     private var actionTitles: [ShortcutAction: String] = [:]
+    /// 操作ごとに割り当てたショートカットと、登録できたか（ほかのアプリが使っていると登録できない）
+    private var shortcutStates: [ShortcutAction: (shortcut: Shortcut?, registered: Bool)] = [:]
     /// 画面収録の許可がないときだけ出す項目（知らせと区切り線）
     private var permissionItems: [NSMenuItem] = []
     private var pinsHeaderItem: NSMenuItem?
@@ -158,9 +160,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
     func setRecording(_ recording: Bool) {
         isRecording = recording
         updateStatusIcon()
-        guard let item = actionItems[.recordScreen] else { return }
-        item.title = recording ? "録画を止める" : (actionTitles[.recordScreen] ?? ShortcutAction.recordScreen.label)
-        item.image = NSImage(systemSymbolName: recording ? "stop.circle" : ShortcutAction.recordScreen.symbolName, accessibilityDescription: nil)
+        refreshActionItem(.recordScreen)
     }
 
     /// 上げ始めた・上げ終えたとき。上げている間は、メニューバーのアイコンを「上げている」印にする
@@ -335,13 +335,29 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
     /// 操作の項目に、割り当てたショートカットを出す。
     /// registered が false（ほかのアプリが同じキーを使っていて登録できなかった）なら、項目の名前で知らせる
     func showShortcut(_ shortcut: Shortcut?, registered: Bool, for action: ShortcutAction) {
+        shortcutStates[action] = (shortcut, registered)
+        refreshActionItem(action)
+    }
+
+    /// 操作の項目の名前・アイコン・キーを、いまの状態（録画中か・割り当てたショートカット・登録できたか）から決める。
+    /// 項目を書き換えるのはここだけにする（録画の開始・停止とショートカットの登録し直しが、別々に名前を書き換えると、
+    /// 録画中に設定を閉じたときに「録画を止める」が「画面を録画」に戻るなど、片方の表示が消えるため）
+    private func refreshActionItem(_ action: ShortcutAction) {
         guard let item = actionItems[action] else { return }
-        let title = actionTitles[action] ?? action.label
-        if let shortcut, registered {
+        let title: String
+        if action == .recordScreen {
+            // 録画中は「録画を止める」にする
+            title = isRecording ? "録画を止める" : action.label
+            item.image = NSImage(systemSymbolName: isRecording ? "stop.circle" : action.symbolName, accessibilityDescription: nil)
+        } else {
+            title = actionTitles[action] ?? action.label
+        }
+        let state = shortcutStates[action]
+        if let shortcut = state?.shortcut, state?.registered == true {
             item.title = title
             item.keyEquivalent = shortcut.key.count == 1 ? shortcut.key.lowercased() : ""
             item.keyEquivalentModifierMask = shortcut.menuModifierMask
-        } else if let shortcut {
+        } else if let shortcut = state?.shortcut {
             // ほかのアプリが同じショートカットを使っていると登録できない
             item.title = "\(title)（\(shortcut.displayString) は使用中）"
             item.keyEquivalent = ""
