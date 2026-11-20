@@ -8,8 +8,10 @@ struct ShortcutSettingsView: View {
 
     var body: some View {
         SettingsPane {
-            Section("キャプチャ") {
+            Section {
                 rows(for: ShortcutAction.captureActions)
+            } header: {
+                SettingTitle("キャプチャ", info: "ボタンを押してからキーを押すと割り当てられます（⌘・⌥・⌃ のどれかと一緒に）。どのアプリを使っていても効きます。")
             }
             Section("録画") {
                 rows(for: ShortcutAction.recordActions)
@@ -22,8 +24,7 @@ struct ShortcutSettingsView: View {
             } header: {
                 Text("撮った画像の履歴")
             } footer: {
-                HStack(alignment: .firstTextBaseline) {
-                    SettingsNote("ボタンを押してからキーを押すと割り当てられます（⌘・⌥・⌃ のどれかと一緒に）。どのアプリを使っていても効きます。")
+                HStack {
                     Spacer()
                     Button("初期設定に戻す") {
                         recorder.stop()

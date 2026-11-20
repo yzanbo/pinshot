@@ -52,8 +52,6 @@ struct WelcomeView: View {
     let isFirstLaunch: Bool
     let close: () -> Void
 
-    private static let usageURL = URL(string: "https://github.com/yzanbo/pinshot/blob/main/docs/USAGE.md")!
-
     var body: some View {
         VStack(alignment: .leading, spacing: 22) {
             header
@@ -171,9 +169,6 @@ struct WelcomeView: View {
     private var footer: some View {
         HStack(spacing: 12) {
             Button("設定を開く…") { SettingsWindowController.shared.show() }
-                .hoverRole()
-            Link("くわしい使い方", destination: Self.usageURL)
-                .font(.callout)
                 .hoverRole()
             Spacer()
             Button(permission.granted ? "はじめる" : "あとで") { close() }

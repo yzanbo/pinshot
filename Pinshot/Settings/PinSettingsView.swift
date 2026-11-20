@@ -6,7 +6,7 @@ struct PinSettingsView: View {
 
     var body: some View {
         SettingsPane {
-            Section("表示") {
+            Section {
                 Toggle("常に最前面に表示する", isOn: $settings.alwaysOnTop)
                 LabeledContent("浮かせたときの不透明度") {
                     HStack {
@@ -17,34 +17,28 @@ struct PinSettingsView: View {
                             .frame(width: 40, alignment: .trailing)
                     }
                 }
-                SettingsNote("どちらも、画像ごとに右クリックのメニューから変えられます。")
+            } header: {
+                SettingTitle("表示", info: "どちらも、画像ごとに右クリックのメニューから変えられます。")
             }
             Section {
                 OptionPicker("出し方", selection: $settings.closeButtonMode)
-                Toggle("画像の下に操作バーを出す", isOn: $settings.showsQuickActions)
-                    .disabled(settings.closeButtonMode == .hidden)
-                SettingsNote("不透明度・拡大率・コピー・保存・履歴・編集のバーです。オフにすると、ダブルクリックで編集するまで画像の下に何も出しません（編集モードのツールバーはいつも出ます）。画像の右クリックからも切り替えられます。")
+                Toggle(isOn: $settings.showsQuickActions) {
+                    SettingTitle("画像の下に操作バーを出す", info: "不透明度・拡大率・コピー・保存・履歴・編集のバーです。オフにすると、ダブルクリックで編集するまで画像の下に何も出しません（編集モードのツールバーはいつも出ます）。画像の右クリックからも切り替えられます。\n\n出さないときも、ダブルクリックか ⌘E で編集、右クリックでコピー・保存・閉じるなどができます。")
+                }
+                .disabled(settings.closeButtonMode == .hidden)
             } header: {
                 Text("閉じるボタンと操作バー")
-            } footer: {
-                SettingsNote("出さないときも、ダブルクリックか ⌘E で編集、右クリックでコピー・保存・閉じるなどができます。")
             }
-            Section {
-                Toggle("終了・再起動のあとも、浮かせていた画像を戻す", isOn: $settings.restorePins)
-            } header: {
-                Text("終了したとき")
-            } footer: {
-                SettingsNote("浮かせていた画像と閉じた画像（最大 10 枚）を、書き込み・位置・拡大率・不透明度・背景ごと、次に起動したときに戻します。画像はこの Mac の中（~/Library/Application Support/Pinshot/Pins）にだけ置きます。オフにすると、置いていたものを削除します。")
-            }
-            Section {
-                Toggle("読み取った文字の吹き出しを、外を押したら閉じる", isOn: $settings.textPopoverClosesOnOutsideClick)
-            } header: {
-                Text("文字の読み取り")
-            } footer: {
-                SettingsNote("オフ（初期設定）のときは、吹き出しの「閉じる」か esc で閉じるまで出したままにします。ほかの所を押しても閉じないので、見比べながら直せます。")
-            }
-            Section("書き込み") {
-                Toggle("書き込みに影を付ける（背景に埋もれにくくなる）", isOn: $settings.annotationShadow)
+            Section("そのほか") {
+                Toggle(isOn: $settings.restorePins) {
+                    SettingTitle("終了・再起動のあとも、浮かせていた画像を戻す", info: "浮かせていた画像と閉じた画像（最大 10 枚）を、書き込み・位置・拡大率・不透明度・背景ごと、次に起動したときに戻します。画像はこの Mac の中（~/Library/Application Support/Pinshot/Pins）にだけ置きます。オフにすると、置いていたものを削除します。")
+                }
+                Toggle(isOn: $settings.textPopoverClosesOnOutsideClick) {
+                    SettingTitle("読み取った文字の吹き出しを、外を押したら閉じる", info: "オフ（初期設定）のときは、吹き出しの「閉じる」か esc で閉じるまで出したままにします。ほかの所を押しても閉じないので、見比べながら直せます。")
+                }
+                Toggle(isOn: $settings.annotationShadow) {
+                    SettingTitle("書き込みに影を付ける", info: "矢印や文字などの書き込みに薄い影を付けて、背景に埋もれにくくします。蛍光ペン・モザイク・ぼかし・スポットライトには付けません。")
+                }
             }
         }
     }

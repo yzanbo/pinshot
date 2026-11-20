@@ -14,19 +14,17 @@ struct GeneralSettingsView: View {
     var body: some View {
         SettingsPane {
             Section("表示") {
-                OptionPicker("見た目", selection: $settings.appearance)
+                OptionPicker("見た目", info: "ツールバー・メニュー・設定などの色です。「システム」なら、Mac のライト / ダークの設定に合わせます。", selection: $settings.appearance)
                 .pickerStyle(.segmented)
-                SettingsNote("ツールバー・メニュー・設定などの色です。「システム」なら、Mac のライト / ダークの設定に合わせます。")
             }
             Section("キャプチャ") {
-                Picker("範囲を選ぶ画面", selection: $settings.detailedCaptureUI) {
+                Picker(selection: $settings.detailedCaptureUI) {
                     Text("シンプル").tag(false)
                     Text("くわしく").tag(true)
+                } label: {
+                    SettingTitle("範囲を選ぶ画面", info: "シンプル：画面はそのままで、カーソルの横に座標を出します。\nくわしく：画面を暗くして、ルーペと十字線を出します。1 ピクセル単位で合わせたいときに。")
                 }
                 .pickerStyle(.segmented)
-                SettingsNote(settings.detailedCaptureUI
-                    ? "画面を暗くして、ルーペと十字線を出します。1 ピクセル単位で合わせたいときに。"
-                    : "画面はそのままで、カーソルの横に座標を出します。")
                 Toggle("撮ったら、クリップボードにもコピーする", isOn: $settings.copyAfterCapture)
             }
             Section {
@@ -86,10 +84,7 @@ private struct PermissionRow: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                SettingsNote(detail)
-            }
+            SettingTitle(title, info: detail)
             Spacer()
             if isGranted {
                 Label("許可済み", systemImage: "checkmark.circle.fill")
