@@ -67,7 +67,7 @@ Pinshot/
 │   ├── EditHandle            選んだ書き込みのつまみ（形を直す）
 │   ├── EditorState・EditorStyle・StylePreset・EditHistory  編集の状態・スタイルの保存・元に戻す
 │   └── Toolbar/              ツールバー（SwiftUI）と、その部品
-│       ├── EditorToolbar・ToolbarComponents・ToolbarMenuButtons  ツールバー本体、共通の部品、メニューを開くボタン
+│       ├── EditorToolbar(+Options)・ToolbarComponents・ToolbarMenuButtons  ツールバー本体（+Options は 2 行目のツールごとのオプション）、共通の部品、メニューを開くボタン
 │       ├── TextStylePreview  文字ツールのオプションの見本（書き込みと同じ描き方で、次に入力する文字の見え方を出す）
 │       ├── ViewControls      不透明度と拡大率（操作バーに出す。編集中もツールバーの上のバーとして同じ操作バーを出す）
 │       └── FontMenu・TextInputController・ColorPanelController  フォントのメニュー、数字や名前の入力欄、カラーパネル
