@@ -10,15 +10,15 @@ final class PinManager {
     /// 閉じた画像（新しい順、最大 10 枚）。「閉じた画像を戻す」で使う
     private var closedPins: [ClosedPin] = []
     private let maxClosedPins = 10
+    /// ときどき保存するためのタイマー（startAutosave）
+    private var autosaveTimer: Timer?
+    /// 浮かせた・閉じたあとに、少し待って保存する予定があるか
+    private var isSaveScheduled = false
 
+    /// 閉じた画像（状態と、元の画像）
     private struct ClosedPin {
+        let saved: SavedPin
         let image: CGImage
-        let imageSize: CGSize
-        /// 書き込み・トリミング・背景・最前面の設定
-        let state: PinController.RestoreState
-        let frame: NSRect
-        let zoom: CGFloat
-        let opacity: CGFloat
     }
 
     private init() {
@@ -49,8 +49,9 @@ final class PinManager {
 
     /// 画像を浮かせる（履歴には残さない）
     private func show(image: CGImage, imageSize: CGSize, frame: NSRect, zoom: CGFloat) {
-        let controller = makeController(image: image, imageSize: imageSize, frame: frame, zoom: zoom, restoring: nil)
+        let controller = makeController(image: image, imageSize: imageSize, frame: frame, zoom: zoom)
         controller.show()
+        scheduleSave()
 
         if AppSettings.shared.copyAfterCapture {
             ImageExporter.writeToPasteboard(image, pointSize: imageSize)
@@ -59,13 +60,14 @@ final class PinManager {
     }
 
     private func makeController(
+        id: UUID = UUID(),
         image: CGImage,
         imageSize: CGSize,
         frame: NSRect,
         zoom: CGFloat,
-        restoring: PinController.RestoreState?
+        restoring: SavedPin? = nil
     ) -> PinController {
-        let controller = PinController(image: image, imageSize: imageSize, frame: frame, zoom: zoom, restoring: restoring)
+        let controller = PinController(id: id, image: image, imageSize: imageSize, frame: frame, zoom: zoom, restoring: restoring)
         controller.onClose = { [weak self] closed in
             self?.didClose(closed)
         }
@@ -75,17 +77,11 @@ final class PinManager {
 
     private func didClose(_ controller: PinController) {
         pins.removeAll { $0 === controller }
-        closedPins.insert(ClosedPin(
-            image: controller.canvas.baseImage,
-            imageSize: controller.canvas.imageSize,
-            state: controller.restoreState,
-            frame: controller.contentScreenFrame,
-            zoom: controller.zoom,
-            opacity: controller.panel.alphaValue
-        ), at: 0)
+        closedPins.insert(ClosedPin(saved: controller.savedPin, image: controller.canvas.baseImage), at: 0)
         if closedPins.count > maxClosedPins {
             closedPins.removeLast(closedPins.count - maxClosedPins)
         }
+        scheduleSave()
     }
 
     /// 最後に閉じた画像を、書き込みごと元の場所に戻す
@@ -95,16 +91,27 @@ final class PinManager {
             return
         }
         let closed = closedPins.removeFirst()
+        reopen(closed.saved, image: closed.image, makesKey: true)
+        scheduleSave()
+    }
+
+    /// 残しておいた状態から、画像を元の場所に浮かせ直す（閉じた画像を戻すとき・起動したとき）。
+    /// makesKey: キーにする（起動したときは、ほかのアプリの操作を奪わないよう前に出すだけ）
+    @discardableResult
+    private func reopen(_ saved: SavedPin, image: CGImage, makesKey: Bool) -> PinController {
         let controller = makeController(
-            image: closed.image,
-            imageSize: closed.imageSize,
-            frame: closed.frame,
-            zoom: closed.zoom,
-            restoring: closed.state
+            id: saved.id,
+            image: image,
+            imageSize: saved.imageSize,
+            frame: saved.frame,
+            zoom: saved.zoom,
+            restoring: saved
         )
-        controller.setOpacity(closed.opacity)
-        controller.show()
+        controller.setOpacity(saved.opacity, showsHUD: false)
+        if makesKey { controller.show() } else { controller.bringToFront() }
+        // 画面の並びが変わっていたら、見える画面の中に戻す
         controller.ensureOnScreen()
+        return controller
     }
 
     /// クリップボードの画像を、マウスのある画面の真ん中に浮かせる。画像がなければ false
@@ -170,6 +177,62 @@ final class PinManager {
     func closeAll() {
         for pin in pins {
             pin.close()
+        }
+    }
+
+    // MARK: - 終了・再起動のあとも残す
+
+    /// 浮かせている画像と閉じた画像を保存する（戻さない設定のときは、保存したものを消す）。
+    /// wait: 書き終えるまで待つ（終了するとき）
+    func saveSession(wait: Bool = false) {
+        let store = PinSessionStore.shared
+        guard AppSettings.shared.restorePins else {
+            store.clear(wait: wait)
+            return
+        }
+        var images: [String: (image: CGImage, size: CGSize)] = [:]
+        var session = SavedPinSession()
+        for pin in pins {
+            // 入力中の文字は確定してから残す
+            if wait { pin.canvas.commitPendingText() }
+            let saved = pin.savedPin
+            session.pins.append(saved)
+            images[saved.imageFileName] = (pin.canvas.baseImage, pin.canvas.imageSize)
+        }
+        for closed in closedPins {
+            session.closed.append(closed.saved)
+            images[closed.saved.imageFileName] = (closed.image, closed.saved.imageSize)
+        }
+        store.save(session, images: images, wait: wait)
+    }
+
+    /// 起動したとき、前に浮かせていた画像を元の場所に戻し、閉じた画像も「閉じた画像を戻す」で戻せるようにする
+    func restoreSession() {
+        guard AppSettings.shared.restorePins, let (session, images) = PinSessionStore.shared.load() else { return }
+        for saved in session.pins {
+            guard let image = images[saved.id] else { continue }
+            reopen(saved, image: image, makesKey: false)
+        }
+        closedPins = session.closed.prefix(maxClosedPins).compactMap { saved in
+            images[saved.id].map { ClosedPin(saved: saved, image: $0) }
+        }
+    }
+
+    /// 浮かせた・閉じたあとに、少し待って保存する（続けて起きたときは 1 回にまとめる）
+    private func scheduleSave() {
+        guard !isSaveScheduled else { return }
+        isSaveScheduled = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
+            self?.isSaveScheduled = false
+            self?.saveSession()
+        }
+    }
+
+    /// 動いている間も、ときどき保存する（強制終了したときに、少し前の状態までは戻せるように）
+    func startAutosave() {
+        guard autosaveTimer == nil else { return }
+        autosaveTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { _ in
+            MainActor.assumeIsolated { PinManager.shared.saveSession() }
         }
     }
 }

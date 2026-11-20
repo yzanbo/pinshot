@@ -82,6 +82,7 @@ final class AppSettings: ObservableObject {
         static let historyPeriod = "settings.historyPeriod"
         static let historyLimit = "settings.historyLimit"
         static let historyLayout = "settings.historyLayout"
+        static let restorePins = "settings.restorePins"
     }
 
     private let defaults = UserDefaults.standard
@@ -150,6 +151,11 @@ final class AppSettings: ObservableObject {
     /// 履歴の一覧の表示方法
     @Published var historyLayout: HistoryLayout {
         didSet { defaults.set(historyLayout.rawValue, forKey: Key.historyLayout) }
+    }
+
+    /// 終了・再起動のあとも、浮かせていた画像と閉じた画像を戻す
+    @Published var restorePins: Bool {
+        didSet { defaults.set(restorePins, forKey: Key.restorePins) }
     }
 
     /// 撮ったらすぐクリップボードにもコピーする
@@ -231,6 +237,7 @@ final class AppSettings: ObservableObject {
         historyPeriod = (defaults.object(forKey: Key.historyPeriod) as? Int).flatMap(HistoryPeriod.init(rawValue:)) ?? .month
         historyLimit = (defaults.object(forKey: Key.historyLimit) as? Int).flatMap(HistoryLimit.init(rawValue:)) ?? .hundred
         historyLayout = defaults.string(forKey: Key.historyLayout).flatMap(HistoryLayout.init(rawValue:)) ?? .largeGrid
+        restorePins = defaults.object(forKey: Key.restorePins) as? Bool ?? true
         copyAfterCapture = defaults.object(forKey: Key.copyAfterCapture) as? Bool ?? false
         showsQuickActions = defaults.object(forKey: Key.showsQuickActions) as? Bool ?? true
         alwaysOnTop = defaults.object(forKey: Key.alwaysOnTop) as? Bool ?? true

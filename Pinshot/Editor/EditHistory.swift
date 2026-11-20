@@ -1,7 +1,7 @@
 import Foundation
 
 /// 元に戻す・やり直すときに保存する、編集の状態
-struct EditSnapshot: Equatable {
+struct EditSnapshot: Equatable, Codable {
     var annotations: [Annotation]
     /// 表示している範囲（画像のポイント座標）。トリミングで小さくなる
     var cropRect: CGRect

@@ -33,6 +33,13 @@ struct PinSettingsView: View {
             } footer: {
                 SettingsNote("出さないときも、ダブルクリックか ⌘E で編集、右クリックでコピー・保存・閉じるなどができます。")
             }
+            Section {
+                Toggle("終了・再起動のあとも、浮かせていた画像を戻す", isOn: $settings.restorePins)
+            } header: {
+                Text("終了したとき")
+            } footer: {
+                SettingsNote("浮かせていた画像と閉じた画像（最大 10 枚）を、書き込み・位置・拡大率・不透明度・背景ごと、次に起動したときに戻します。画像はこの Mac の中（~/Library/Application Support/Pinshot/Pins）にだけ置きます。オフにすると、置いていたものを消します。")
+            }
             Section("書き込み") {
                 Toggle("書き込みに影を付ける（背景に埋もれにくくなる）", isOn: $settings.annotationShadow)
             }

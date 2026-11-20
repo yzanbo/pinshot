@@ -129,19 +129,13 @@ final class EditorState: ObservableObject {
 
     // MARK: - 背景（画像ごと）
 
-    /// この画像の背景の状態（閉じた画像を戻すときに引き継ぐ）
-    struct BackdropState {
-        var shown: Bool
-        var decoration: ExportDecoration
-        var followsSettings: Bool
-    }
-
-    var backdropState: BackdropState {
-        BackdropState(shown: backdropShown, decoration: backdropDecoration, followsSettings: backdropFollowsSettings)
+    /// この画像の背景の状態（閉じた画像を戻すとき・終了後に戻すときに引き継ぐ）
+    var savedBackdrop: SavedBackdrop {
+        SavedBackdrop(shown: backdropShown, decoration: backdropDecoration, followsSettings: backdropFollowsSettings)
     }
 
     /// 閉じる前の背景の状態に戻す（設定に追従していた画像は、いまの設定のまま）
-    func restoreBackdrop(_ saved: BackdropState) {
+    func restoreBackdrop(_ saved: SavedBackdrop) {
         backdropFollowsSettings = saved.followsSettings
         guard !saved.followsSettings else { return }
         backdropShown = saved.shown

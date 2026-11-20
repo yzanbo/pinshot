@@ -25,24 +25,39 @@ final class PinController: NSObject, NSWindowDelegate {
 
     /// クリックを下のアプリに通しているか
     private(set) var isClickThrough = false
+    /// クリック透過にする前の不透明度（透過にすると薄くするので、残すときはこの値を使う）
+    private var opacityBeforeClickThrough: CGFloat?
+
+    /// 残すときの不透明度（クリック透過は戻さないので、透過にする前の不透明度）
+    var restorableOpacity: CGFloat {
+        isClickThrough ? (opacityBeforeClickThrough ?? panel.alphaValue) : panel.alphaValue
+    }
 
     /// この画像だけ最前面の設定を変えているとき（nil なら設定に従う）
     private var onTopOverride: Bool?
 
     var isOnTop: Bool { onTopOverride ?? AppSettings.shared.alwaysOnTop }
 
-    /// 閉じた画像を戻すときに引き継ぐ、画像ごとの状態
-    struct RestoreState {
-        var snapshot: EditSnapshot
-        var backdrop: EditorState.BackdropState
-        var onTopOverride: Bool?
+    /// 閉じた画像を戻すとき・終了後に戻すときに引き継ぐ状態（画像そのものは別に持つ）
+    var savedPin: SavedPin {
+        SavedPin(
+            id: id,
+            imageSize: canvas.imageSize,
+            frame: contentScreenFrame,
+            zoom: zoom,
+            opacity: restorableOpacity,
+            snapshot: canvas.snapshot,
+            backdrop: state.savedBackdrop,
+            onTopOverride: onTopOverride
+        )
     }
 
-    var restoreState: RestoreState {
-        RestoreState(snapshot: canvas.snapshot, backdrop: state.backdropState, onTopOverride: onTopOverride)
-    }
+    /// 画像ごとの印（終了・再起動のあとも残すときの、画像のファイル名に使う）
+    let id: UUID
 
-    init(image: CGImage, imageSize: CGSize, frame: NSRect, zoom: CGFloat = 1, restoring: RestoreState? = nil) {
+    /// restoring: 閉じた画像・終了前の画像を戻すときの状態（書き込み・トリミング・背景・最前面の設定を引き継ぐ）
+    init(id: UUID = UUID(), image: CGImage, imageSize: CGSize, frame: NSRect, zoom: CGFloat = 1, restoring: SavedPin? = nil) {
+        self.id = id
         let state = EditorState()
         self.state = state
         self.appearance = PinAppearance(opacity: AppSettings.shared.defaultOpacity, zoom: Double(zoom))
@@ -219,11 +234,14 @@ final class PinController: NSObject, NSWindowDelegate {
 
     func bringToFront() {
         panel.orderFrontRegardless()
+        // 画面に出たので、閉じるボタン・操作バーを出し直す（マウスを乗せる前から、設定どおりに出す）
+        canvas.updateChrome()
     }
 
     func show() {
         panel.makeKeyAndOrderFront(nil)
         panel.makeFirstResponder(canvas)
+        canvas.updateChrome()
     }
 
     func close() {
@@ -403,9 +421,11 @@ final class PinController: NSObject, NSWindowDelegate {
         toolbar.layout()
     }
 
-    func setOpacity(_ value: CGFloat) {
+    /// showsHUD: 「不透明度 80%」を出す（戻すときなど、出さないこともある）
+    func setOpacity(_ value: CGFloat, showsHUD: Bool = true) {
         panel.alphaValue = min(max(value, 0.1), 1)
         appearance.opacity = Double(panel.alphaValue)
+        guard showsHUD else { return }
         canvas.showHUD("不透明度 \(Int((panel.alphaValue * 100).rounded()))%", progress: Double(panel.alphaValue))
     }
 
@@ -415,7 +435,11 @@ final class PinController: NSObject, NSWindowDelegate {
 
     /// クリックを下のアプリに通す（なぞって描くときなどに）。戻すときはメニューバーから
     func setClickThrough(_ enabled: Bool) {
+        if enabled, !isClickThrough {
+            opacityBeforeClickThrough = panel.alphaValue
+        }
         isClickThrough = enabled
+        if !enabled { opacityBeforeClickThrough = nil }
         if enabled {
             setEditing(false)
             if panel.alphaValue > 0.7 {

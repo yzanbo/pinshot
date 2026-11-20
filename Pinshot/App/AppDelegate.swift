@@ -15,6 +15,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let keyTap = ShortcutKeyTap()
     /// 操作ごとの、最後にショートカットで行った時刻（HotKey とキーの見張りの両方から届いても 1 回にする）
     private var lastShortcutTimes: [ShortcutAction: Date] = [:]
+    /// 終了の合図（killall など）を受けて、ふつうに終了する（浮かせている画像を保存してから止まる）
+    private var terminateSignal: DispatchSourceSignal?
     private let captureController = CaptureController()
     private let settings = AppSettings.shared
     private var cancellables = Set<AnyCancellable>()
@@ -42,6 +44,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         keyTap.start()
         // 撮った画像の履歴を読み、期間を過ぎたものを消す
         CaptureHistory.shared.pruneExpired()
+        // 前に浮かせていた画像を戻し、動いている間もときどき保存する
+        PinManager.shared.restoreSession()
+        PinManager.shared.startAutosave()
+        handleTerminateSignal()
+        // 戻さない設定にしたら、保存したものをすぐ消す
+        settings.$restorePins
+            .dropFirst()
+            .receive(on: DispatchQueue.main)
+            .sink { _ in PinManager.shared.saveSession() }
+            .store(in: &cancellables)
 
         // 見た目（システム・ライト・ダーク）をアプリ全体に設定し、変えたらすぐ反映する
         settings.$appearance
@@ -65,6 +77,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             UserDefaults.standard.set(true, forKey: Self.didShowWelcomeKey)
             WelcomeWindowController.shared.show(firstLaunch: true)
         }
+    }
+
+    /// killall（make stop など）で送られる終了の合図でも、すぐには止まらず、ふつうに終了する
+    private func handleTerminateSignal() {
+        signal(SIGTERM, SIG_IGN)
+        let source = DispatchSource.makeSignalSource(signal: SIGTERM, queue: .main)
+        source.setEventHandler { NSApp.terminate(nil) }
+        source.resume()
+        terminateSignal = source
+    }
+
+    /// 終了するとき（再起動・ログアウトも）、浮かせている画像を書き終えるまで待って保存する
+    func applicationWillTerminate(_ notification: Notification) {
+        PinManager.shared.saveSession(wait: true)
     }
 
     // MARK: - グローバルショートカット
