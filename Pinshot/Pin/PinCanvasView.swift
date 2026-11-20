@@ -257,12 +257,16 @@ final class PinCanvasView: NSView, NSTextFieldDelegate, NSDraggingSource {
     }
 
     /// 拡大率・不透明度・「コピーしました」などを出す（画像の中に入らないときは、画像の上に出す）。
-    /// sticky なら、次の知らせを出すまで消さない（アップロードの途中など）
+    /// sticky なら、次の知らせを出すまで消さない（アップロードの途中など）。
+    /// 中と外のどちらに出すかは知らせの大きさで決まるので、出す側を決めたら、もう片方に出していた知らせはすぐ消す
+    /// （ゲージ付きの「上げています…」を外に、続く「リンクをコピーしました」を中に出したとき、外のものが残らないように）
     func showHUD(_ text: String, progress: Double? = nil, sticky: Bool = false) {
         let size = HUDView.size(for: text, progress: progress)
         if bounds.width >= size.width + 8, bounds.height >= size.height + 8 {
+            outsideHUDView?.hideNow()
             hud.show(text, progress: progress, sticky: sticky, in: self)
         } else {
+            hud.hideNow()
             showOutsideHUD(text, progress: progress, sticky: sticky, size: size)
         }
     }

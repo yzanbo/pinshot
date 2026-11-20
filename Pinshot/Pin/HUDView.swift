@@ -21,6 +21,8 @@ final class HUDView: NSView {
     private let label = NSTextField(labelWithString: "")
     private let gauge = HUDGaugeView(frame: .zero)
     private var generation = 0
+    /// 出している（消え終わっていない）か
+    private var isShowing = false
     /// 消え終わったとき（画像の外に出しているときに、その窓を片付けるのに使う）
     var onFadeOut: (() -> Void)?
 
@@ -86,6 +88,7 @@ final class HUDView: NSView {
 
         generation += 1
         let current = generation
+        isShowing = true
         NSAnimationContext.runAnimationGroup({ context in
             context.duration = 0.1
             animator().alphaValue = 1
@@ -100,9 +103,20 @@ final class HUDView: NSView {
             }, completionHandler: { [weak self] in
                 MainActor.assumeIsolated {
                     guard let self, self.generation == current else { return }
+                    self.isShowing = false
                     self.onFadeOut?()
                 }
             })
         }
+    }
+
+    /// 出している知らせを、待たずにすぐ消す（画像の中と外のどちらに出すかが変わったとき、前の側に残さないため）
+    func hideNow() {
+        guard isShowing else { return }
+        generation += 1
+        isShowing = false
+        layer?.removeAllAnimations()
+        alphaValue = 0
+        onFadeOut?()
     }
 }
