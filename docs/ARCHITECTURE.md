@@ -2,7 +2,7 @@
 
 ```
 Pinshot/
-├── App/            起動とグローバルショートカット（AppDelegate）、メニューバーのメニュー（StatusMenuController）
+├── App/            起動とグローバルショートカット（AppDelegate・HotKey。メニューを開いている間は ShortcutKeyTap でも受ける）、メニューバーのメニュー（StatusMenuController）
 ├── Screenshot/     画面の撮影（ScreenCaptureKit）と範囲の選択
 │   ├── CaptureController     撮る流れ（選ぶ → タイマー → 浮かせる）
 │   ├── SelectionController   範囲を選ぶ画面（画面ごとのウィンドウ・モードの切り替え）
@@ -21,6 +21,10 @@ Pinshot/
 │   │                         （+Cursor・+Mouse・+Keyboard・+Selection・+History・+Text・+Outside）
 │   ├── PinAccessory          部品を画像の外に出す子ウィンドウ（操作バーはいつも。ほかは画像が小さくて中に入らないとき）
 │   └── PinBackdropView・QuickActionBar・HUDView・HintBubble など   画像のまわりの部品
+├── History/        撮った画像の履歴
+│   ├── CaptureHistoryEntry   履歴の 1 枚と、残し方（期間・枚数）・日付ごとのまとめ方の決まり（テストあり）
+│   ├── CaptureHistory        履歴の保存と読み込み（~/Library/Application Support/Pinshot/History に PNG・縮小画像・一覧の JSON）。置き場所は AppFolders
+│   └── CaptureHistoryWindowController・CaptureHistoryViewModel・CaptureHistoryView   一覧のウィンドウ（複数選択・浮かせる・コピー・保存・消す）
 ├── Editor/         書き込みのデータ、描画、書き出し
 │   ├── Annotation・AnnotationStyles・Tool・RGBAColor   書き込みのデータ（Windows 版と形式をそろえる）
 │   ├── AnnotationRenderer・ImageEffects・ImageExporter 描画・モザイクとぼかし・書き出し
@@ -30,7 +34,7 @@ Pinshot/
 ├── Assets.xcassets/ アプリのアイコン（scripts/make-app-icon.swift で描いて書き出す）
 ├── Settings/       設定の値（AppSettings・Shortcut・ExportDecoration）と画面
 │   ├── SettingsWindowController  設定のウィンドウ（タブ）
-│   ├── General・Pin・Export・ShortcutSettingsView   タブごとの画面
+│   ├── General・Pin・Export・History・ShortcutSettingsView   タブごとの画面
 │   └── WelcomeView           初回の案内
 └── Support/        どこからも使う部品
     ├── OverlayPanel          枠のない、前面を奪わないパネルの土台
@@ -39,6 +43,7 @@ Pinshot/
     ├── Permissions           画面収録・アクセシビリティの許可
     ├── GraphicsHelpers       画像の描き先を作る
     ├── HoverCursor           部品の種類（押せる・動かせる・操作できない）で決めるカーソル
+    ├── ImageSaver            PNG を設定に合わせて保存する（浮かせた画像と履歴から使う）
     └── ViewHelpers           前に出ていなくても押せるビュー・マウスの追跡
 
 PinshotTests/       画面に関係ない処理のテスト（make test）
