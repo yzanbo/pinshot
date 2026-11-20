@@ -80,6 +80,10 @@ final class EditorState: ObservableObject {
     @Published var showsHints: Bool {
         didSet { defaults.set(showsHints, forKey: Key.showsHints) }
     }
+    /// 保存している「説明を出す」（編集していない画像のバーでも使う）
+    static var savedShowsHints: Bool {
+        UserDefaults.standard.object(forKey: Key.showsHints) as? Bool ?? true
+    }
 
     @Published var canUndo = false
     @Published var canRedo = false
@@ -125,7 +129,7 @@ final class EditorState: ObservableObject {
         opacity = defaults.object(forKey: Key.opacity) as? Double ?? 1
         customColors = Self.load([RGBAColor].self, forKey: Key.customColors) ?? []
         isDetached = defaults.bool(forKey: Key.isDetached)
-        showsHints = defaults.object(forKey: Key.showsHints) as? Bool ?? true
+        showsHints = Self.savedShowsHints
         let decoration = AppSettings.shared.exportDecoration
         backdropShown = decoration.isEnabled
         backdropDecoration = decoration

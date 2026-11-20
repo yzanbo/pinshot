@@ -24,7 +24,7 @@ struct TextStylePreview: View {
             .background(checkerboard)
             .clipShape(RoundedRectangle(cornerRadius: 5))
             .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(Color.primary.opacity(0.15)))
-            .help("次に入力する文字の見え方（\(Int(fontSize)) pt）")
+            .hoverHint("次に入力する文字の見え方（\(Int(fontSize)) pt）")
     }
 
     /// 白い文字も黒い文字も見えるよう、薄い市松模様を敷く

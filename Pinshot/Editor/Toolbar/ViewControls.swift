@@ -35,7 +35,7 @@ struct ViewControls: View {
         }
         .foregroundStyle(.white)
         .padding(.leading, 4)
-        .help("画像の不透明度（⌘ か ⌥ を押しながらスクロールしても変えられる）")
+        .hoverHint("画像の不透明度（⌘ か ⌥ を押しながらスクロールしても変えられる）")
         .hoverRole()
     }
 
@@ -64,7 +64,7 @@ struct ViewControls: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help("表示の拡大率（押すと一覧。画像の上でスクロール・ピンチ、端のドラッグでも変えられる）")
+        .hoverHint("表示の拡大率（押すと一覧。画像の上でスクロール・ピンチ、端のドラッグでも変えられる）")
         .hoverRole()
     }
 }

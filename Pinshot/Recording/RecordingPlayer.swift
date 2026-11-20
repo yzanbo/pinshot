@@ -194,7 +194,7 @@ private struct RecordingPlayerView: View {
                         .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
-                .help("GIF を作って保存（長い録画は、コマを減らして軽くする）")
+                .hoverHint("GIF を作って保存（長い録画は、コマを減らして軽くする）")
                 .hoverRole()
             }
             barButton("folder", help: "Finder で表示", action: model.revealInFinder)
@@ -205,7 +205,7 @@ private struct RecordingPlayerView: View {
                 .foregroundStyle(.white.opacity(0.6))
                 .frame(width: 24, height: 24)
                 .overlay(WindowDragArea())
-                .help("ドラッグで動かす（動画の上やバーの何もない所をドラッグしても動く）")
+                .hoverHint("ドラッグで動かす（動画の上やバーの何もない所をドラッグしても動く）")
                 .hoverRole(.movable)
             barButton("xmark", help: "閉じる（録画は ~/Library/Application Support/Pinshot/Recordings に残る）", action: model.close)
         }
@@ -224,7 +224,7 @@ private struct RecordingPlayerView: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help(help)
+        .hoverHint(help)
         .hoverRole()
     }
 

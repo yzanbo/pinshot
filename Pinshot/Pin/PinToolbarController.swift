@@ -16,8 +16,8 @@ final class PinToolbarController {
     private var detachedOrigin: NSPoint?
     /// この時刻までは、ツールバーの大きさが変わるたびに中央に置き直す（出した直後のため）
     private var recentreUntil = Date.distantPast
-    private let hintBubble = HintBubble()
-    private var hintTask: Task<Void, Never>?
+    /// いま出している説明（ほかのボタンに乗り移ったときに、そちらの説明を消さないよう覚える）
+    private var shownHint: String?
 
     init(pinPanel: PinPanel, state: EditorState) {
         self.pinPanel = pinPanel
@@ -177,25 +177,20 @@ final class PinToolbarController {
 
     /// ボタンの説明（初めは少し待ってから出し、出ている間はすぐ差し替える）
     func updateHint(_ hint: String?) {
-        hintTask?.cancel()
         // ドラッグで動かしている間は出さない
         guard let hint, state.showsHints, moveStartMouse == nil, let toolbar = toolbarPanel, toolbar.isVisible else {
-            hintBubble.hide()
+            hideHint()
             return
         }
-        if hintBubble.isShown {
-            hintBubble.show(hint, at: NSEvent.mouseLocation, avoiding: toolbar.frame)
-            return
-        }
-        hintTask = Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .milliseconds(450))
-            guard let self, !Task.isCancelled, self.state.hoverHint == hint, self.moveStartMouse == nil, let toolbar = self.toolbarPanel else { return }
-            self.hintBubble.show(hint, at: NSEvent.mouseLocation, avoiding: toolbar.frame)
+        shownHint = hint
+        HoverHints.shared.show(hint) { [weak self] in
+            guard let self, self.moveStartMouse == nil, let toolbar = self.toolbarPanel, toolbar.isVisible else { return nil }
+            return toolbar.frame
         }
     }
 
     private func hideHint() {
-        hintTask?.cancel()
-        hintBubble.hide()
+        HoverHints.shared.end(shownHint)
+        shownHint = nil
     }
 }

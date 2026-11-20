@@ -64,7 +64,7 @@ struct QuickActionBar: View {
                     .onChanged { _ in move() }
                     .onEnded { _ in endMove() }
             )
-            .help(moveHelp)
+            .hoverHint(moveHelp)
             .hoverRole(.movable)
     }
 
@@ -80,7 +80,7 @@ struct QuickActionBar: View {
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .help(isEditing ? "編集を終える（esc・⌘E）" : Self.editHelp)
+        .hoverHint(isEditing ? "編集を終える（esc・⌘E）" : Self.editHelp)
         .hoverRole()
     }
 
@@ -106,7 +106,7 @@ private struct QuickActionButton: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help(help)
+        .hoverHint(help)
         .hoverRole()
     }
 }

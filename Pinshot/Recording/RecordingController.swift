@@ -220,11 +220,11 @@ private struct RecordingPanelView: View {
                     .contentShape(Capsule())
             }
             .buttonStyle(.plain)
-            .help("録画を止めて、浮かせて再生する（メニューバー・ショートカットでも止められる）")
+            .hoverHint("録画を止めて、浮かせて再生する（メニューバー・ショートカットでも止められる）")
             .hoverRole()
             Button("やめる", action: model.cancel)
                 .controlSize(.small)
-                .help("録画を止めて、捨てる")
+                .hoverHint("録画を止めて、捨てる")
                 .hoverRole()
         }
         .padding(.horizontal, 12)

@@ -147,7 +147,7 @@ private struct RecognizedTextPopoverView: View {
                     .controlSize(.small)
                     .font(.caption)
                     .fixedSize()
-                    .help("オンにすると、吹き出しの外を押したときに閉じる。オフなら「閉じる」か esc で閉じるまで出したまま（設定の「画像」と同じ）")
+                    .hoverHint("オンにすると、吹き出しの外を押したときに閉じる。オフなら「閉じる」か esc で閉じるまで出したまま（設定の「画像」と同じ）")
                     .hoverRole()
             }
             // 背景は透けない色にする（吹き出しは半透明なので、そのままだと後ろの画像が透けて読みにくい）
@@ -164,7 +164,7 @@ private struct RecognizedTextPopoverView: View {
                     Button { model.showInHistory() } label: {
                         Label("履歴で見る", systemImage: "clock.arrow.circlepath")
                     }
-                    .help("文字の履歴を開いて、この文字を選ぶ")
+                    .hoverHint("文字の履歴を開いて、この文字を選ぶ")
                     .hoverRole()
                 }
                 Spacer(minLength: 8)
@@ -177,7 +177,7 @@ private struct RecognizedTextPopoverView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.return, modifiers: .command)
-                .help(model.isEdited && model.hasHistoryEntry ? "履歴の文字を直した文字に更新して、コピーする（⌘↩）" : "コピー（⌘↩）")
+                .hoverHint(model.isEdited && model.hasHistoryEntry ? "履歴の文字を直した文字に更新して、コピーする（⌘↩）" : "コピー（⌘↩）")
                 .hoverRole()
             }
         }
