@@ -31,6 +31,14 @@ extension PinCanvasView {
             return
         }
 
+        // 文字を読み取る範囲を選んでいるときは、ドラッグで範囲を決める（画像の移動・描くことはしない）
+        if isPickingTextRegion {
+            dragStart = point
+            textRegionDraft = CGRect(origin: point, size: .zero)
+            needsDisplay = true
+            return
+        }
+
         // 選んだ書き込みのつまみをつかんだら、形を直す
         if state.isEditing, let handle = handle(at: viewPoint), let index = selectedIndex {
             handleDrag = (handle, annotations[index])
@@ -129,6 +137,12 @@ extension PinCanvasView {
 
         let point = imagePoint(for: event)
 
+        if textRegionDraft != nil, let start = dragStart {
+            textRegionDraft = CGRect(corner: start, point)
+            needsDisplay = true
+            return
+        }
+
         if let drag = handleDrag {
             dragHandle(drag.handle, original: drag.original, to: point, event: event)
             return
@@ -193,6 +207,16 @@ extension PinCanvasView {
             updateSelectionBar()
             didMove = false
             updateCursor()
+            return
+        }
+
+        if let draft = textRegionDraft {
+            textRegionDraft = nil
+            dragStart = nil
+            endPickingTextRegion()
+            // ドラッグせずにクリックしただけなら、見えている範囲すべてを読む
+            let region = draft.width >= 4 && draft.height >= 4 ? draft : nil
+            controller?.copyRecognizedText(in: region)
             return
         }
 

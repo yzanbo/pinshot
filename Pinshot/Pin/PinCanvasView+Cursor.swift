@@ -39,6 +39,8 @@ extension PinCanvasView {
             case .rect(let edges): return edges.cursor
             }
         }
+        // 文字を読み取る範囲を選んでいる間は、十字
+        if isPickingTextRegion { return .crosshair }
         let edges = resizeEdges(at: viewPoint)
         if !edges.isEmpty {
             return edges.cursor

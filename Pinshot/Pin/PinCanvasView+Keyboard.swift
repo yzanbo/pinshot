@@ -6,8 +6,13 @@ extension PinCanvasView {
     override func keyDown(with event: NSEvent) {
         let shift = event.modifierFlags.contains(.shift)
         switch event.keyCode {
-        case KeyCode.escape: // 選択を外す → 編集を終える
-            if !selection.isEmpty {
+        case KeyCode.escape: // 読み取った文字の吹き出しを閉じる → 範囲選びをやめる → 選択を外す → 編集を終える
+            if let popover = textResultPopover, popover.isShown {
+                popover.close()
+            } else if isPickingTextRegion {
+                endPickingTextRegion()
+                showHUD("読み取りをやめました")
+            } else if !selection.isEmpty {
                 selection = []
                 needsDisplay = true
             } else if state.isEditing {
@@ -114,6 +119,8 @@ extension PinCanvasView {
             if shift { redo() } else { undo() }
         case "c":
             if shift { controller?.copyAndClose() } else { controller?.copyToPasteboard() }
+        case "t" where shift:
+            controller?.copyRecognizedText()
         case "s":
             controller?.save()
         case "w":

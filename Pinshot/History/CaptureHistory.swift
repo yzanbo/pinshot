@@ -68,7 +68,7 @@ final class CaptureHistory: ObservableObject {
             try png.write(to: folder.appendingPathComponent(entry.imageFileName), options: .atomic)
             let thumbSize = CaptureHistoryRules.thumbnailSize(for: pixelSize)
             var thumbBytes = 0
-            if let thumb = scaled(image, to: thumbSize), let thumbPNG = ImageExporter.pngData(thumb, pointSize: thumbSize) {
+            if let thumb = image.scaled(to: thumbSize), let thumbPNG = ImageExporter.pngData(thumb, pointSize: thumbSize) {
                 try thumbPNG.write(to: folder.appendingPathComponent(entry.thumbnailFileName), options: .atomic)
                 thumbBytes = thumbPNG.count
             }
@@ -78,13 +78,6 @@ final class CaptureHistory: ObservableObject {
             NSLog("Pinshot: 履歴に保存できませんでした: \(error.localizedDescription)")
             return nil
         }
-    }
-
-    nonisolated private static func scaled(_ image: CGImage, to size: CGSize) -> CGImage? {
-        guard let ctx = CGContext.makeRGBA(width: Int(size.width), height: Int(size.height), space: image.rgbColorSpace) else { return nil }
-        ctx.interpolationQuality = .high
-        ctx.draw(image, in: CGRect(origin: .zero, size: size))
-        return ctx.makeImage()
     }
 
     // MARK: - 読む

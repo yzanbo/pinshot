@@ -6,20 +6,17 @@ import AppKit
 final class CaptureHistoryViewModel: ObservableObject {
     let history: CaptureHistory
     /// 選んでいる履歴
-    @Published private(set) var selection: Set<UUID> = []
+    @Published private(set) var selection = ListSelection()
     /// マウスを乗せている 1 枚（乗せている間だけ、操作のボタンを出す）
     @Published var hovered: UUID?
-    /// 操作したあとの短い知らせ（「コピーしました」など）
-    @Published private(set) var notice: String?
-
-    /// shift + クリックで範囲を選ぶときの、起点の 1 枚
-    private var anchor: UUID?
-    private var noticeTask: Task<Void, Never>?
+    /// 操作したあとの短い知らせ（「コピーしました」など。文字の一覧と同じ所に出す）
+    let notice: HistoryNotice
     /// 縮小画像（読み込んだものを覚えておく）
     private let thumbnails = NSCache<NSUUID, NSImage>()
 
-    init(history: CaptureHistory) {
+    init(history: CaptureHistory, notice: HistoryNotice) {
         self.history = history
+        self.notice = notice
     }
 
     /// 選んでいる履歴（新しい順）
@@ -41,48 +38,24 @@ final class CaptureHistoryViewModel: ObservableObject {
 
     // MARK: - 選ぶ
 
+    private var order: [UUID] { history.entries.map(\.id) }
+
     /// クリックで選ぶ（⌘ で足す・外す、shift で起点からの範囲）
     func click(_ entry: CaptureHistoryEntry, modifiers: NSEvent.ModifierFlags) {
-        if modifiers.contains(.shift), let anchor, let range = range(from: anchor, to: entry.id) {
-            selection = modifiers.contains(.command) ? selection.union(range) : range
-            return
-        }
-        if modifiers.contains(.command) {
-            if selection.contains(entry.id) { selection.remove(entry.id) } else { selection.insert(entry.id) }
-        } else {
-            selection = [entry.id]
-        }
-        anchor = entry.id
+        selection.click(entry.id, command: modifiers.contains(.command), shift: modifiers.contains(.shift), order: order)
     }
 
     func selectAll() {
-        selection = Set(history.entries.map(\.id))
+        selection.selectAll(order)
     }
 
     func clearSelection() {
-        selection = []
-        anchor = nil
+        selection.clear()
     }
 
     /// ← → で、となりの 1 枚を選ぶ（shift で範囲を広げる）
     func moveSelection(by step: Int, extending: Bool) {
-        let ids = history.entries.map(\.id)
-        guard !ids.isEmpty else { return }
-        let current = anchor.flatMap { ids.firstIndex(of: $0) }
-        let next = current.map { min(max($0 + step, 0), ids.count - 1) } ?? (step > 0 ? 0 : ids.count - 1)
-        if extending, let start = current {
-            let lower = min(start, next), upper = max(start, next)
-            selection.formUnion(ids[lower...upper])
-        } else {
-            selection = [ids[next]]
-        }
-        anchor = ids[next]
-    }
-
-    private func range(from start: UUID, to end: UUID) -> Set<UUID>? {
-        let ids = history.entries.map(\.id)
-        guard let a = ids.firstIndex(of: start), let b = ids.firstIndex(of: end) else { return nil }
-        return Set(ids[min(a, b)...max(a, b)])
+        selection.move(by: step, extending: extending, order: order)
     }
 
     // MARK: - 操作
@@ -94,6 +67,16 @@ final class CaptureHistoryViewModel: ObservableObject {
 
     func copy(_ entry: CaptureHistoryEntry) {
         if history.copy(entry) { show("コピーしました") }
+    }
+
+    /// 画像の文字を読み取ってコピーする
+    func copyText(_ entry: CaptureHistoryEntry) {
+        guard let image = history.loadImage(for: entry) else { return NSSound.beep() }
+        show("文字を読み取っています…")
+        Task { @MainActor [weak self] in
+            let result = await TextRecognizer.copyText(in: image, pointSize: entry.pointSize)
+            self?.show(TextRecognizer.resultMessage(copiedCount: result.text.count))
+        }
     }
 
     /// 保存する（1 枚は保存の設定に合わせる。2 枚以上は、保存先のフォルダにまとめて書く）
@@ -119,9 +102,9 @@ final class CaptureHistoryViewModel: ObservableObject {
         guard !entries.isEmpty else { return }
         guard entries.count > 1 else { return removeNow(entries) }
         AppAlert.confirm(
-            "選んだ \(entries.count) 枚を履歴から消しますか？",
-            detail: "元に戻せません（浮かせている画像は消えません）。",
-            confirmTitle: "\(entries.count) 枚を消す",
+            "選んだ \(entries.count) 枚を履歴から削除しますか？",
+            detail: "元に戻せません（浮かせている画像は削除されません）。",
+            confirmTitle: "\(entries.count) 枚を削除",
             in: CaptureHistoryWindowController.shared.window
         ) { [weak self] in
             self?.removeNow(entries)
@@ -130,21 +113,13 @@ final class CaptureHistoryViewModel: ObservableObject {
 
     private func removeNow(_ entries: [CaptureHistoryEntry]) {
         let ids = Set(entries.map(\.id))
-        selection.subtract(ids)
-        if let anchor, ids.contains(anchor) { self.anchor = nil }
+        selection.remove(ids)
         history.remove(ids: ids)
-        show(entries.count == 1 ? "履歴から消しました" : "\(entries.count) 枚を履歴から消しました")
+        show(entries.count == 1 ? "履歴から削除しました" : "\(entries.count) 枚を履歴から削除しました")
     }
 
-    /// 短い知らせを出す（少したつと消える）
     private func show(_ text: String) {
-        notice = text
-        noticeTask?.cancel()
-        noticeTask = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(1.6))
-            guard !Task.isCancelled else { return }
-            self?.notice = nil
-        }
+        notice.show(text)
     }
 
     // MARK: - キー

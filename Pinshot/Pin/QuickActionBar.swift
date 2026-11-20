@@ -13,6 +13,8 @@ struct QuickActionBar: View {
     var setZoom: (Double) -> Void
     var copy: () -> Void
     var save: () -> Void
+    /// 画像の文字を読み取ってコピーする（範囲を選ぶときは「…」から）
+    var copyText: () -> Void
     var more: () -> Void
     /// 撮った画像の履歴を開く
     var history: () -> Void
@@ -28,6 +30,7 @@ struct QuickActionBar: View {
             divider
             QuickActionButton(symbol: "doc.on.doc", help: "コピー（⌘C）", action: copy)
             QuickActionButton(symbol: "square.and.arrow.down", help: "保存（⌘S）", action: save)
+            QuickActionButton(symbol: "text.viewfinder", help: "文字をコピー（⇧⌘T）：画像の文字を読み取る。範囲を選ぶときは「…」から", action: copyText)
             divider
             QuickActionButton(symbol: "clock.arrow.circlepath", help: "撮った画像の履歴", action: history)
             QuickActionButton(symbol: "ellipsis", help: "そのほかの操作", action: more)

@@ -1,6 +1,7 @@
 name: Pinshot
 options:
   bundleIdPrefix: dev.portfolio
+  developmentLanguage: ja
   deploymentTarget:
     macOS: "14.0"
   createIntermediateGroups: true
@@ -19,6 +20,10 @@ targets:
       path: Pinshot/Info.plist
       properties:
         CFBundleDisplayName: Pinshot
+        # 日本語のアプリだと宣言する（しないと、文字の欄の右クリックなど、macOS の部品が英語で出る）
+        CFBundleDevelopmentRegion: ja
+        CFBundleLocalizations:
+          - ja
         CFBundleShortVersionString: "0.1.0"
         CFBundleVersion: "1"
         # Dock に出さず、メニューバーだけに常駐する
@@ -65,7 +70,10 @@ targets:
       - path: Pinshot/Support/GraphicsHelpers.swift
       - path: Pinshot/Support/ScreenGeometry.swift
       - path: Pinshot/Support/PercentText.swift
+      - path: Pinshot/Editor/TextRecognizer.swift
       - path: Pinshot/History/CaptureHistoryEntry.swift
+      - path: Pinshot/History/TextHistoryEntry.swift
+      - path: Pinshot/History/ListSelection.swift
       - path: Pinshot/Pin/SavedPin.swift
     settings:
       base:

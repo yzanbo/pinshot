@@ -82,7 +82,7 @@ enum Tool: String, CaseIterable, Identifiable, Codable {
         case .pen: "ドラッグで自由に描く"
         case .highlight: "ドラッグでなぞってマーカーを引く。shift でまっすぐ"
         case .text: "クリックして文字を入力（shift + return で改行、return で確定）。書いた文字はクリックで直せる"
-        case .counter: "クリックするたびに 1, 2, 3… と番号を置く。消すと後ろの番号が詰まる"
+        case .counter: "クリックするたびに 1, 2, 3… と番号を置く。削除すると後ろの番号が詰まる"
         case .spotlight: "ドラッグした範囲だけを明るく残し、まわりを暗くして目立たせる"
         case .mosaic: "ドラッグした範囲をモザイクで隠す"
         case .blur: "ドラッグした範囲をぼかして隠す"

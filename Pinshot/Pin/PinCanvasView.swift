@@ -50,6 +50,13 @@ final class PinCanvasView: NSView, NSTextFieldDelegate, NSDraggingSource {
     var drafting: Annotation?
     var dragStart: CGPoint?
     var cropDraft: CGRect?
+    /// 文字を読み取る範囲を選んでいるか（右クリックの「範囲を選んで文字をコピー」）と、ドラッグしている範囲
+    var isPickingTextRegion = false
+    var textRegionDraft: CGRect?
+    /// 文字を読み取っている間・読み取ったあとの見た目
+    var textScanOverlay: TextScanOverlay?
+    /// 読み取った文字を見せている吹き出し
+    var textResultPopover: RecognizedTextPopover?
 
     // 選択ツールで選んでいる書き込みと、動かしている途中の情報
     /// 選んでいる書き込み（選んだ順）。⌘A・shift + クリックで複数選べる
@@ -311,8 +318,8 @@ final class PinCanvasView: NSView, NSTextFieldDelegate, NSDraggingSource {
         AnnotationRenderer.draw(all, in: ctx, imageSize: imageSize, effects: effects(for: all), shadow: shadow)
         ctx.restoreGState()
 
-        if let cropDraft {
-            drawCropDraft(viewRect(cropDraft))
+        if let draft = cropDraft ?? textRegionDraft {
+            drawCropDraft(viewRect(draft))
         }
 
         if state.isEditing {
@@ -373,7 +380,7 @@ final class PinCanvasView: NSView, NSTextFieldDelegate, NSDraggingSource {
         )
     }
 
-    /// トリミングする範囲の外を暗くする
+    /// トリミングする範囲・文字を読み取る範囲の外を暗くする
     private func drawCropDraft(_ rect: NSRect) {
         let dim = NSBezierPath(rect: bounds)
         dim.append(NSBezierPath(rect: rect))
@@ -388,6 +395,16 @@ final class PinCanvasView: NSView, NSTextFieldDelegate, NSDraggingSource {
     }
 
     // MARK: - 書き出し
+
+    /// 元の画像（書き込みなし）のうち、rect（画像のポイント座標）の部分。文字を読み取るときに使う
+    func baseImagePixels(in rect: CGRect) -> CGImage? {
+        let scale = CGFloat(baseImage.width) / max(imageSize.width, 1)
+        let pixels = CGRect(x: rect.minX * scale, y: rect.minY * scale, width: rect.width * scale, height: rect.height * scale)
+            .integral
+            .intersection(CGRect(x: 0, y: 0, width: baseImage.width, height: baseImage.height))
+        guard !pixels.isEmpty else { return nil }
+        return baseImage.cropping(to: pixels)
+    }
 
     func renderedImage() -> CGImage? {
         ImageExporter.render(

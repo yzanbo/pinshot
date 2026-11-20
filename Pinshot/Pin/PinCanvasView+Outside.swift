@@ -78,6 +78,7 @@ extension PinCanvasView {
             setZoom: { [weak self] value in self?.controller?.setZoom(CGFloat(value)) },
             copy: { [weak self] in self?.controller?.copyToPasteboard() },
             save: { [weak self] in self?.controller?.save() },
+            copyText: { [weak self] in self?.controller?.copyRecognizedText() },
             more: { [weak self] in
                 // 「…」のメニューは、マウスの位置に開く
                 guard let menu = self?.controller?.makeContextMenu() else { return }

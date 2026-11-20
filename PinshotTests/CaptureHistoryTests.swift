@@ -70,6 +70,9 @@ final class CaptureHistoryTests: XCTestCase {
         let time = Date(timeIntervalSince1970: 1_800_000_000)
         XCTAssertEqual(CaptureHistoryRules.timeText(time, calendar: calendar), "17:00")
         XCTAssertEqual(CaptureHistoryRules.shortTitle(sample, now: now, calendar: calendar), "今日 17:00・100×50")
+        // 日付と時刻だけ（文字の履歴の右の欄で使う）。前の日は「昨日」
+        XCTAssertEqual(CaptureHistoryRules.dateTimeText(time, now: now, calendar: calendar), "今日 17:00")
+        XCTAssertEqual(CaptureHistoryRules.dateTimeText(time.addingTimeInterval(-86_400), now: now, calendar: calendar), "昨日 17:00")
     }
 
     func testEntryRoundTripsThroughJSON() throws {

@@ -21,6 +21,15 @@ extension PinController {
             .item(title: "保存…", image: symbol("square.and.arrow.down"), key: "s") { [weak self] in self?.save() },
 
             .separator,
+            .header("文字の読み取り"),
+            .item(title: "文字をコピー", image: symbol("text.viewfinder"), key: "t", modifiers: [.command, .shift]) { [weak self] in
+                self?.copyRecognizedText()
+            },
+            .item(title: "範囲を選んで文字をコピー…", image: symbol("text.magnifyingglass")) { [weak self] in
+                self?.canvas.beginPickingTextRegion()
+            },
+
+            .separator,
             .header("見た目"),
             .submenu(title: "不透明度（\(opacityPercent)%）", image: symbol("circle.lefthalf.filled"), entries: [100, 80, 60, 40, 20].map { percent in
                 .item(title: "\(percent)%", isChecked: opacityPercent == percent) { [weak self] in

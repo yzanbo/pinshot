@@ -20,3 +20,11 @@ extension NSView {
         ))
     }
 }
+
+extension View {
+    /// 角の丸い枠に入れる（薄い塗りと細い線。文字の欄・画像の見本などで同じ見た目にする）
+    func framedBox(cornerRadius: CGFloat = 8, fill: Color = Color.primary.opacity(0.05)) -> some View {
+        background(RoundedRectangle(cornerRadius: cornerRadius).fill(fill))
+            .overlay(RoundedRectangle(cornerRadius: cornerRadius).strokeBorder(Color.primary.opacity(0.12)))
+    }
+}

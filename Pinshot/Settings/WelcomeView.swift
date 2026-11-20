@@ -109,7 +109,7 @@ struct WelcomeView: View {
                                 .hoverRole()
                         }
                         DisclosureGroup("許可しているのに撮れないとき") {
-                            Text("システム設定の画面収録の一覧で Pinshot を選んで「−」で消し、もう一度「許可する…」を押してから再起動してください。新しい版に入れ替えたときも、取り直しが必要です。")
+                            Text("システム設定の画面収録の一覧で Pinshot を選んで「−」で削除し、もう一度「許可する…」を押してから再起動してください。新しい版に入れ替えたときも、取り直しが必要です。")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .fixedSize(horizontal: false, vertical: true)

@@ -1,7 +1,14 @@
 import Foundation
 
+/// 履歴の 1 件（撮った画像・読み取った文字）。期間で消す・日付ごとにまとめるのに使う
+protocol HistoryItem: Identifiable where ID == UUID {
+    var id: UUID { get }
+    /// 履歴に残した日時
+    var date: Date { get }
+}
+
 /// 撮った画像の履歴の 1 枚（画像そのものは、履歴のフォルダに id の名前の PNG で置く）
-struct CaptureHistoryEntry: Codable, Identifiable, Equatable {
+struct CaptureHistoryEntry: Codable, HistoryItem, Equatable {
     var id: UUID
     /// 撮った日時
     var date: Date
@@ -18,8 +25,14 @@ struct CaptureHistoryEntry: Codable, Identifiable, Equatable {
     var thumbnailFileName: String { "\(id.uuidString).thumb.png" }
 }
 
-/// 履歴の一覧の表示方法
-enum HistoryLayout: String, CaseIterable, Identifiable {
+/// 一覧の表示方法の選択肢（画像の履歴・文字の履歴。上の帯と設定で同じ切り替えを出す）
+protocol HistoryLayoutOption: CaseIterable, Identifiable, Hashable where AllCases: RandomAccessCollection {
+    var label: String { get }
+    var symbolName: String { get }
+}
+
+/// 撮った画像の履歴の一覧の表示方法
+enum HistoryLayout: String, HistoryLayoutOption {
     /// 大きい縮小画像を並べる
     case largeGrid
     /// 小さい縮小画像をたくさん並べる
@@ -70,7 +83,7 @@ enum HistoryPeriod: Int, CaseIterable, Identifiable {
     }
 }
 
-/// 履歴に残す枚数の上限
+/// 履歴に残す数の上限（撮った画像・読み取った文字それぞれ）
 enum HistoryLimit: Int, CaseIterable, Identifiable {
     case fifty = 50
     case hundred = 100
@@ -78,18 +91,18 @@ enum HistoryLimit: Int, CaseIterable, Identifiable {
     case thousand = 1000
 
     var id: Int { rawValue }
-    var label: String { "\(rawValue) 枚" }
+    var label: String { "\(rawValue) 件" }
 }
 
 /// 履歴の決まり（画面やファイルに関係ない部分。テストで確かめる）
 enum CaptureHistoryRules {
     /// 残す決まりから外れた履歴（期間を過ぎたもの・枚数を超えた古いもの）。entries は新しい順
-    static func expired(
-        _ entries: [CaptureHistoryEntry],
+    static func expired<Item: HistoryItem>(
+        _ entries: [Item],
         now: Date,
         period: HistoryPeriod,
         limit: HistoryLimit
-    ) -> [CaptureHistoryEntry] {
+    ) -> [Item] {
         var kept = 0
         return entries.filter { entry in
             if let duration = period.duration, now.timeIntervalSince(entry.date) > duration {
@@ -111,11 +124,11 @@ enum CaptureHistoryRules {
     }
 
     /// 一覧で日付ごとにまとめる（新しい日から。日の中も新しい順）
-    static func groupedByDay(
-        _ entries: [CaptureHistoryEntry],
+    static func groupedByDay<Item: HistoryItem>(
+        _ entries: [Item],
         calendar: Calendar = .current
-    ) -> [(day: Date, entries: [CaptureHistoryEntry])] {
-        var groups: [(day: Date, entries: [CaptureHistoryEntry])] = []
+    ) -> [(day: Date, entries: [Item])] {
+        var groups: [(day: Date, entries: [Item])] = []
         for entry in entries.sorted(by: { $0.date > $1.date }) {
             let day = calendar.startOfDay(for: entry.date)
             if let last = groups.indices.last, groups[last].day == day {
@@ -149,10 +162,15 @@ enum CaptureHistoryRules {
         count == 0 ? "なし" : "\(count) 枚・\(byteText(bytes))"
     }
 
+    /// 日付と時刻（例: 「今日 14:32」「3月2日（月） 9:05」）
+    static func dateTimeText(_ date: Date, now: Date = Date(), calendar: Calendar = .current) -> String {
+        let day = dayTitle(calendar.startOfDay(for: date), now: now, calendar: calendar)
+        return "\(day) \(timeText(date, calendar: calendar))"
+    }
+
     /// メニューなどに出す短い名前（例: 「今日 14:32・1280×720」）
     static func shortTitle(_ entry: CaptureHistoryEntry, now: Date = Date(), calendar: Calendar = .current) -> String {
-        let day = dayTitle(calendar.startOfDay(for: entry.date), now: now, calendar: calendar)
-        return "\(day) \(timeText(entry.date, calendar: calendar))・\(sizeText(entry))"
+        "\(dateTimeText(entry.date, now: now, calendar: calendar))・\(sizeText(entry))"
     }
 
     /// 日付の見出し（今日・昨日・それより前は日付）

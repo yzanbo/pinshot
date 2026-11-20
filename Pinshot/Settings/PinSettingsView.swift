@@ -34,7 +34,14 @@ struct PinSettingsView: View {
             } header: {
                 Text("終了したとき")
             } footer: {
-                SettingsNote("浮かせていた画像と閉じた画像（最大 10 枚）を、書き込み・位置・拡大率・不透明度・背景ごと、次に起動したときに戻します。画像はこの Mac の中（~/Library/Application Support/Pinshot/Pins）にだけ置きます。オフにすると、置いていたものを消します。")
+                SettingsNote("浮かせていた画像と閉じた画像（最大 10 枚）を、書き込み・位置・拡大率・不透明度・背景ごと、次に起動したときに戻します。画像はこの Mac の中（~/Library/Application Support/Pinshot/Pins）にだけ置きます。オフにすると、置いていたものを削除します。")
+            }
+            Section {
+                Toggle("読み取った文字の吹き出しを、外を押したら閉じる", isOn: $settings.textPopoverClosesOnOutsideClick)
+            } header: {
+                Text("文字の読み取り")
+            } footer: {
+                SettingsNote("オフ（初期設定）のときは、吹き出しの「閉じる」か esc で閉じるまで出したままにします。ほかの所を押しても閉じないので、見比べながら直せます。")
             }
             Section("書き込み") {
                 Toggle("書き込みに影を付ける（背景に埋もれにくくなる）", isOn: $settings.annotationShadow)

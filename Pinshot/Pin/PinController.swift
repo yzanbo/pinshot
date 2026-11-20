@@ -246,6 +246,7 @@ final class PinController: NSObject, NSWindowDelegate {
 
     func close() {
         canvas.commitPendingText()
+        canvas.textResultPopover?.close()
         toolbar.hide()
         canvas.hideOutsideParts()
         panel.close()
@@ -316,6 +317,8 @@ final class PinController: NSObject, NSWindowDelegate {
             redo: { [weak self] in self?.canvas.redo() },
             copy: { [weak self] in self?.copyToPasteboard() },
             save: { [weak self] in self?.save() },
+            copyText: { [weak self] in self?.copyRecognizedText() },
+            copyTextInRegion: { [weak self] in self?.canvas.beginPickingTextRegion() },
             done: { [weak self] in self?.setEditing(false) },
             setOpacity: { [weak self] value in self?.setOpacity(CGFloat(value)) },
             setZoom: { [weak self] value in self?.setZoom(CGFloat(value)) },

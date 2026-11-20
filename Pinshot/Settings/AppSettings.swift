@@ -79,10 +79,15 @@ final class AppSettings: ObservableObject {
         static let exportDecoration = "settings.exportDecoration"
         static let appearance = "settings.appearance"
         static let historyEnabled = "settings.historyEnabled"
+        static let textHistoryEnabled = "settings.textHistoryEnabled"
         static let historyPeriod = "settings.historyPeriod"
         static let historyLimit = "settings.historyLimit"
+        static let textHistoryPeriod = "settings.textHistoryPeriod"
+        static let textHistoryLimit = "settings.textHistoryLimit"
         static let historyLayout = "settings.historyLayout"
+        static let textHistoryLayout = "settings.textHistoryLayout"
         static let restorePins = "settings.restorePins"
+        static let textPopoverClosesOnOutsideClick = "settings.textPopoverClosesOnOutsideClick"
     }
 
     private let defaults = UserDefaults.standard
@@ -138,14 +143,29 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(historyEnabled, forKey: Key.historyEnabled) }
     }
 
-    /// 履歴を残す期間
+    /// 読み取った文字を履歴に残す
+    @Published var textHistoryEnabled: Bool {
+        didSet { defaults.set(textHistoryEnabled, forKey: Key.textHistoryEnabled) }
+    }
+
+    /// 撮った画像の履歴を残す期間
     @Published var historyPeriod: HistoryPeriod {
         didSet { defaults.set(historyPeriod.rawValue, forKey: Key.historyPeriod) }
     }
 
-    /// 履歴に残す枚数の上限
+    /// 撮った画像の履歴に残す数の上限
     @Published var historyLimit: HistoryLimit {
         didSet { defaults.set(historyLimit.rawValue, forKey: Key.historyLimit) }
+    }
+
+    /// 読み取った文字の履歴を残す期間
+    @Published var textHistoryPeriod: HistoryPeriod {
+        didSet { defaults.set(textHistoryPeriod.rawValue, forKey: Key.textHistoryPeriod) }
+    }
+
+    /// 読み取った文字の履歴に残す数の上限
+    @Published var textHistoryLimit: HistoryLimit {
+        didSet { defaults.set(textHistoryLimit.rawValue, forKey: Key.textHistoryLimit) }
     }
 
     /// 履歴の一覧の表示方法
@@ -153,9 +173,19 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(historyLayout.rawValue, forKey: Key.historyLayout) }
     }
 
+    /// 読み取った文字の履歴の一覧の表示方法
+    @Published var textHistoryLayout: TextHistoryLayout {
+        didSet { defaults.set(textHistoryLayout.rawValue, forKey: Key.textHistoryLayout) }
+    }
+
     /// 終了・再起動のあとも、浮かせていた画像と閉じた画像を戻す
     @Published var restorePins: Bool {
         didSet { defaults.set(restorePins, forKey: Key.restorePins) }
+    }
+
+    /// 読み取った文字の吹き出しを、外を押したら閉じる（オフなら「閉じる」か esc でだけ閉じる）
+    @Published var textPopoverClosesOnOutsideClick: Bool {
+        didSet { defaults.set(textPopoverClosesOnOutsideClick, forKey: Key.textPopoverClosesOnOutsideClick) }
     }
 
     /// 撮ったらすぐクリップボードにもコピーする
@@ -234,10 +264,18 @@ final class AppSettings: ObservableObject {
         }
         appearance = defaults.option(Key.appearance, default: .system)
         historyEnabled = defaults.bool(Key.historyEnabled, default: true)
-        historyPeriod = defaults.option(Key.historyPeriod, default: .month)
-        historyLimit = defaults.option(Key.historyLimit, default: .hundred)
+        textHistoryEnabled = defaults.bool(Key.textHistoryEnabled, default: true)
+        let imagePeriod: HistoryPeriod = defaults.option(Key.historyPeriod, default: .month)
+        let imageLimit: HistoryLimit = defaults.option(Key.historyLimit, default: .hundred)
+        historyPeriod = imagePeriod
+        historyLimit = imageLimit
+        // 文字の履歴の期間と数は、分ける前は画像と同じ設定を使っていたので、まだ決めていなければ画像の設定を引き継ぐ
+        textHistoryPeriod = defaults.option(Key.textHistoryPeriod, default: imagePeriod)
+        textHistoryLimit = defaults.option(Key.textHistoryLimit, default: imageLimit)
         historyLayout = defaults.option(Key.historyLayout, default: .largeGrid)
+        textHistoryLayout = defaults.option(Key.textHistoryLayout, default: .standard)
         restorePins = defaults.bool(Key.restorePins, default: true)
+        textPopoverClosesOnOutsideClick = defaults.bool(Key.textPopoverClosesOnOutsideClick, default: false)
         copyAfterCapture = defaults.bool(Key.copyAfterCapture, default: false)
         showsQuickActions = defaults.bool(Key.showsQuickActions, default: true)
         alwaysOnTop = defaults.bool(Key.alwaysOnTop, default: true)

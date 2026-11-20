@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 撮った画像の履歴の一覧。日付ごとに縮小画像を並べる
+/// 撮った画像の履歴の一覧。日付ごとに縮小画像を並べる（表示方法の切り替えは、ウィンドウの上の帯）
 struct CaptureHistoryView: View {
     @ObservedObject var history: CaptureHistory
     @ObservedObject var model: CaptureHistoryViewModel
@@ -13,22 +13,17 @@ struct CaptureHistoryView: View {
             if history.entries.isEmpty {
                 emptyState
             } else {
-                topBar
-                Divider()
                 ScrollView {
                     content
                         .padding(.horizontal, 18)
                         .padding(.bottom, 18)
                 }
-                // 何もないところを押したら、選ぶのをやめる
+                // 何もないところを押したら、選択を解除する
                 .background(Color.clear.contentShape(Rectangle()).onTapGesture { model.clearSelection() })
             }
             Divider()
             footer
         }
-        .overlay(alignment: .bottom) { noticeView }
-        .animation(.easeOut(duration: 0.15), value: model.notice)
-        .frame(minWidth: 460, minHeight: 340)
     }
 
     // MARK: - 表示方法ごとの並べ方
@@ -50,7 +45,7 @@ struct CaptureHistoryView: View {
                             CaptureHistoryCell(entry: entry, model: model, compact: !large)
                         }
                     } header: {
-                        dayHeader(group.day, count: group.entries.count)
+                        HistoryDayHeader(day: group.day, countText: "\(group.entries.count) 枚")
                     }
                 }
             }
@@ -62,136 +57,43 @@ struct CaptureHistoryView: View {
                             CaptureHistoryRow(entry: entry, model: model)
                         }
                     } header: {
-                        dayHeader(group.day, count: group.entries.count)
+                        HistoryDayHeader(day: group.day, countText: "\(group.entries.count) 枚")
                     }
                 }
             }
         }
     }
 
-    /// 上の帯（表示方法の切り替え）
-    private var topBar: some View {
-        HStack(spacing: 10) {
-            Text("表示")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-            Picker("表示", selection: $settings.historyLayout) {
-                ForEach(HistoryLayout.allCases) { layout in
-                    Image(systemName: layout.symbolName)
-                        .help(layout.label)
-                        .tag(layout)
-                }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .fixedSize()
-            .hoverRole()
-            Text(layout.label)
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-            Spacer()
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
-    }
-
     // MARK: - 部品
 
     private var emptyState: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "clock.arrow.circlepath")
-                .font(.system(size: 44, weight: .light))
-                .foregroundStyle(.secondary)
-            Text(settings.historyEnabled ? "まだ履歴はありません" : "履歴を残さない設定になっています")
-                .font(.title3.weight(.semibold))
-            Text(settings.historyEnabled
-                 ? "撮った画像は、ここに日付ごとに並びます。\nダブルクリックで、もう一度浮かせられます。"
-                 : "設定の「履歴」で「撮った画像を履歴に残す」をオンにすると、撮った画像がここに並びます。")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-            if !settings.historyEnabled {
-                Button("履歴を残す") { settings.historyEnabled = true }
-                    .buttonStyle(.borderedProminent)
-                    .hoverRole()
-            }
-        }
-        .padding(32)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private func dayHeader(_ day: Date, count: Int) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text(CaptureHistoryRules.dayTitle(day))
-                .font(.headline)
-            Text("\(count) 枚")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Spacer()
-        }
-        .padding(.top, 14)
-        .padding(.bottom, 6)
-        .background(.bar)
+        HistoryEmptyState(
+            symbol: "photo.on.rectangle.angled",
+            title: settings.historyEnabled ? "まだ撮った画像はありません" : "撮った画像を残さない設定になっています",
+            message: settings.historyEnabled
+                ? "撮った画像は、ここに日付ごとに並びます。\nダブルクリックで、もう一度浮かせられます。"
+                : "設定の「履歴」で「撮った画像を履歴に残す」をオンにすると、撮った画像がここに並びます。",
+            enable: settings.historyEnabled ? nil : { settings.historyEnabled = true }
+        )
     }
 
     /// 下の帯。選んでいるときは選んだものへの操作、選んでいないときは枚数と説明
-    @ViewBuilder
     private var footer: some View {
         let selected = model.selectedEntries
-        HStack(spacing: 10) {
-            if selected.isEmpty {
-                Text(history.entries.isEmpty ? "履歴なし" : history.summaryText)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                Text("ダブルクリックで浮かせる・⌘ / shift + クリックで複数選ぶ・ドラッグでほかのアプリへ")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                Spacer(minLength: 8)
-                Button("すべて消す…") { CaptureHistoryWindowController.confirmRemoveAll() }
-                    .disabled(history.entries.isEmpty)
-                    .hoverRole(history.entries.isEmpty ? .inactive : .pressable)
-            } else {
-                Text("\(selected.count) 枚を選択中")
-                    .font(.callout.weight(.semibold))
-                Button("選ぶのをやめる") { model.clearSelection() }
-                    .buttonStyle(.link)
-                    .hoverRole()
-                Spacer(minLength: 8)
-                footerButton("浮かせる", symbol: "pin") { model.pin(selected) }
-                if selected.count == 1, let first = selected.first {
-                    footerButton("コピー", symbol: "doc.on.doc") { model.copy(first) }
-                }
-                footerButton("保存…", symbol: "square.and.arrow.down") { model.save(selected) }
-                footerButton("消す", symbol: "trash", role: .destructive) { model.remove(selected) }
+        return HistoryFooter(
+            selectedCount: selected.count,
+            unit: "枚",
+            summary: history.entries.isEmpty ? nil : history.summaryText,
+            hint: "ダブルクリックで浮かせる・⌘ / shift + クリックで複数選ぶ・ドラッグでほかのアプリへ",
+            removeAll: CaptureHistoryWindowController.confirmRemoveAll,
+            clearSelection: model.clearSelection
+        ) {
+            HistoryFooterButton(title: "浮かせる", symbol: "pin") { model.pin(selected) }
+            if selected.count == 1, let first = selected.first {
+                HistoryFooterButton(title: "コピー", symbol: "doc.on.doc") { model.copy(first) }
             }
-        }
-        .controlSize(.regular)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 9)
-    }
-
-    private func footerButton(_ title: String, symbol: String, role: ButtonRole? = nil, action: @escaping () -> Void) -> some View {
-        Button(role: role, action: action) {
-            Label(title, systemImage: symbol)
-        }
-        .hoverRole()
-    }
-
-    /// 「コピーしました」などの短い知らせ
-    @ViewBuilder
-    private var noticeView: some View {
-        if let notice = model.notice {
-            Label(notice, systemImage: "checkmark.circle.fill")
-                .font(.callout.weight(.medium))
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-                .background(.regularMaterial, in: Capsule())
-                .overlay(Capsule().strokeBorder(Color.primary.opacity(0.1)))
-                .padding(.bottom, 60)
-                .transition(.opacity.combined(with: .move(edge: .bottom)))
-                .allowsHitTesting(false)
+            HistoryFooterButton(title: "保存…", symbol: "square.and.arrow.down") { model.save(selected) }
+            HistoryFooterButton(title: "削除", symbol: "trash", role: .destructive) { model.remove(selected) }
         }
     }
 }
@@ -204,13 +106,7 @@ private struct HistoryItemInteractions: ViewModifier {
     func body(content: Content) -> some View {
         content
             .contentShape(Rectangle())
-            .onHover { inside in
-                if inside {
-                    model.hovered = entry.id
-                } else if model.hovered == entry.id {
-                    model.hovered = nil
-                }
-            }
+            .trackingHover($model.hovered, id: entry.id)
             // ダブルクリックで浮かせる。1 回のクリックは、待たずにすぐ選ぶ（⌘・shift も見る）
             .onTapGesture(count: 2) { model.pin(model.targets(for: entry)) }
             .simultaneousGesture(TapGesture().onEnded { model.click(entry, modifiers: NSEvent.modifierFlags) })
@@ -233,11 +129,12 @@ private struct HistoryContextMenu: View {
         Button("浮かせる\(suffix)") { model.pin(targets) }
         if targets.count == 1 {
             Button("コピー") { model.copy(entry) }
+            Button("文字をコピー") { model.copyText(entry) }
         }
         Button("保存…\(suffix)") { model.save(targets) }
         Button("Finder で表示\(suffix)") { model.revealInFinder(targets) }
         Divider()
-        Button("履歴から消す\(suffix)", role: .destructive) { model.remove(targets) }
+        Button("履歴から削除\(suffix)", role: .destructive) { model.remove(targets) }
     }
 }
 
@@ -248,24 +145,10 @@ private struct HistoryItemButtons: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            button("pin", help: "浮かせる") { model.pin(model.targets(for: entry)) }
-            button("doc.on.doc", help: "コピー") { model.copy(entry) }
-            button("trash", help: "履歴から消す") { model.remove(model.targets(for: entry)) }
+            HistoryHoverButton(symbol: "pin", help: "浮かせる", onImage: true) { model.pin(model.targets(for: entry)) }
+            HistoryHoverButton(symbol: "doc.on.doc", help: "コピー", onImage: true) { model.copy(entry) }
+            HistoryHoverButton(symbol: "trash", help: "履歴から削除", onImage: true) { model.remove(model.targets(for: entry)) }
         }
-    }
-
-    private func button(_ symbol: String, help: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: symbol)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: 24, height: 24)
-                .background(Circle().fill(Color.black.opacity(0.6)))
-                .contentShape(Circle())
-        }
-        .buttonStyle(.plain)
-        .help(help)
-        .hoverRole()
     }
 }
 
@@ -349,19 +232,7 @@ private struct CaptureHistoryRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 5)
-                    .fill(Color.primary.opacity(0.05))
-                if let image = model.thumbnail(for: entry) {
-                    Image(nsImage: image)
-                        .resizable()
-                        .interpolation(.high)
-                        .aspectRatio(contentMode: .fit)
-                        .padding(3)
-                }
-            }
-            .frame(width: 72, height: 46)
-            .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(Color.primary.opacity(0.12)))
+            HistoryThumbnail(image: model.thumbnail(for: entry), size: CGSize(width: 72, height: 46))
             Text(CaptureHistoryRules.timeText(entry.date))
                 .font(.body.monospacedDigit())
                 .frame(width: 48, alignment: .leading)
@@ -380,14 +251,7 @@ private struct CaptureHistoryRow: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 5)
-        .background(
-            RoundedRectangle(cornerRadius: 7)
-                .fill(isSelected ? Color.accentColor.opacity(0.22) : (isHovered ? Color.primary.opacity(0.06) : Color.clear))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 7)
-                .strokeBorder(isSelected ? Color.accentColor.opacity(0.7) : Color.clear, lineWidth: 1)
-        )
+        .historyRowBackground(isSelected: isSelected, isHovered: isHovered)
         .modifier(HistoryItemInteractions(entry: entry, model: model))
         .animation(.easeOut(duration: 0.12), value: isHovered)
     }

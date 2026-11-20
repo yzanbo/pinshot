@@ -5,6 +5,9 @@ struct ToolbarActions {
     var redo: @MainActor () -> Void
     var copy: @MainActor () -> Void
     var save: @MainActor () -> Void
+    /// 画像の文字を読み取ってコピーする（全体）・範囲を選んで読み取る
+    var copyText: @MainActor () -> Void
+    var copyTextInRegion: @MainActor () -> Void
     var done: @MainActor () -> Void
     var setOpacity: (Double) -> Void
     var setZoom: (Double) -> Void
@@ -95,6 +98,7 @@ struct EditorToolbar: View {
             ToolbarSection {
                 ToolbarIconButton(state: state, symbol: "doc.on.doc", hint: "コピー（⌘C）：書き込みごとクリップボードへ", action: actions.copy)
                 ToolbarIconButton(state: state, symbol: "square.and.arrow.down", hint: "保存（⌘S）：PNG で保存", action: actions.save)
+                TextRecognitionButton(state: state, copyText: actions.copyText, copyTextInRegion: actions.copyTextInRegion)
             }
 
             ToolbarDivider()

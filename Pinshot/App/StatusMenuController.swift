@@ -28,6 +28,11 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
     private var recentHistoryItems: [NSMenuItem] = []
     /// メニューに並べる、最近撮った画像の数
     private let recentHistoryCount = 5
+    /// 「読み取った文字 ▸」の項目と、その中のメニュー（開くたびに作り直す）
+    private var textHistoryItem: NSMenuItem?
+    private var textHistoryMenu: NSMenu?
+    /// 「読み取った文字 ▸」に並べる数
+    private let recentTextCount = 10
 
     init(actions: Actions) {
         self.actions = actions
@@ -91,6 +96,13 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
             addActionItem(action, to: menu)
         }
         historyItem = actionItems[.openHistory]
+        let textItem = makeItem("読み取った文字", symbol: "text.viewfinder", action: nil)
+        let textMenu = NSMenu()
+        textMenu.delegate = self
+        textItem.submenu = textMenu
+        menu.addItem(textItem)
+        textHistoryItem = textItem
+        textHistoryMenu = textMenu
 
         // 浮かせた画像
         menu.addItem(.separator())
@@ -146,6 +158,8 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
         pinsHeaderItem?.title = pins.pinCount > 0 ? "浮かせた画像（\(pins.pinCount) 枚）" : "浮かせた画像"
         clickThroughItem?.isHidden = !pins.hasClickThroughPins
         updateRecentHistory()
+        let textCount = TextHistory.shared.entries.count
+        textHistoryItem?.title = textCount > 0 ? "読み取った文字（\(textCount) 件）" : "読み取った文字"
     }
 
     /// 「撮った画像の履歴…」の上に、最近撮った画像を縮小画像付きで並べる。
@@ -198,6 +212,29 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
         if menu === windowListMenu {
             rebuildWindowList(menu)
         }
+        if menu === textHistoryMenu {
+            rebuildTextHistory(menu)
+        }
+    }
+
+    /// 「読み取った文字」の中を、最近読み取った文字で作り直す（押すとコピー）
+    private func rebuildTextHistory(_ menu: NSMenu) {
+        menu.removeAllItems()
+        let history = TextHistory.shared
+        if history.entries.isEmpty {
+            menu.addItem(.disabled(title: AppSettings.shared.textHistoryEnabled ? "まだ読み取った文字はありません" : "読み取った文字を残さない設定になっています"))
+        } else {
+            menu.addItem(.sectionHeader(title: "押すとコピー"))
+        }
+        for entry in history.entries.prefix(recentTextCount) {
+            let item = NSMenuItem(title: TextHistoryRules.preview(entry.text), action: #selector(copyTextHistoryItem(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = entry.id
+            item.toolTip = entry.text
+            menu.addItem(item)
+        }
+        menu.addItem(.separator())
+        menu.addItem(makeItem("文字の履歴を開く…", symbol: "list.bullet.rectangle", action: #selector(openTextHistory)))
     }
 
     /// 「ウィンドウを選んでキャプチャ」の一覧を、いま開いているウィンドウで作り直す
@@ -260,6 +297,16 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
     @objc private func copyHistoryItem(_ sender: NSMenuItem) {
         guard let entry = historyEntry(of: sender) else { return NSSound.beep() }
         CaptureHistory.shared.copy(entry)
+    }
+
+    @objc private func copyTextHistoryItem(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? UUID,
+              let entry = TextHistory.shared.entries.first(where: { $0.id == id }) else { return NSSound.beep() }
+        TextHistory.shared.copy(entry.text)
+    }
+
+    @objc private func openTextHistory() {
+        CaptureHistoryWindowController.shared.show(tab: .texts)
     }
 
     /// メニューの項目に結びつけた操作
