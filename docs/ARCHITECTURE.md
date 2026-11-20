@@ -13,23 +13,17 @@ Pinshot/
 │   ├── CaptureTypes          モード・撮るもの・撮った画面などの型
 │   ├── CaptureShield         ショートカットを押した瞬間に画面にかぶせる透明なウィンドウ（そのまま範囲を選ぶ画面になる）
 │   ├── SelectionController   範囲を選ぶ画面（画面ごとのウィンドウ・モードの切り替え）
-│   ├── SelectionView(+Drawing)  選ぶ操作（マウス・スクロール領域を探す）と、範囲・ルーペ・座標の描画
+│   ├── SelectionView(+Drawing)  選ぶ操作（マウス）と、範囲・ルーペ・座標の描画
 │   ├── CaptureModeBar・CountdownPanel  モードとタイマーを選ぶバー（SwiftUI）、タイマーの秒読み
-│   ├── CaptureCursors        キャプチャ中のカーソル
-│   └── CaptureOutline        撮っている・録画している範囲の外側の点線の枠（スクロールキャプチャと録画で共通）
-├── ScrollCapture/  スクロールキャプチャ
-│   ├── ScrollCaptureController  始める・終わったら浮かせる
-│   ├── ScrollTargetFinder    スクロール領域を探す（アクセシビリティ）
-│   ├── ScrollCaptureSession  自動スクロールしながら撮る 1 回ぶんの流れ
-│   ├── ScrollStitcher        撮った画像をつなぐ
-│   └── ScrollCapturePanel    操作パネル
+│   └── CaptureCursors        キャプチャ中のカーソル
 ├── Recording/      画面の録画
 │   ├── RecordingRules        録画の決まり（大きさを偶数に・座標・時間の表示・ファイル名・GIF のコマ数と大きさ・古い録画の整理。テストあり）
 │   ├── ScreenRecorder        画面を受け取って MP4 に書く（ScreenCaptureKit の SCStream → AVAssetWriter）
 │   ├── RecordingController   録画を始める・止める入口（赤い点線の枠・操作パネル・上限）
 │   ├── RecordingStore        アプリの中に残す録画（期間と数で古いものを削除・本数と容量）
 │   ├── RecordingPlayer       録画を浮かせてくり返し再生する窓（コピー・MP4 / GIF で保存・Finder で表示）
-│   └── GIFExporter           録画から GIF を作る（テストあり）
+│   ├── GIFExporter           録画から GIF を作る（テストあり）
+│   └── CaptureOutline        録画している範囲の外側の赤い点線の枠（録画には写らない）
 ├── Pin/            最前面に浮かぶウィンドウと、画像の表示・操作
 │   ├── PinManager            浮かせている画像の一覧（閉じた画像を戻す・すべて閉じる・終了後も戻すための保存と復元 など）
 │   ├── SavedPin・PinSessionStore  終了・再起動のあとも戻す状態（テストあり）と、その保存先（~/Library/Application Support/Pinshot/Pins に PNG と session.json）
@@ -41,7 +35,7 @@ Pinshot/
 │   ├── PinAccessory          部品を画像の外に出す子ウィンドウ（閉じるボタンと操作バーはいつも。ほかは画像が小さくて中に入らないとき）
 │   ├── PinBackdropView       画像のまわりの背景（余白・影）
 │   ├── QuickActionBar・PinCloseButton  画像の下の操作バー（編集中はツールバーの上のバーとしても使う）と選んだ書き込みのバー、左上の外の閉じるボタン
-│   ├── HUDView・HintBubble   「コピーしました」などのお知らせ、ツールバーの説明のポップアップ
+│   ├── HUDView・HintBubble   「コピーしました」などのお知らせ、ボタンの説明のポップアップ（HoverHints。Pinshot が前面になくても出る）
 │   ├── TextScanOverlay・RecognizedTextPopover  文字を読み取っている間・読み取ったあとの見た目と、読み取った文字の吹き出し（直してコピーし直せる）
 │   └── ResizeEdges           端のドラッグで大きさを変える計算（テストあり）
 ├── History/        撮った画像と読み取った文字の履歴
