@@ -77,11 +77,11 @@ final class SelectionController {
             window.orderOut(nil)
         }
 
-        // モードを切り替えたら、すべての画面を描き直す
-        options.$mode
-            .dropFirst()
+        // モード（録画でウィンドウだけを選ぶかも）を切り替えたら、すべての画面を描き直す
+        options.$mode.dropFirst().map { _ in () }
+            .merge(with: options.$recordsWindowOnly.dropFirst().map { _ in () })
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] mode in
+            .sink { [weak self] in
                 guard let self else { return }
                 self.overlays.forEach { $0.modeDidChange() }
                 self.applyCaptureCursor()
@@ -229,7 +229,7 @@ final class SelectionController {
         guard !finished else { return }
         // モードバーの上では、ボタンのカーソル（指）を優先する
         guard !isMouseOverModeBar else { return }
-        CaptureCursors.cursor(for: options.mode).set()
+        CaptureCursors.cursor(for: options).set()
     }
 
     private func finish(_ target: CaptureTarget?) {

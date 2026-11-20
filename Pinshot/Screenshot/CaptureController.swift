@@ -7,8 +7,8 @@ final class CaptureController {
     private var selection: SelectionController?
     private var isCapturing = false
 
-    /// 範囲選択の画面を出してキャプチャを始める
-    func start(mode: CaptureMode = .region, timer: Int = 0) {
+    /// 範囲選択の画面を出してキャプチャを始める。recordsWindowOnly: 録画で、ウィンドウだけを選ぶ（「ウィンドウを録画」）
+    func start(mode: CaptureMode = .region, timer: Int = 0, recordsWindowOnly: Bool = false) {
         // 録画の間は、範囲を選ぶ画面まで録画に写ってしまうので、撮らない
         guard !isCapturing, !RecordingController.shared.isRecording else {
             if RecordingController.shared.isRecording { NSSound.beep() }
@@ -32,7 +32,7 @@ final class CaptureController {
                     isCapturing = false
                     return
                 }
-                let options = CaptureOptions(mode: mode, timer: timer)
+                let options = CaptureOptions(mode: mode, timer: timer, recordsWindowOnly: recordsWindowOnly)
                 let selection = SelectionController(
                     shots: shots,
                     windows: windows,
@@ -80,6 +80,31 @@ final class CaptureController {
             await capture(.window(info), shots: [], timer: 0)
             isCapturing = false
         }
+    }
+
+    // MARK: - 範囲を選ばずに録画する（メニューから）
+
+    /// マウスのある画面全体を、範囲を選ぶ画面を出さずに録画する（メニューの「画面全体を録画」）
+    func recordScreenUnderMouse() {
+        guard !isCapturing, !RecordingController.shared.isRecording,
+              let screen = ScreenGeometry.screen(containing: NSEvent.mouseLocation) else {
+            NSSound.beep()
+            return
+        }
+        RecordingController.shared.start(screen: screen, rect: screen.frame)
+    }
+
+    /// 一覧から選んだウィンドウの範囲を、範囲を選ぶ画面を出さずに録画する（メニューの「ウィンドウを選んで録画」）。
+    /// 録画するのは画面のその範囲なので、ほかのウィンドウに隠れていないよう、そのアプリを前に出してから始める
+    func recordWindow(id: CGWindowID) {
+        guard !isCapturing, !RecordingController.shared.isRecording,
+              let info = WindowList.visibleWindows().first(where: { $0.id == id }),
+              let screen = ScreenGeometry.screen(intersecting: info.frame, orMain: false) else {
+            NSSound.beep()
+            return
+        }
+        NSRunningApplication(processIdentifier: info.ownerPID)?.activate()
+        RecordingController.shared.start(screen: screen, rect: info.frame)
     }
 
     // MARK: - 撮る

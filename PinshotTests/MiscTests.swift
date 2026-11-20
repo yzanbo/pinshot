@@ -167,4 +167,25 @@ final class CaptureOptionsTests: XCTestCase {
         options.toggleRegionAndWindow()
         XCTAssertEqual(options.mode, .record)
     }
+
+    /// 「ウィンドウを録画」：ドラッグで範囲を選ばず、案内も変える。ほかのモードに変えたら、ふつうの録画に戻る
+    func testRecordWindowOnly() {
+        let options = CaptureOptions(mode: .record, timer: 0, recordsWindowOnly: true)
+        XCTAssertTrue(options.recordsWindowOnly)
+        XCTAssertFalse(options.selectsRegion)
+        XCTAssertEqual(options.hint, "録画したいウィンドウをクリック")
+
+        options.mode = .region
+        XCTAssertFalse(options.recordsWindowOnly)
+        options.mode = .record
+        XCTAssertTrue(options.selectsRegion, "ほかのモードを通ったら、ドラッグで範囲も選べる録画")
+        XCTAssertEqual(options.hint, CaptureMode.record.hint)
+    }
+
+    /// 録画のモードでなければ、ウィンドウだけを選ぶ録画にはしない
+    func testWindowOnlyIsIgnoredOutsideRecording() {
+        let options = CaptureOptions(mode: .region, timer: 0, recordsWindowOnly: true)
+        XCTAssertFalse(options.recordsWindowOnly)
+        XCTAssertTrue(options.selectsRegion)
+    }
 }

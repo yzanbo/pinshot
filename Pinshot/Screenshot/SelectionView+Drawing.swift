@@ -48,12 +48,12 @@ extension SelectionView {
             }
         }
 
-        if mode.selectsRegion, !isSimple, let pointer {
+        if options.selectsRegion, !isSimple, let pointer {
             drawCrosshair(at: pointer)
             drawLoupe(at: pointer)
         }
 
-        if mode.selectsRegion, isSimple, let pointer {
+        if options.selectsRegion, isSimple, let pointer {
             drawCoordinates(at: pointer)
         }
     }
@@ -179,7 +179,7 @@ extension SelectionView {
         let labelSize = NSSize(width: min(size.width + 12, bounds.width), height: size.height + 6)
         var origin = NSPoint(x: rect.minX, y: rect.minY - labelSize.height - 4)
         if origin.y < 0 { origin.y = rect.minY + 6 }
-        if !mode.selectsRegion || selectionRect == nil { origin.x += 6 }
+        if !options.selectsRegion || selectionRect == nil { origin.x += 6 }
         origin.x = min(max(origin.x, 0), bounds.maxX - labelSize.width)
         return NSRect(origin: origin, size: labelSize)
     }

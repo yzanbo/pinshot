@@ -26,6 +26,9 @@ final class AppActions {
             } else {
                 captureController.start(mode: .record)
             }
+        case .recordWindow: captureController.start(mode: .record, recordsWindowOnly: true)
+        case .recordFullScreen: captureController.recordScreenUnderMouse()
+        case .recordTimer: captureController.start(mode: .record, timer: CaptureOptions.shortcutTimerSeconds)
         case .pinClipboard:
             if !PinManager.shared.pinClipboardImage() { NSSound.beep() }
         case .openHistory: CaptureHistoryWindowController.shared.show()
@@ -43,5 +46,15 @@ final class AppActions {
     /// 一覧から選んだウィンドウを、範囲を選ぶ画面を出さずに撮る（メニューの「ウィンドウを選んでキャプチャ」）
     func captureWindow(id: CGWindowID) {
         captureController.captureWindow(id: id)
+    }
+
+    /// seconds 秒後に、範囲を選んで録画する（メニューの「タイマーで録画」）
+    func recordWithTimer(_ seconds: Int) {
+        captureController.start(mode: .record, timer: seconds)
+    }
+
+    /// 一覧から選んだウィンドウの範囲を、範囲を選ぶ画面を出さずに録画する（メニューの「ウィンドウを選んで録画」）
+    func recordWindow(id: CGWindowID) {
+        captureController.recordWindow(id: id)
     }
 }

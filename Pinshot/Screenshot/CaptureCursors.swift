@@ -14,9 +14,9 @@ enum CaptureCursors {
     /// ウィンドウを選ぶときのカメラ
     static let window: NSCursor = load("screenshotwindow", fallbackHotSpot: NSPoint(x: 14, y: 11)) ?? .pointingHand
 
-    /// モードに合ったカーソル（範囲を選ぶモードは十字、ウィンドウを選ぶモードはカメラ）
-    static func cursor(for mode: CaptureMode) -> NSCursor {
-        mode.selectsRegion ? selection : window
+    /// 選び方に合ったカーソル（範囲を選ぶときは十字、ウィンドウを選ぶときはカメラ）
+    static func cursor(for options: CaptureOptions) -> NSCursor {
+        options.selectsRegion ? selection : window
     }
 
     /// カーソルの形のまわりに、白い縁を付けたカーソル（縁のぶん、まわりを広げる）

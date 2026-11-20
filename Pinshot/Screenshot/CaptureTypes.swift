@@ -45,17 +45,28 @@ enum CaptureMode: String, CaseIterable, Identifiable {
 /// 範囲選択の画面で選んでいるキャプチャの種類とタイマー
 @MainActor
 final class CaptureOptions: ObservableObject {
-    @Published var mode: CaptureMode
+    @Published var mode: CaptureMode {
+        didSet { if mode != .record { recordsWindowOnly = false } }
+    }
     /// 撮るまでの秒数（0 ならすぐ撮る）
     @Published var timer: Int
+    /// 録画で、ウィンドウだけを選ぶ（メニューの「ウィンドウを録画」。ドラッグで範囲・何もない所で画面全体は選ばない）
+    @Published var recordsWindowOnly: Bool
+
+    /// ドラッグで範囲を選ぶか（録画でウィンドウだけを選ぶときは選ばない）
+    var selectsRegion: Bool { mode.selectsRegion && !recordsWindowOnly }
+
+    /// 範囲選択の画面に出す案内
+    var hint: String { recordsWindowOnly ? "録画したいウィンドウをクリック" : mode.hint }
 
     static let timerChoices = [0, 3, 5, 10]
     /// ショートカット（「タイマーでキャプチャ」）で撮るときの秒数
     static let shortcutTimerSeconds = 5
 
-    init(mode: CaptureMode, timer: Int) {
+    init(mode: CaptureMode, timer: Int, recordsWindowOnly: Bool = false) {
         self.mode = mode
         self.timer = timer
+        self.recordsWindowOnly = mode == .record && recordsWindowOnly
     }
 
     /// space で範囲 ⇄ ウィンドウを切り替えられるか（録画は、クリックでウィンドウを選べるので切り替えない）

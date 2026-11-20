@@ -7,8 +7,15 @@ enum ShortcutAction: String, CaseIterable, Identifiable {
     case captureWindow
     case captureScreen
     case captureTimer
-    /// 画面を録画する（録画中は、止める）
+    /// 範囲を選んで録画する（クリックでウィンドウ・画面全体も選べる。録画中は、止める）。
+    /// 名前は前の版の設定（割り当てたショートカット）を引き継ぐため、そのままにする
     case recordScreen
+    /// ウィンドウをクリックで選んで録画する
+    case recordWindow
+    /// マウスのある画面全体を、範囲を選ばずに録画する
+    case recordFullScreen
+    /// タイマー（5 秒）で、範囲を選んで録画する
+    case recordTimer
     case pinClipboard
     case openHistory
     case restoreClosed
@@ -23,7 +30,10 @@ enum ShortcutAction: String, CaseIterable, Identifiable {
         case .captureWindow: "ウィンドウをキャプチャ"
         case .captureScreen: "画面全体をキャプチャ"
         case .captureTimer: "タイマーでキャプチャ（5 秒）"
-        case .recordScreen: "画面を録画"
+        case .recordScreen: "範囲を録画"
+        case .recordWindow: "ウィンドウを録画"
+        case .recordFullScreen: "画面全体を録画"
+        case .recordTimer: "タイマーで録画（5 秒）"
         case .pinClipboard: "クリップボードの画像を浮かせる"
         case .openHistory: "撮った画像の履歴…"
         case .restoreClosed: "閉じた画像を戻す"
@@ -35,7 +45,7 @@ enum ShortcutAction: String, CaseIterable, Identifiable {
     /// メニュー・設定で、まとめて見せる組
     static let captureActions: [ShortcutAction] = [.captureRegion, .captureWindow, .captureScreen, .captureTimer]
     /// 録画（キャプチャとは分けて見せる）
-    static let recordActions: [ShortcutAction] = [.recordScreen]
+    static let recordActions: [ShortcutAction] = [.recordScreen, .recordWindow, .recordFullScreen, .recordTimer]
     /// 画面を撮る・録る操作（メニューを開いたまま押したときは、メニューを閉じずに始める。開いたメニューも写るように。
     /// ほかの操作は、メニューを閉じてから行う）
     static var screenActions: [ShortcutAction] { captureActions + recordActions }
@@ -50,6 +60,9 @@ enum ShortcutAction: String, CaseIterable, Identifiable {
         case .captureScreen: CaptureMode.screen.symbolName
         case .captureTimer: "timer"
         case .recordScreen: CaptureMode.record.symbolName
+        case .recordWindow: CaptureMode.window.symbolName
+        case .recordFullScreen: CaptureMode.screen.symbolName
+        case .recordTimer: "timer"
         case .pinClipboard: "doc.on.clipboard"
         case .openHistory: "clock.arrow.circlepath"
         case .restoreClosed: "arrow.uturn.backward"

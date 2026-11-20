@@ -6,6 +6,8 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
     private var statusItem: NSStatusItem?
     private var statusMenu: NSMenu?
     private var windowListMenu: NSMenu?
+    /// 「ウィンドウを選んで録画」の一覧（メニューを開くたびに作り直す）
+    private var recordWindowListMenu: NSMenu?
     /// ショートカットを表示するメニュー項目（操作ごと）と、そのもとの名前（タイマーの項目は「5 秒後」）
     private var actionItems: [ShortcutAction: NSMenuItem] = [:]
     private var actionTitles: [ShortcutAction: String] = [:]
@@ -51,35 +53,22 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
         }
 
         // タイマー付き（5 秒のものは、ショートカットを割り当てられる）
-        let timerItem = makeItem("タイマーでキャプチャ", symbol: ShortcutAction.captureTimer.symbolName, action: nil)
-        let timerMenu = NSMenu()
-        for seconds in CaptureOptions.timerChoices where seconds > 0 {
-            let item = NSMenuItem(title: "\(seconds) 秒後", action: #selector(captureWithTimer(_:)), keyEquivalent: "")
-            item.target = self
-            item.tag = seconds
-            timerMenu.addItem(item)
-            if seconds == CaptureOptions.shortcutTimerSeconds {
-                actionItems[.captureTimer] = item
-                actionTitles[.captureTimer] = item.title
-            }
-        }
-        timerItem.submenu = timerMenu
-        menu.addItem(timerItem)
-
+        menu.addItem(makeTimerItem("タイマーでキャプチャ", action: #selector(captureWithTimer(_:)), shortcutAction: .captureTimer))
         // 開いているウィンドウの一覧から選ぶ（メニューを開くたびに作り直す）
-        let windowListItem = makeItem("ウィンドウを選んでキャプチャ", symbol: "macwindow.on.rectangle", action: nil)
-        let windowList = NSMenu()
-        windowList.delegate = self
-        windowListItem.submenu = windowList
+        let (windowListItem, windowList) = makeWindowListItem("ウィンドウを選んでキャプチャ")
         menu.addItem(windowListItem)
         windowListMenu = windowList
 
-        // 録画（キャプチャとは分ける。録画中は「録画を止める」になる）
+        // 録画（キャプチャとは分け、キャプチャと同じ並びにする。録画中は「範囲を録画」が「録画を止める」になる）
         menu.addItem(.separator())
         menu.addItem(.sectionHeader(title: "録画"))
-        for action in ShortcutAction.recordActions {
+        for action in ShortcutAction.recordActions where action != .recordTimer {
             addActionItem(action, to: menu)
         }
+        menu.addItem(makeTimerItem("タイマーで録画", action: #selector(recordWithTimer(_:)), shortcutAction: .recordTimer))
+        let (recordWindowListItem, recordWindowList) = makeWindowListItem("ウィンドウを選んで録画")
+        menu.addItem(recordWindowListItem)
+        recordWindowListMenu = recordWindowList
 
         // 撮った画像の履歴（見出しに枚数を出す。最近撮った画像は並べない。見るのは履歴のウィンドウ）
         menu.addItem(.separator())
@@ -129,6 +118,33 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
         menu.addItem(item)
         actionItems[action] = item
         actionTitles[action] = action.label
+    }
+
+    /// 「タイマーで〜」の項目（中に 3・5・10 秒後。5 秒後は shortcutAction のショートカットを出す）
+    private func makeTimerItem(_ title: String, action: Selector, shortcutAction: ShortcutAction) -> NSMenuItem {
+        let timerItem = makeItem(title, symbol: "timer", action: nil)
+        let timerMenu = NSMenu()
+        for seconds in CaptureOptions.timerChoices where seconds > 0 {
+            let item = NSMenuItem(title: "\(seconds) 秒後", action: action, keyEquivalent: "")
+            item.target = self
+            item.tag = seconds
+            timerMenu.addItem(item)
+            if seconds == CaptureOptions.shortcutTimerSeconds {
+                actionItems[shortcutAction] = item
+                actionTitles[shortcutAction] = item.title
+            }
+        }
+        timerItem.submenu = timerMenu
+        return timerItem
+    }
+
+    /// 「ウィンドウを選んで〜」の項目と、その中のメニュー（開いているウィンドウの一覧。メニューを開くたびに作り直す）
+    private func makeWindowListItem(_ title: String) -> (NSMenuItem, NSMenu) {
+        let item = makeItem(title, symbol: "macwindow.on.rectangle", action: nil)
+        let list = NSMenu()
+        list.delegate = self
+        item.submenu = list
+        return (item, list)
     }
 
     private func makeItem(_ title: String, symbol: String, action: Selector?) -> NSMenuItem {
@@ -188,7 +204,10 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
             return
         }
         if menu === windowListMenu {
-            rebuildWindowList(menu)
+            rebuildWindowList(menu, action: #selector(captureListedWindow(_:)))
+        }
+        if menu === recordWindowListMenu {
+            rebuildWindowList(menu, action: #selector(recordListedWindow(_:)))
         }
         if menu === textHistoryMenu {
             rebuildTextHistory(menu)
@@ -215,8 +234,8 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
         menu.addItem(makeItem("文字の履歴を開く…", symbol: "list.bullet.rectangle", action: #selector(openTextHistory)))
     }
 
-    /// 「ウィンドウを選んでキャプチャ」の一覧を、いま開いているウィンドウで作り直す
-    private func rebuildWindowList(_ menu: NSMenu) {
+    /// 「ウィンドウを選んでキャプチャ」「ウィンドウを選んで録画」の一覧を、いま開いているウィンドウで作り直す（押すと action）
+    private func rebuildWindowList(_ menu: NSMenu, action: Selector) {
         menu.removeAllItems()
         let windows = WindowList.visibleWindows()
         if windows.isEmpty {
@@ -224,7 +243,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
             return
         }
         for info in windows {
-            let item = NSMenuItem(title: info.displayName, action: #selector(captureListedWindow(_:)), keyEquivalent: "")
+            let item = NSMenuItem(title: info.displayName, action: action, keyEquivalent: "")
             item.target = self
             item.tag = Int(info.id)
             if let icon = NSRunningApplication(processIdentifier: info.ownerPID)?.icon {
@@ -237,12 +256,13 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
 
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
         switch menuItem.action {
-        case #selector(captureWithTimer(_:)), #selector(captureListedWindow(_:)):
+        case #selector(captureWithTimer(_:)), #selector(captureListedWindow(_:)),
+             #selector(recordWithTimer(_:)), #selector(recordListedWindow(_:)):
             return !RecordingController.shared.isRecording
         case #selector(performActionItem(_:)):
             guard let action = action(of: menuItem) else { return true }
-            // 録画している間は、録画に写ってしまうので撮らない（「録画を止める」は押せる）
-            if RecordingController.shared.isRecording, ShortcutAction.captureActions.contains(action) {
+            // 録画している間は、録画に写ってしまうので撮らない・ほかの録画は始めない（「録画を止める」は押せる）
+            if RecordingController.shared.isRecording, ShortcutAction.screenActions.contains(action), action != .recordScreen {
                 return false
             }
             switch action {
@@ -265,6 +285,14 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
 
     @objc private func captureWithTimer(_ sender: NSMenuItem) {
         AppActions.shared.captureWithTimer(sender.tag)
+    }
+
+    @objc private func recordWithTimer(_ sender: NSMenuItem) {
+        AppActions.shared.recordWithTimer(sender.tag)
+    }
+
+    @objc private func recordListedWindow(_ sender: NSMenuItem) {
+        AppActions.shared.recordWindow(id: CGWindowID(sender.tag))
     }
 
     @objc private func captureListedWindow(_ sender: NSMenuItem) {

@@ -93,7 +93,7 @@ final class SelectionView: NSView {
 
     // MARK: - カーソル
 
-    private var cursor: NSCursor { CaptureCursors.cursor(for: mode) }
+    private var cursor: NSCursor { CaptureCursors.cursor(for: options) }
 
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
@@ -129,7 +129,7 @@ final class SelectionView: NSView {
     // MARK: - 描き直す範囲
 
     var selectionRect: NSRect? {
-        guard mode.selectsRegion, let start, let current else { return nil }
+        guard options.selectsRegion, let start, let current else { return nil }
         return NSRect(
             x: min(start.x, current.x),
             y: min(start.y, current.y),
@@ -149,6 +149,8 @@ final class SelectionView: NSView {
             if let rect = selectionRect, rect.width > 0, rect.height > 0 { return rect }
             // クリックで録画するもの（マウスの下のウィンドウ。なければ画面全体）を、いつも枠で示す
             guard start == nil, pointer != nil else { return nil }
+            // ウィンドウだけを選ぶときは、ウィンドウのない所では何も示さない
+            if options.recordsWindowOnly { return hoveredWindow?.rect.intersection(bounds) }
             return hoveredWindow?.rect.intersection(bounds) ?? bounds
         case .window:
             return hoveredWindow?.rect
@@ -183,10 +185,10 @@ final class SelectionView: NSView {
             }
         }
         // シンプルな表示では、カーソルの横に座標を出す
-        if mode.selectsRegion, isSimple, let pointer {
+        if options.selectsRegion, isSimple, let pointer {
             rects.append(coordinateLabelRect(at: pointer).insetBy(dx: -2, dy: -2))
         }
-        if mode.selectsRegion, !isSimple, let pointer {
+        if options.selectsRegion, !isSimple, let pointer {
             rects.append(NSRect(x: 0, y: pointer.y - 2, width: bounds.width, height: 4))
             rects.append(NSRect(x: pointer.x - 2, y: 0, width: 4, height: bounds.height))
             rects.append(loupeFrame(at: pointer).insetBy(dx: -4, dy: -4))
@@ -231,7 +233,7 @@ final class SelectionView: NSView {
         pointer = point
         // クリックで選ぶウィンドウは、押した時点のものにする
         hoveredWindow = windowRect(at: point)
-        if mode.selectsRegion {
+        if options.selectsRegion {
             start = point
             current = point
             onDraggingChange?(true)
@@ -242,7 +244,7 @@ final class SelectionView: NSView {
     override func mouseDragged(with event: NSEvent) {
         let point = clamped(convert(event.locationInWindow, from: nil))
         pointer = point
-        if mode.selectsRegion {
+        if options.selectsRegion {
             current = point
         } else {
             hoveredWindow = windowRect(at: point)
@@ -264,7 +266,9 @@ final class SelectionView: NSView {
             onSelect?(.region(screen: shot.screen, rect: window.convertToScreen(convert(rect, to: nil))))
 
         case .record:
-            // ドラッグしたときはその範囲、クリックしたときはマウスの下のウィンドウ（なければ画面全体）
+            // ドラッグしたときはその範囲、クリックしたときはマウスの下のウィンドウ（なければ画面全体）。
+            // ウィンドウだけを選ぶときは、ウィンドウのない所を押しても何もしない
+            if options.recordsWindowOnly, hoveredWindow == nil { return }
             let dragged = selectionRect.map { $0.width >= 4 && $0.height >= 4 } ?? false
             let rect = ((dragged ? selectionRect : nil) ?? hoveredWindow?.rect ?? bounds).intersection(bounds).integral
             guard rect.width >= 8, rect.height >= 8, let window else {

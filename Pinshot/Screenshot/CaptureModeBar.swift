@@ -7,7 +7,7 @@ struct CaptureModeBar: View {
     let cancel: () -> Void
 
     /// ボタンからマウスが離れたときに戻すカーソル（いまのモードのキャプチャ用のカーソル）
-    private var exitCursor: NSCursor { CaptureCursors.cursor(for: options.mode) }
+    private var exitCursor: NSCursor { CaptureCursors.cursor(for: options) }
 
     var body: some View {
         VStack(spacing: 8) {
@@ -22,6 +22,8 @@ struct CaptureModeBar: View {
                         exitCursor: exitCursor
                     ) {
                         options.mode = mode
+                        // 「録画」を押したら、ウィンドウだけでなく、ドラッグで範囲も選べる録画にする
+                        if mode == .record { options.recordsWindowOnly = false }
                     }
                 }
 
@@ -69,8 +71,8 @@ struct CaptureModeBar: View {
     /// 下の案内（space で切り替えられないとき（録画）は、space の案内を出さない）
     private var hintText: String {
         options.togglesWithSpace
-            ? "\(options.mode.hint)　・　space で範囲 ⇄ ウィンドウ　・　esc でキャンセル"
-            : "\(options.mode.hint)　・　esc でキャンセル"
+            ? "\(options.hint)　・　space で範囲 ⇄ ウィンドウ　・　esc でキャンセル"
+            : "\(options.hint)　・　esc でキャンセル"
     }
 
     /// まとまりの間の縦の線
