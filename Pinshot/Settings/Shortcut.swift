@@ -6,7 +6,6 @@ enum ShortcutAction: String, CaseIterable, Identifiable {
     case captureRegion
     case captureWindow
     case captureScreen
-    case captureScroll
     case captureTimer
     /// 画面を録画する（録画中は、止める）
     case recordScreen
@@ -23,7 +22,6 @@ enum ShortcutAction: String, CaseIterable, Identifiable {
         case .captureRegion: "範囲をキャプチャ"
         case .captureWindow: "ウィンドウをキャプチャ"
         case .captureScreen: "画面全体をキャプチャ"
-        case .captureScroll: "スクロールキャプチャ"
         case .captureTimer: "タイマーでキャプチャ（5 秒）"
         case .recordScreen: "画面を録画"
         case .pinClipboard: "クリップボードの画像を浮かせる"
@@ -35,7 +33,7 @@ enum ShortcutAction: String, CaseIterable, Identifiable {
     }
 
     /// メニュー・設定で、まとめて見せる組
-    static let captureActions: [ShortcutAction] = [.captureRegion, .captureWindow, .captureScreen, .captureScroll, .captureTimer]
+    static let captureActions: [ShortcutAction] = [.captureRegion, .captureWindow, .captureScreen, .captureTimer]
     /// 録画（キャプチャとは分けて見せる）
     static let recordActions: [ShortcutAction] = [.recordScreen]
     /// 画面を撮る・録る操作（メニューを開いたまま押したときは、メニューを閉じてから行う）
@@ -49,7 +47,6 @@ enum ShortcutAction: String, CaseIterable, Identifiable {
         case .captureRegion: CaptureMode.region.symbolName
         case .captureWindow: CaptureMode.window.symbolName
         case .captureScreen: CaptureMode.screen.symbolName
-        case .captureScroll: CaptureMode.scroll.symbolName
         case .captureTimer: "timer"
         case .recordScreen: CaptureMode.record.symbolName
         case .pinClipboard: "doc.on.clipboard"

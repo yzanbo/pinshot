@@ -1,7 +1,7 @@
 import AppKit
 
-/// 撮っている・録画している範囲の外側に出す点線の枠（スクロールキャプチャはアクセントカラー、録画は赤）。
-/// 範囲の内側には描かないので、撮る画像・録画には写らない。クリックは下に通す
+/// 録画している範囲の外側に出す点線の枠。
+/// 範囲の内側には描かないので、録画には写らない。クリックは下に通す
 enum CaptureOutline {
     static func show(around rect: NSRect, color: NSColor) -> NSWindow {
         let frame = rect.insetBy(dx: -4, dy: -4)

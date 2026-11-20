@@ -7,12 +7,10 @@ final class CaptureController {
     private var selection: SelectionController?
     private var isCapturing = false
 
-    /// 範囲選択の画面を出してキャプチャを始める。
-    /// スクロールのモードでは、撮るウィンドウをクリックで選んでもらう（マウスを乗せると、撮るスクロール領域を枠で示す。ドラッグで範囲も選べる）
+    /// 範囲選択の画面を出してキャプチャを始める
     func start(mode: CaptureMode = .region, timer: Int = 0) {
-        // スクロールキャプチャの間に範囲を選ぶ画面を出すと、送ったスクロールをその画面が受けてしまう。
         // 録画の間は、範囲を選ぶ画面まで録画に写ってしまうので、撮らない
-        guard !isCapturing, !ScrollCaptureController.shared.isRunning, !RecordingController.shared.isRecording else {
+        guard !isCapturing, !RecordingController.shared.isRecording else {
             if RecordingController.shared.isRecording { NSSound.beep() }
             return
         }
@@ -72,7 +70,7 @@ final class CaptureController {
 
     /// 一覧から選んだウィンドウを、範囲選択の画面を出さずに撮る
     func captureWindow(id: CGWindowID) {
-        guard !isCapturing, !ScrollCaptureController.shared.isRunning, !RecordingController.shared.isRecording else { return }
+        guard !isCapturing, !RecordingController.shared.isRecording else { return }
         guard let info = WindowList.visibleWindows().first(where: { $0.id == id }) else {
             NSSound.beep()
             return
@@ -111,20 +109,6 @@ final class CaptureController {
                     PinManager.shared.pin(image: cropped.image, imageSize: cropped.size, frame: info.frame)
                 }
 
-            case .scroll(let screen, let rect, let window, let point):
-                // クリックで選んだときは、そのウィンドウのその場所のスクロール領域を、改めて確かめる
-                var area = rect
-                if let window, let point,
-                   let found = await ScrollTargetFinder.scrollAreaRetrying(at: point, in: window) {
-                    area = found
-                }
-                // 画面をまたぐときは、クリックした画面の中だけにする
-                let target = point.flatMap { ScreenGeometry.screen(containing: $0, orMain: false) } ?? screen
-                let clipped = area.intersection(target.frame).integral
-                guard clipped.width >= 40, clipped.height >= 40 else { return }
-                // スクロールしながら撮る（終わったら浮かせる）
-                ScrollCaptureController.shared.start(screen: target, rect: clipped, window: window, scrollPoint: point)
-
             case .record(let screen, let rect):
                 // 録画を始める（止めたら浮かせて再生する）
                 RecordingController.shared.start(screen: screen, rect: rect)
@@ -156,7 +140,7 @@ final class CaptureController {
 
     private func screen(of target: CaptureTarget) -> NSScreen? {
         switch target {
-        case .region(let screen, _), .screen(let screen), .scroll(let screen, _, _, _), .record(let screen, _):
+        case .region(let screen, _), .screen(let screen), .record(let screen, _):
             return screen
         case .window(let info):
             return ScreenGeometry.screen(intersecting: info.frame, orMain: false)

@@ -43,7 +43,7 @@ extension SelectionView {
                 border.lineWidth = 3
                 border.stroke()
             }
-            if !isSimple || mode == .scroll || mode == .record, let label = highlightLabel {
+            if !isSimple || mode == .record, let label = highlightLabel {
                 drawLabel(label, in: labelRect(label, for: highlight))
             }
         }

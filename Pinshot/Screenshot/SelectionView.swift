@@ -17,10 +17,6 @@ final class SelectionView: NSView {
     var current: NSPoint?
     private var hoveredWindow: (info: WindowInfo, rect: NSRect)?
     private var lastDirtyRects: [NSRect] = []
-    /// スクロールのモードで、マウスの下のスクロール領域（このビューの座標）と、それがどのウィンドウのものか
-    private var hoveredScrollRect: NSRect?
-    private var hoveredScrollWindowID: CGWindowID?
-    private var scrollLookup: DispatchWorkItem?
 
     let loupeSize: CGFloat = 120
     /// ルーペで何ポイント四方を拡大するか
@@ -70,9 +66,6 @@ final class SelectionView: NSView {
         if let pointer {
             hoveredWindow = windowRect(at: pointer)
         }
-        hoveredScrollRect = nil
-        hoveredScrollWindowID = nil
-        scheduleScrollLookup()
         window?.invalidateCursorRects(for: self)
         lastDirtyRects = []
         needsDisplay = true
@@ -90,55 +83,12 @@ final class SelectionView: NSView {
         windowRects.first { $0.rect.contains(point) }
     }
 
-    /// マウスの下のウィンドウで見つけた、スクロール領域（別のウィンドウで見つけたものは使わない）
-    private var scrollRectOfHoveredWindow: NSRect? {
-        hoveredScrollWindowID == hoveredWindow?.info.id ? hoveredScrollRect : nil
-    }
-
     private func movePointer(to point: NSPoint) {
         pointer = point
         if start == nil {
             hoveredWindow = windowRect(at: point)
-            scheduleScrollLookup()
         }
         refresh()
-    }
-
-    // MARK: - スクロール領域を探す
-
-    /// マウスが止まったら、その下のスクロール領域を探す（動かしている間に何度も聞かないよう、少し待つ）
-    private func scheduleScrollLookup(retry: Int = 0) {
-        scrollLookup?.cancel()
-        guard mode == .scroll, start == nil, AccessibilityPermission.isGranted,
-              let window, let pointer, let hovered = hoveredWindow else {
-            if hoveredScrollRect != nil {
-                hoveredScrollRect = nil
-                hoveredScrollWindowID = nil
-                refresh()
-            }
-            return
-        }
-        // 別のウィンドウに移ったら、前の枠はすぐ消す
-        if hoveredScrollWindowID != hovered.info.id {
-            hoveredScrollRect = nil
-        }
-        let screenPoint = window.convertPoint(toScreen: convert(pointer, to: nil))
-        let info = hovered.info
-        let item = DispatchWorkItem { [weak self] in
-            MainActor.assumeIsolated {
-                guard let self, let window = self.window else { return }
-                let found = ScrollTargetFinder.scrollArea(at: screenPoint, in: info)
-                self.hoveredScrollWindowID = info.id
-                self.hoveredScrollRect = found.map { self.convert(window.convertFromScreen($0), from: nil).intersection(self.bounds) }
-                self.refresh()
-                // Chrome などは、初めて聞いたあと少しして情報を出すので、見つからなければもう少し聞き直す
-                if found == nil, retry < 3 {
-                    self.scheduleScrollLookup(retry: retry + 1)
-                }
-            }
-        }
-        scrollLookup = item
-        DispatchQueue.main.asyncAfter(deadline: .now() + (retry == 0 ? 0.06 : 0.3), execute: item)
     }
 
     // MARK: - カーソル
@@ -191,12 +141,6 @@ final class SelectionView: NSView {
     /// 明るく抜く範囲
     var highlightRect: NSRect? {
         switch mode {
-        case .scroll:
-            if let rect = selectionRect, rect.width > 0, rect.height > 0 { return rect }
-            // クリックで撮るもの（スクロール領域。見つからなければウィンドウ）を、いつも枠で示す
-            guard start == nil else { return nil }
-            if let rect = scrollRectOfHoveredWindow { return rect }
-            return hoveredWindow?.rect
         case .region:
             if let rect = selectionRect, rect.width > 0, rect.height > 0 { return rect }
             // クリックではウィンドウを撮らないので、マウスの下のウィンドウは囲まない
@@ -216,18 +160,11 @@ final class SelectionView: NSView {
     var highlightLabel: String? {
         guard let rect = highlightRect else { return nil }
         switch mode {
-        case .scroll where selectionRect == nil:
-            if scrollRectOfHoveredWindow != nil {
-                return "クリックでこのスクロール領域を撮る　\(Int(rect.width)) × \(Int(rect.height))"
-            }
-            return AccessibilityPermission.isGranted
-                ? "スクロール領域を探しています…（見つからなければウィンドウ全体）"
-                : "クリックでウィンドウ全体（ドラッグで範囲）"
         case .record where selectionRect == nil:
             return hoveredWindow == nil
                 ? "クリックで画面全体を録画　\(Int(rect.width)) × \(Int(rect.height))"
                 : "クリックでこのウィンドウを録画　\(Int(rect.width)) × \(Int(rect.height))"
-        case .region, .scroll, .record:
+        case .region, .record:
             return "\(Int(rect.width)) × \(Int(rect.height))"
         case .window:
             return hoveredWindow?.info.displayName
@@ -241,7 +178,7 @@ final class SelectionView: NSView {
         var rects: [NSRect] = []
         if let rect = highlightRect {
             rects.append(rect.insetBy(dx: -4, dy: -4))
-            if !isSimple || mode == .scroll || mode == .record, let label = highlightLabel {
+            if !isSimple || mode == .record, let label = highlightLabel {
                 rects.append(labelRect(label, for: rect).insetBy(dx: -2, dy: -2))
             }
         }
@@ -299,7 +236,6 @@ final class SelectionView: NSView {
             current = point
             onDraggingChange?(true)
         }
-        scrollLookup?.cancel()
         refresh()
     }
 
@@ -317,30 +253,15 @@ final class SelectionView: NSView {
     override func mouseUp(with event: NSEvent) {
         onDraggingChange?(false)
         switch mode {
-        case .region, .scroll:
-            let dragged = selectionRect.map { $0.width >= 4 && $0.height >= 4 } ?? false
-            // ドラッグせずにクリックしたとき：範囲のモードでは何も撮らない（範囲はドラッグで選ぶ）。
-            // スクロールのモードでは、マウスの下のウィンドウの、見つけたスクロール領域（なければウィンドウ）を撮る
-            let clickTarget = mode == .scroll ? scrollRectOfHoveredWindow ?? hoveredWindow?.rect : nil
-            let target = (dragged ? selectionRect : clickTarget)?.integral
-            guard let rect = target, rect.width >= 4, rect.height >= 4, let window else {
+        case .region:
+            // ドラッグせずにクリックしたときは、何も撮らない（範囲はドラッグで選ぶ）
+            guard let rect = selectionRect?.integral, rect.width >= 4, rect.height >= 4, let window else {
                 start = nil
                 current = nil
                 refresh()
                 return
             }
-            let screenRect = window.convertToScreen(convert(rect, to: nil))
-            if mode == .scroll {
-                // クリックしたときは、そのウィンドウのその場所のスクロール領域を撮る（ドラッグしたときは、その範囲）
-                onSelect?(.scroll(
-                    screen: shot.screen,
-                    rect: screenRect,
-                    window: dragged ? nil : hoveredWindow?.info,
-                    point: dragged ? nil : NSEvent.mouseLocation
-                ))
-            } else {
-                onSelect?(.region(screen: shot.screen, rect: screenRect))
-            }
+            onSelect?(.region(screen: shot.screen, rect: window.convertToScreen(convert(rect, to: nil))))
 
         case .record:
             // ドラッグしたときはその範囲、クリックしたときはマウスの下のウィンドウ（なければ画面全体）

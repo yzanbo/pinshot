@@ -63,7 +63,6 @@ targets:
       - path: Pinshot/Editor/ImageEffects.swift
       - path: Pinshot/Editor/ImageExporter.swift
       - path: Pinshot/Pin/ResizeEdges.swift
-      - path: Pinshot/ScrollCapture/ScrollStitcher.swift
       - path: Pinshot/Settings/ExportDecoration.swift
       - path: Pinshot/Settings/Shortcut.swift
       - path: Pinshot/Screenshot/CaptureTypes.swift

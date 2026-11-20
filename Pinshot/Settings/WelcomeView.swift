@@ -121,7 +121,7 @@ struct WelcomeView: View {
                 symbol: "hand.raised",
                 title: "アクセシビリティ",
                 badge: permission.accessibilityGranted ? .granted : .optional,
-                detail: "なくても使えます。許可すると、スクロールキャプチャで自動でスクロールし、メニューを開いたままでもショートカットで撮れるようになります。",
+                detail: "なくても使えます。許可すると、メニューを開いたままでもショートカットで撮れるようになります。",
                 actionTitle: permission.accessibilityGranted ? nil : "許可する…",
                 action: { permission.requestAccessibility() }
             ) {
@@ -139,7 +139,7 @@ struct WelcomeView: View {
                 UsageTile(
                     symbol: "camera.viewfinder",
                     title: settings.shortcut(for: .captureRegion).map { "\($0.displayString) で撮る" } ?? "メニューバーから撮る",
-                    detail: "範囲・ウィンドウ・画面全体・スクロール。撮った画像はその場に浮かびます。"
+                    detail: "範囲・ウィンドウ・画面全体。撮った画像はその場に浮かびます。"
                 )
                 UsageTile(
                     symbol: "pin",

@@ -166,25 +166,6 @@ final class PinManager {
         show(image: image, imageSize: size, frame: frame, zoom: zoom, origin: origin)
     }
 
-    /// スクロールキャプチャの間は、浮かせた画像がスクロール操作を受けないようにする
-    func setMouseEventsSuspended(_ suspended: Bool) {
-        for pin in pins {
-            pin.panel.ignoresMouseEvents = suspended || pin.isClickThrough
-        }
-    }
-
-    /// スクロールキャプチャの縦長の画像を、撮った範囲の上端から、画面に収まる大きさで浮かせる
-    func pinScrollCapture(image: CGImage, pointSize: CGSize, sourceRect: NSRect, screen: NSScreen) {
-        let visible = screen.visibleFrame
-        let zoom = min(1, visible.height * 0.9 / max(pointSize.height, 1), visible.width * 0.9 / max(pointSize.width, 1))
-        let size = NSSize(width: pointSize.width * zoom, height: pointSize.height * zoom)
-        let top = min(sourceRect.maxY, visible.maxY)
-        var origin = NSPoint(x: sourceRect.minX, y: top - size.height)
-        origin.y = max(origin.y, visible.minY)
-        origin.x = min(max(origin.x, visible.minX), visible.maxX - size.width)
-        pin(image: image, imageSize: pointSize, frame: NSRect(origin: origin, size: size), zoom: zoom)
-    }
-
     /// すべての画像をほかのウィンドウより前に出す（最前面にしていない画像が隠れたとき用）
     func bringAllToFront() {
         pins.forEach { $0.bringToFront() }

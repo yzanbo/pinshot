@@ -83,7 +83,6 @@ final class SelectionController {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] mode in
                 guard let self else { return }
-                // スクロールに切り替えたら、撮るウィンドウをクリックで選んでもらう（マウスの下のスクロール領域を枠で示す）
                 self.overlays.forEach { $0.modeDidChange() }
                 self.applyCaptureCursor()
             }

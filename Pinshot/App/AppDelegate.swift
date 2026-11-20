@@ -144,7 +144,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .captureRegion: captureController.start(mode: .region)
         case .captureWindow: captureController.start(mode: .window)
         case .captureScreen: captureController.start(mode: .screen)
-        case .captureScroll: captureController.start(mode: .scroll)
         case .captureTimer: captureController.start(mode: .region, timer: CaptureOptions.shortcutTimerSeconds)
         case .recordScreen:
             // 録画中なら止める（メニュー・ショートカットのどちらからも）
