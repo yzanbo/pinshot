@@ -92,10 +92,14 @@ final class UploadCenter {
             notify(.finished("やめました"))
         } catch UploadError.notSignedIn {
             notify(.finished("\(label) につなぎ直してください"))
-            openSettings(
-                "\(label) につなぎ直してください",
-                detail: "許可が切れたか、取り消されました。つなぎ直してから、もう一度上げてください。"
-            )
+            let title = "\(label) につなぎ直してください"
+            let detail = "許可が切れたか、取り消されました。つなぎ直してから、もう一度上げてください。"
+            if automatic {
+                // 撮るたびに画面を止めないよう、自動のときは通知で知らせる（ほかの失敗と同じ）
+                UploadNotifier.shared.notify(title: title, body: detail)
+            } else {
+                openSettings(title, detail: detail)
+            }
         } catch {
             notify(.finished("上げられませんでした"))
             if automatic {
