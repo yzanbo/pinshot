@@ -14,7 +14,8 @@ Pinshot/
 │   ├── ScrollStitcher        撮った画像をつなぐ
 │   └── ScrollCapturePanel    操作パネルと点線の枠
 ├── Pin/            最前面に浮かぶウィンドウと、画像の表示・操作
-│   ├── PinManager            浮かせている画像の一覧（閉じた画像を戻す・すべて閉じる など）
+│   ├── PinManager            浮かせている画像の一覧（閉じた画像を戻す・すべて閉じる・終了後も戻すための保存と復元 など）
+│   ├── SavedPin・PinSessionStore  終了・再起動のあとも戻す状態（テストあり）と、その保存先（~/Library/Application Support/Pinshot/Pins に PNG と session.json）
 │   ├── PinController(+◯◯)    画像 1 枚ぶんの操作（拡大縮小・不透明度・編集モード）。+Export はコピー・保存、+Menu は右クリックメニュー
 │   ├── PinToolbarController  編集ツールバーのウィンドウ（出す・置く場所・説明のポップアップ）
 │   ├── PinCanvasView(+◯◯)    画像と書き込みの表示と操作。役割ごとにファイルを分けている
@@ -23,7 +24,7 @@ Pinshot/
 │   └── PinBackdropView・QuickActionBar・HUDView・HintBubble など   画像のまわりの部品
 ├── History/        撮った画像の履歴
 │   ├── CaptureHistoryEntry   履歴の 1 枚と、残し方（期間・枚数）・日付ごとのまとめ方の決まり（テストあり）
-│   ├── CaptureHistory        履歴の保存と読み込み（~/Library/Application Support/Pinshot/History に PNG・縮小画像・一覧の JSON）。置き場所は AppFolders
+│   ├── CaptureHistory        履歴の保存と読み込み（~/Library/Application Support/Pinshot/History に PNG・縮小画像・一覧の JSON）
 │   └── CaptureHistoryWindowController・CaptureHistoryViewModel・CaptureHistoryView   一覧のウィンドウ（複数選択・浮かせる・コピー・保存・消す）
 ├── Editor/         書き込みのデータ、描画、書き出し
 │   ├── Annotation・AnnotationStyles・Tool・RGBAColor   書き込みのデータ（Windows 版と形式をそろえる）
@@ -44,6 +45,7 @@ Pinshot/
     ├── GraphicsHelpers       画像の描き先を作る
     ├── HoverCursor           部品の種類（押せる・動かせる・操作できない）で決めるカーソル
     ├── ImageSaver            PNG を設定に合わせて保存する（浮かせた画像と履歴から使う）
+    ├── AppFolders            アプリのデータを置くフォルダ（履歴・浮かせていた画像）
     └── ViewHelpers           前に出ていなくても押せるビュー・マウスの追跡
 
 PinshotTests/       画面に関係ない処理のテスト（make test）
