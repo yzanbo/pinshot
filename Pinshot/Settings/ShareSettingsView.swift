@@ -56,7 +56,7 @@ struct ShareSettingsView: View {
     /// 自動で上げる。オンにするときは、画像が外に送られることを確かめる
     private var autoUploadBinding: Binding<Bool> {
         Binding(
-            get: { settings.autoUploadCaptures && settings.uploadDestination != nil },
+            get: { settings.autoUploadCaptures },
             set: { enabled in
                 guard enabled else {
                     settings.autoUploadCaptures = false

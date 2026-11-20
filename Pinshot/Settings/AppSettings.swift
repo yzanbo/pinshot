@@ -204,7 +204,11 @@ final class AppSettings: ObservableObject {
 
     /// 共有リンクを作るときに上げる先（選んでいなければ nil。どこにも上げない）
     @Published var uploadDestination: UploadDestinationID? {
-        didSet { defaults.set(uploadDestination?.rawValue, forKey: Key.uploadDestination) }
+        didSet {
+            defaults.set(uploadDestination?.rawValue, forKey: Key.uploadDestination)
+            // 上げる先を「なし」にしたら、自動で上げるのもやめる（選び直したときに、確かめずに戻らないように）
+            if uploadDestination == nil, autoUploadCaptures { autoUploadCaptures = false }
+        }
     }
 
     /// 共有リンクをクリップボードに入れる形（ページの URL・画像の URL・Markdown）
@@ -212,7 +216,8 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(shareLinkFormat.rawValue, forKey: Key.shareLinkFormat) }
     }
 
-    /// 撮ったら、すぐ上げる先に上げて共有リンクをコピーする（初期設定はオフ。オンにするときに確かめる）
+    /// 撮ったら、すぐ上げる先に上げて共有リンクをコピーする（初期設定はオフ。オンにするときに確かめる）。
+    /// 上げる先を選んでいないときは、いつも false（設定の画面のスイッチと、撮ったときの動きをそろえる）
     @Published var autoUploadCaptures: Bool {
         didSet { defaults.set(autoUploadCaptures, forKey: Key.autoUploadCaptures) }
     }
@@ -352,11 +357,15 @@ final class AppSettings: ObservableObject {
         uploadHistoryLayout = defaults.option(Key.uploadHistoryLayout, default: .largeGrid)
         restorePins = defaults.bool(Key.restorePins, default: true)
         textPopoverClosesOnOutsideClick = defaults.bool(Key.textPopoverClosesOnOutsideClick, default: false)
-        uploadDestination = (defaults.string(forKey: Key.uploadDestination)).flatMap(UploadDestinationID.init(rawValue:))
+        let destination = (defaults.string(forKey: Key.uploadDestination)).flatMap(UploadDestinationID.init(rawValue:))
+        uploadDestination = destination
         // 初期設定は画像の URL（Slack・Discord・GitHub などに貼ると、その場で画像が出る）
         shareLinkFormat = defaults.option(Key.shareLinkFormat, default: .direct)
-        // 撮った画像が外に送られるので、初期設定では自動で上げない
-        autoUploadCaptures = defaults.bool(Key.autoUploadCaptures, default: false)
+        // 撮った画像が外に送られるので、初期設定では自動で上げない。
+        // 上げる先を選んでいなければ、前の版で残ったオンも外す（あとで上げる先を選んだときに、確かめずに戻らないように）
+        let savedAutoUpload = defaults.bool(Key.autoUploadCaptures, default: false)
+        autoUploadCaptures = savedAutoUpload && destination != nil
+        if savedAutoUpload, destination == nil { defaults.set(false, forKey: Key.autoUploadCaptures) }
         notifiesUploads = defaults.bool(Key.notifiesUploads, default: true)
         copyAfterCapture = defaults.bool(Key.copyAfterCapture, default: false)
         showsQuickActions = defaults.bool(Key.showsQuickActions, default: true)
