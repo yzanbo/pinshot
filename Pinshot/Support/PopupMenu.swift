@@ -11,9 +11,16 @@ enum MenuEntry {
         modifiers: NSEvent.ModifierFlags = .command,
         action: @MainActor () -> Void
     )
-    case submenu(title: String, entries: [MenuEntry])
+    case submenu(title: String, image: NSImage? = nil, entries: [MenuEntry])
     case disabled(title: String)
+    /// まとまりの見出し（押せない小さな文字）
+    case header(String)
     case separator
+
+    /// メニューに出す SF Symbols のアイコン
+    static func symbol(_ name: String) -> NSImage? {
+        NSImage(systemSymbolName: name, accessibilityDescription: nil)
+    }
 }
 
 /// MenuEntry の並びから NSMenu を作る・開く。
@@ -39,10 +46,13 @@ enum PopupMenu {
                 item.image = image
                 item.state = isChecked ? .on : .off
                 menu.addItem(item)
-            case let .submenu(title, children):
+            case let .submenu(title, image, children):
                 let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+                item.image = image
                 item.submenu = makeMenu(children)
                 menu.addItem(item)
+            case let .header(title):
+                menu.addItem(.sectionHeader(title: title))
             case let .disabled(title):
                 let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
                 item.isEnabled = false
@@ -80,7 +90,7 @@ final class ClosureMenuItem: NSMenuItem {
 
 /// いま開いているメニュー（ツールバーの ▾・右クリック・メニューバーなど）を覚えておき、閉じられるようにする。
 /// メニューを開いている間は、macOS がメニューの操作だけを受け付けるので、ショートカットで撮り始めても範囲を選べない。
-/// そのため、ショートカットを押したら、先に開いているメニューを閉じる
+/// そのため、撮るときは画面を撮ったあとで（開いたメニューも写るように）、ほかの操作は先に、開いているメニューを閉じる
 @MainActor
 enum OpenMenus {
     private static var menus: [NSMenu] = []

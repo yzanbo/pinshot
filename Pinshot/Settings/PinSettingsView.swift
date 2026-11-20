@@ -20,13 +20,14 @@ struct PinSettingsView: View {
                 SettingsNote("どちらも、画像ごとに右クリックのメニューから変えられます。")
             }
             Section {
-                Picker("操作バーと捨てるボタン", selection: $settings.closeButtonMode) {
+                Picker("閉じるボタンと操作バー", selection: $settings.closeButtonMode) {
                     ForEach(CloseButtonMode.allCases) { mode in
                         Text(mode.label).tag(mode)
                     }
                 }
-                Toggle("操作バー（不透明度・コピー・保存・編集・捨てる）を出す", isOn: $settings.showsQuickActions)
+                Toggle("画像の下に操作バーを出す", isOn: $settings.showsQuickActions)
                     .disabled(settings.closeButtonMode == .hidden)
+                SettingsNote("不透明度・拡大率・コピー・保存・履歴・編集のバーです。オフにすると、ダブルクリックで編集するまで画像の下に何も出しません（編集モードのツールバーはいつも出ます）。画像の右クリックからも切り替えられます。")
             } header: {
                 Text("画像の上のボタン")
             } footer: {

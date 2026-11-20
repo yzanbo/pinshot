@@ -3,32 +3,66 @@ import AppKit
 extension PinController {
     // MARK: - 右クリックメニュー
 
+    /// 右クリック（と操作バーの「…」）のメニュー。見出しで「編集・コピーと保存・見た目・置き方と表示・履歴」に分ける
     func makeContextMenu() -> NSMenu {
         let opacityPercent = Int((panel.alphaValue * 100).rounded())
+        let symbol = MenuEntry.symbol
         return PopupMenu.makeMenu([
-            .item(title: state.isEditing ? "編集を終える" : "編集する", key: "e") { [weak self] in self?.toggleEditing() },
-            .separator,
-            .item(title: "コピー", key: "c") { [weak self] in self?.copyToPasteboard() },
-            .item(title: "コピーして閉じる", key: "c", modifiers: [.command, .shift]) { [weak self] in self?.copyAndClose() },
-            .item(title: "背景を付ける（書き出しも同じ見た目）", isChecked: showsBackdrop) { [weak self] in
-                guard let self else { return }
-                self.setBackdropShown(!self.showsBackdrop)
+            .item(title: state.isEditing ? "編集を終える" : "編集する", image: symbol(state.isEditing ? "checkmark.circle" : "pencil"), key: "e") { [weak self] in
+                self?.toggleEditing()
             },
-            .item(title: "保存…", key: "s") { [weak self] in self?.save() },
+
             .separator,
-            .submenu(title: "不透明度", entries: [100, 80, 60, 40, 20].map { percent in
+            .header("コピー・保存"),
+            .item(title: "コピー", image: symbol("doc.on.doc"), key: "c") { [weak self] in self?.copyToPasteboard() },
+            .item(title: "コピーして閉じる", image: symbol("doc.on.doc.fill"), key: "c", modifiers: [.command, .shift]) { [weak self] in
+                self?.copyAndClose()
+            },
+            .item(title: "保存…", image: symbol("square.and.arrow.down"), key: "s") { [weak self] in self?.save() },
+
+            .separator,
+            .header("見た目"),
+            .submenu(title: "不透明度（\(opacityPercent)%）", image: symbol("circle.lefthalf.filled"), entries: [100, 80, 60, 40, 20].map { percent in
                 .item(title: "\(percent)%", isChecked: opacityPercent == percent) { [weak self] in
                     self?.setOpacity(CGFloat(percent) / 100)
                 }
             }),
-            .item(title: "実際のサイズ", key: "0") { [weak self] in self?.resetZoom() },
-            .item(title: "最前面に表示", isChecked: isOnTop) { [weak self] in
+            .submenu(title: "拡大率（\(ViewControls.percent(Double(zoom)))）", image: symbol("magnifyingglass"), entries: zoomEntries),
+            .item(title: "背景を付ける（書き出しも同じ見た目）", image: symbol("photo.artframe"), isChecked: showsBackdrop) { [weak self] in
+                guard let self else { return }
+                self.setBackdropShown(!self.showsBackdrop)
+            },
+
+            .separator,
+            .header("置き方・表示"),
+            .item(title: "最前面に表示", image: symbol("square.3.layers.3d.top.filled"), isChecked: isOnTop) { [weak self] in
                 guard let self else { return }
                 self.setOnTop(!self.isOnTop)
             },
-            .item(title: "クリックを透過する（下のアプリを操作できる）") { [weak self] in self?.setClickThrough(true) },
+            .item(title: "クリックを透過する（下のアプリを操作できる）", image: symbol("cursorarrow.rays")) { [weak self] in
+                self?.setClickThrough(true)
+            },
+            // 操作バーを出さないときは、ダブルクリックで編集モードに入るまで、画像の下に何も出さない（すべての画像に効く）
+            .item(title: "画像の下に操作バーを出す", image: symbol("rectangle.bottomthird.inset.filled"), isChecked: AppSettings.shared.showsQuickActions) {
+                AppSettings.shared.showsQuickActions.toggle()
+            },
+
             .separator,
-            .item(title: "閉じる", key: "w") { [weak self] in self?.close() },
+            .item(title: "撮った画像の履歴…", image: symbol("clock.arrow.circlepath")) { CaptureHistoryWindowController.shared.show() },
+
+            .separator,
+            .item(title: "閉じる", image: symbol("xmark"), key: "w") { [weak self] in self?.close() },
         ])
+    }
+
+    /// 拡大率の一覧（ツールバー・操作バーの拡大率と同じ選択肢。いちばん上は実際のサイズ）
+    private var zoomEntries: [MenuEntry] {
+        let current = Double(zoom)
+        return [.item(title: "実際のサイズ（100%）", key: "0") { [weak self] in self?.resetZoom() }, .separator]
+            + ViewControls.zoomPresets.map { value in
+                .item(title: ViewControls.percent(value), isChecked: abs(current - value) < 0.005) { [weak self] in
+                    self?.setZoom(CGFloat(value))
+                }
+            }
     }
 }
