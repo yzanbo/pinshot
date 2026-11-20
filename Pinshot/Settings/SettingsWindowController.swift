@@ -49,6 +49,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         if let tab, let tabs, let index = tabs.tabViewItems.firstIndex(where: { $0.label == tab }) {
             tabs.selectedTabViewItemIndex = index
         }
+        if let window { DockIcon.show(for: window) }
         NSApp.activate()
         window?.makeKeyAndOrderFront(nil)
     }

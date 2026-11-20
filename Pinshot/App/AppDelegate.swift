@@ -30,6 +30,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         app.run()
     }
 
+    /// Dock のアイコンを押したとき（設定・履歴を開いている間だけ Dock に出る）。開いているウィンドウを前に出す
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        DockIcon.bringWindowsToFront()
+        return false
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         // 使い方の画面などに出すアイコンを、アプリの中のアイコンにする（AppSupport.appIcon）
         if let icon = AppSupport.appIcon {

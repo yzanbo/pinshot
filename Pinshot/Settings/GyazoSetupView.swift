@@ -27,6 +27,7 @@ final class GyazoSetupWindowController: NSObject, NSWindowDelegate {
             self.window = window
             self.model = model
         }
+        if let window { DockIcon.show(for: window) }
         NSApp.activate()
         window?.makeKeyAndOrderFront(nil)
     }

@@ -14,8 +14,12 @@ enum AppSupport {
 
         let appItem = NSMenuItem()
         let appMenu = NSMenu()
-        let quit = appMenu.addItem(withTitle: "Pinshot を終了", action: #selector(QuitShortcut.quit(_:)), keyEquivalent: "q")
-        quit.target = QuitShortcut.shared
+        // Dock に出ている間（設定・履歴を開いている間）は、上のメニューバーにこのメニューが出る
+        let settings = appMenu.addItem(withTitle: "設定…", action: #selector(AppMenuActions.openSettings(_:)), keyEquivalent: ",")
+        settings.target = AppMenuActions.shared
+        appMenu.addItem(.separator())
+        let quit = appMenu.addItem(withTitle: "Pinshot を終了", action: #selector(AppMenuActions.quit(_:)), keyEquivalent: "q")
+        quit.target = AppMenuActions.shared
         appItem.submenu = appMenu
         mainMenu.addItem(appItem)
 
@@ -44,12 +48,18 @@ enum AppSupport {
     }
 }
 
+/// アプリのメニューの操作（設定…・終了）。
 /// ⌘Q で終了する。ただし浮かせた画像がキーのとき（撮った直後など）は終了しない。
 /// メニューバーには前のアプリ（Safari など）が出ているので、そのアプリを終了するつもりで押すことが多く、
 /// Pinshot が終了して、浮かせた画像が画面から消えてしまうため（戻す設定なら次の起動で戻るが、いま見ていたものは消える）
 @MainActor
-final class QuitShortcut: NSObject {
-    static let shared = QuitShortcut()
+final class AppMenuActions: NSObject {
+    static let shared = AppMenuActions()
+
+    /// 設定のウィンドウを開く（⌘,）
+    @objc func openSettings(_ sender: Any?) {
+        SettingsWindowController.shared.show()
+    }
 
     @objc func quit(_ sender: Any?) {
         if NSApp.keyWindow is PinPanel {

@@ -35,6 +35,7 @@ final class CaptureHistoryWindowController: NSObject, NSWindowDelegate {
         // 開いている間に期間を過ぎたものは、開き直したときに消す
         CaptureHistory.shared.pruneExpired()
         TextHistory.shared.pruneExpired()
+        if let window { DockIcon.show(for: window) }
         NSApp.activate()
         window?.makeKeyAndOrderFront(nil)
     }

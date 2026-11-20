@@ -41,6 +41,7 @@ final class WelcomeWindowController: NSObject {
         if let window, let hosting {
             window.setContentSize(hosting.fittingSize)
         }
+        if let window { DockIcon.show(for: window) }
         NSApp.activate()
         window?.makeKeyAndOrderFront(nil)
     }
