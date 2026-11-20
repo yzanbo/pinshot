@@ -3,7 +3,7 @@ import AppKit
 extension PinController {
     // MARK: - 右クリックメニュー
 
-    /// 右クリック（と操作バーの「…」）のメニュー。見出しで「編集・コピーと保存・見た目・置き方と表示・履歴」に分ける
+    /// 右クリック（と操作バーの「…」）のメニュー。見出しで「編集・コピーと保存・履歴・文字の読み取り・見た目・置き方と表示」に分ける
     func makeContextMenu() -> NSMenu {
         let opacityPercent = Int((panel.alphaValue * 100).rounded())
         let symbol = MenuEntry.symbol
@@ -20,6 +20,10 @@ extension PinController {
             },
             .item(title: "保存…", image: symbol("square.and.arrow.down"), key: "s") { [weak self] in self?.save() },
             .item(title: "アップロードしてリンクをコピー", image: symbol("link"), key: "u") { [weak self] in self?.uploadAndCopyLink() },
+
+            // 履歴だけの枠（見出しは付けない）。画像・文字・共有は、ウィンドウの上の帯で切り替える
+            .separator,
+            .item(title: "履歴…", image: symbol("clock.arrow.circlepath")) { [weak self] in self?.openHistory() },
 
             .separator,
             .header("文字の読み取り"),
@@ -57,9 +61,6 @@ extension PinController {
                 AppSettings.shared.showsQuickActions.toggle()
             },
 
-
-            .separator,
-            .item(title: "撮った画像の履歴…", image: symbol("clock.arrow.circlepath")) { CaptureHistoryWindowController.shared.show() },
 
             .separator,
             .item(title: "閉じる", image: symbol("xmark"), key: "w") { [weak self] in self?.close() },

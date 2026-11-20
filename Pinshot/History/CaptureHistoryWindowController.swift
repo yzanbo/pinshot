@@ -16,6 +16,8 @@ final class CaptureHistoryWindowController: NSObject, NSWindowDelegate {
 
     /// ウィンドウを開いて、tab の一覧を見せる（selecting を渡すと、文字の一覧でその 1 件を選ぶ）
     func show(tab: HistoryTab = .images, selecting id: UUID? = nil) {
+        // どこから開いても（ツールバー・右クリック・メニューバー・ショートカット・吹き出しなど）、編集中の画像は編集を終える
+        PinManager.shared.endEditing()
         state.tab = tab
         if tab == .texts, let id { textModel.reveal(id) }
         if window == nil {

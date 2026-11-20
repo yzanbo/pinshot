@@ -316,6 +316,11 @@ final class PinController: NSObject, NSWindowDelegate {
         canvas.showHUD(editing ? "編集モード" : "編集を終えました")
     }
 
+    /// 履歴のウィンドウを開く（編集中なら、開くときに編集を終える。CaptureHistoryWindowController.show が行う）
+    func openHistory() {
+        CaptureHistoryWindowController.shared.show()
+    }
+
     private func makeToolbarActions() -> ToolbarActions {
         ToolbarActions(
             undo: { [weak self] in self?.canvas.undo() },
@@ -326,7 +331,7 @@ final class PinController: NSObject, NSWindowDelegate {
             done: { [weak self] in self?.setEditing(false) },
             setOpacity: { [weak self] value in self?.setOpacity(CGFloat(value)) },
             setZoom: { [weak self] value in self?.setZoom(CGFloat(value)) },
-            openHistory: { CaptureHistoryWindowController.shared.show() },
+            openHistory: { [weak self] in self?.openHistory() },
             more: { [weak self] in self?.showMoreMenu() },
             setTextMarkLinePosition: { [weak self] position in
                 self?.state.textMarkStyle.linePosition = position

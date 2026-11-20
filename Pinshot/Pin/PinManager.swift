@@ -187,6 +187,13 @@ final class PinManager {
         }
     }
 
+    /// 編集中の画像があれば、編集を終える（書きかけの文字も確定する）。履歴のウィンドウを開くときに使う
+    func endEditing() {
+        for pin in pins where pin.state.isEditing {
+            pin.setEditing(false)
+        }
+    }
+
     func closeAll() {
         for pin in pins {
             pin.close()

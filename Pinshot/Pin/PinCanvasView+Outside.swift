@@ -80,7 +80,7 @@ extension PinCanvasView {
             save: { [weak self] in self?.controller?.save() },
             copyText: { [weak self] in self?.controller?.copyRecognizedText() },
             more: { [weak self] in self?.controller?.showMoreMenu() },
-            history: { CaptureHistoryWindowController.shared.show() },
+            history: { [weak self] in self?.controller?.openHistory() },
             move: { [weak self] in self?.controller?.moveWithHandle() },
             endMove: { [weak self] in self?.controller?.endMoveWithHandle() }
         )))
