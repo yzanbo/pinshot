@@ -319,7 +319,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
     @objc private func openAbout() {
         NSApp.activate()
         // 「Pinshot について」は、渡さないと macOS が覚えているアイコン（古いもの・仮のもの）を出すので、はっきり渡す
-        // 括弧で出るビルド番号（CFBundleVersion）は使っていないので出さず、「Version 0.1.0」だけにする
+        // 括弧で出るビルド番号（CFBundleVersion）は使っていないので出さず、「Version 0.2.0」のような版の番号だけにする
         var options: [NSApplication.AboutPanelOptionKey: Any] = [.version: ""]
         if let icon = AppSupport.appIcon {
             options[.applicationIcon] = icon

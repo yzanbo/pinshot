@@ -65,9 +65,10 @@ dist:
 	@echo "$(DIST_DMG) と $(DIST_ZIP) を作りました（版: $(RELEASE_NAME)）"
 
 # DMG と zip を作り、GitHub に Release（タグ v版）を作ってアップロードする（GitHub CLI を使う）。
+# 説明は「この版の変更」（scripts/release-changes.md。出すたびに書き直す）と「ダウンロードと開き方」をつなげる。
 # β 版のときは、説明の先頭に β 版の注意を付け、プレリリースにする
 publish: dist
-	( $(if $(BETA),cat scripts/release-notes-beta.md; echo;) cat scripts/release-notes.md ) > dist/release-notes.md
+	( $(if $(BETA),cat scripts/release-notes-beta.md; echo;) cat scripts/release-changes.md; echo; cat scripts/release-notes.md ) > dist/release-notes.md
 	gh release create "v$(RELEASE_NAME)" "$(DIST_DMG)" "$(DIST_ZIP)" "$(DIST_BASE).sha256" \
 		--target main --title "Pinshot $(RELEASE_NAME)$(if $(BETA), (β 版))" $(if $(BETA),--prerelease) \
 		--notes-file dist/release-notes.md
