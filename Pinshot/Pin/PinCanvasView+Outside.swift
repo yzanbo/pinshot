@@ -1,22 +1,22 @@
 import AppKit
 
-/// 部品を画像の外に出す（操作バーはいつも。単独の捨てるボタン・お知らせ・書き込みのバーは、画像が小さくて中に入らないとき）。
-/// 置き場所は部品ごとに決まっている（単独の捨てるボタンは左、操作バーは下、お知らせと書き込みのバーは上）
+/// 部品を画像の外に出す（閉じるボタンと操作バーはいつも。お知らせと書き込みのバーは、画像が小さくて中に入らないとき）。
+/// 置き場所は部品ごとに決まっている（閉じるボタンは左上の外側、操作バーは下、お知らせと書き込みのバーは上）
 extension PinCanvasView {
     // MARK: - 判定
 
-    /// 画像の外に出した部品（捨てるボタンと操作バー）の上に、マウスがあるか
+    /// 画像の外に出した部品（閉じるボタンと操作バー）の上に、マウスがあるか
     var isHoveringOutsideParts: Bool {
         (outsideClose?.isHovering ?? false) || (outsideQuickBar?.isHovering ?? false)
     }
 
-    // MARK: - 単独の捨てるボタン（画像の左。操作バーを出さない設定のとき）
+    // MARK: - 閉じるボタン（画像の左上の外側。編集中も出す）
 
     func updateOutsideClose(visible: Bool, hideDelay: TimeInterval) {
         if visible, outsideClose == nil, let window {
             let button = PinCloseButton(frame: NSRect(x: 0, y: 0, width: 20, height: 20))
             button.onClick = { [weak self] in self?.controller?.close() }
-            let accessory = PinAccessory(parent: window, placement: .left, gap: 4, content: button)
+            let accessory = PinAccessory(parent: window, placement: .topLeftOutside, gap: 1, content: button)
             accessory.onHoverChange = { [weak self] in self?.updateChrome() }
             outsideClose = accessory
         }
@@ -77,7 +77,7 @@ extension PinCanvasView {
 
     // MARK: - 置き直し
 
-    /// 画像を動かした・大きさを変えたとき、外に出している操作バーと捨てるボタンを置き直す
+    /// 画像を動かした・大きさを変えたとき、外に出している操作バーと閉じるボタンを置き直す
     /// （子ウィンドウは画像と一緒に動くだけなので、画面の下端に掛かったら画面のいちばん下へ移す）
     func repositionOutsideParts() {
         outsideQuickBar?.reposition()

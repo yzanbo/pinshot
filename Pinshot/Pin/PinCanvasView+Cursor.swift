@@ -33,8 +33,8 @@ extension PinCanvasView {
         guard isWindowFrontmostUnderMouse else { return }
         let viewPoint = convert(window.mouseLocationOutsideOfEventStream, from: nil)
         guard bounds.contains(viewPoint) else { return }
-        // 捨てるボタン・書き込みのバーの上は、それぞれのボタンがカーソルを決める
-        for subview in [closeButton, selectionBar].compactMap({ $0 }) where !subview.isHidden && subview.frame.contains(viewPoint) {
+        // 書き込みのバーの上は、そのボタンがカーソルを決める
+        for subview in [selectionBar].compactMap({ $0 }) where !subview.isHidden && subview.frame.contains(viewPoint) {
             return
         }
         cursor(at: viewPoint).set()

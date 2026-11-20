@@ -14,9 +14,10 @@ final class PinAppearance: ObservableObject {
     }
 }
 
-/// 浮かせた画像の下側に出す、よく使う操作のバー（不透明度・拡大率・コピー・保存・そのほか・編集・捨てる）。
-/// 並びは編集モードのツールバー（… 不透明度・拡大率 | コピー・保存 | 表示 完了 ゴミ箱）とそろえ、
-/// 「…」を表示のメニュー、「編集」を「完了」、ゴミ箱をゴミ箱と同じ位置に置く（編集に入る前と後で、同じ場所に同じ役割のボタンがある）。
+/// 浮かせた画像の下側に出す、よく使う操作のバー（不透明度・拡大率・コピー・保存・履歴・そのほか・編集）。
+/// 並びは編集モードのツールバー（… 不透明度・拡大率 | コピー・保存 | 履歴 表示 完了）とそろえ、
+/// 「…」を表示のメニュー、「編集」を「完了」と同じ位置に置く（編集に入る前と後で、同じ場所に同じ役割のボタンがある）。
+/// 閉じるボタン（×）は、画像の左上の外側に別に出す
 /// 画像を隠さないよう、いつも画像の外（下）に出す（PinCanvasView+Outside.swift）
 struct QuickActionBar: View {
     @ObservedObject var appearance: PinAppearance
@@ -26,8 +27,8 @@ struct QuickActionBar: View {
     var copy: () -> Void
     var save: () -> Void
     var more: () -> Void
-    /// 画像を捨てる（閉じる。メニューの「閉じた画像を戻す」で戻せる）
-    var close: () -> Void
+    /// 撮った画像の履歴を開く
+    var history: () -> Void
 
     private static let editHelp = "編集する（ダブルクリック・⌘E でも入れる）"
 
@@ -41,9 +42,9 @@ struct QuickActionBar: View {
             QuickActionButton(symbol: "doc.on.doc", help: "コピー（⌘C）", action: copy)
             QuickActionButton(symbol: "square.and.arrow.down", help: "保存（⌘S）", action: save)
             divider
+            QuickActionButton(symbol: "clock.arrow.circlepath", help: "撮った画像の履歴", action: history)
             QuickActionButton(symbol: "ellipsis", help: "そのほかの操作", action: more)
             editButton
-            QuickActionButton(symbol: "trash", help: "画像を捨てる（⌘W）：メニューの「閉じた画像を戻す」で戻せる", action: close)
         }
         .padding(3)
         .background(Capsule().fill(Color.black.opacity(0.6)))

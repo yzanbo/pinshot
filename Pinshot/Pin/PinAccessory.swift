@@ -1,6 +1,6 @@
 import AppKit
 
-/// 部品（操作バー・単独のゴミ箱・お知らせ・書き込みのバー）を、画像の外に出すウィンドウ（操作バーはいつも、ほかは画像が小さくて中に入らないとき）。
+/// 部品（閉じるボタン・操作バー・お知らせ・書き込みのバー）を、画像の外に出すウィンドウ（閉じるボタンと操作バーはいつも、ほかは画像が小さくて中に入らないとき）。
 /// 画像のウィンドウの子ウィンドウにして、画像と一緒に動かす。置き場所は部品ごとに決まっていて、画面の端では反対側に回す
 @MainActor
 final class PinAccessory {
@@ -11,6 +11,8 @@ final class PinAccessory {
         case below
         /// 画像の上（左右の真ん中）。入らなければ下
         case above
+        /// 画像の左上の角の外側（斜め左上）。画面の端で入らなければ、反対側・内側寄りに回す
+        case topLeftOutside
     }
 
     private let panel: OverlayPanel
@@ -112,8 +114,19 @@ final class PinAccessory {
         case .above:
             origin = NSPoint(x: frame.midX - size.width / 2, y: frame.maxY + gap)
             if origin.y + size.height > visible.maxY { origin.y = frame.minY - gap - size.height }
+        case .topLeftOutside:
+            // 丸いボタンの縁が、画像の角にちょうど触れるところに置く（四角い枠の角どうしを合わせるより、√2 倍ぶん寄せる）
+            let diagonal = gap - size.width / 2 * (1 - 1 / 2.squareRoot())
+            origin = NSPoint(x: frame.minX - diagonal - size.width, y: frame.maxY + diagonal)
+            // 左に入らなければ右上の外側
+            if origin.x < visible.minX { origin.x = frame.maxX + diagonal }
+            // 上に入らなければ角の横（上の端にそろえる）。このときは画像に重ならないよう、少し離す
+            if origin.y + size.height > visible.maxY {
+                origin.y = frame.maxY - size.height
+                origin.x = origin.x < frame.minX ? frame.minX - gap - size.width : frame.maxX + gap
+            }
         }
-        if placement != .left {
+        if placement != .left, placement != .topLeftOutside {
             // 左右は画面の中に収める
             origin.x = min(max(origin.x, visible.minX + 4), visible.maxX - size.width - 4)
         }

@@ -47,7 +47,7 @@ extension PinCanvasView {
         // テキストフィールドは文字の左に余白があるので、そのぶん左にずらす
         field.frame.origin = NSPoint(x: origin.x - TextFieldInsets.leading, y: origin.y)
 
-        addSubview(field, positioned: .below, relativeTo: closeButton)
+        addSubview(field, positioned: .below, relativeTo: selectionBar)
         textField = field
         updateSelectionBar()
         resizeTextField(field)

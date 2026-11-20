@@ -299,9 +299,9 @@ final class PinController: NSObject, NSWindowDelegate {
             copy: { [weak self] in self?.copyToPasteboard() },
             save: { [weak self] in self?.save() },
             done: { [weak self] in self?.setEditing(false) },
-            close: { [weak self] in self?.close() },
             setOpacity: { [weak self] value in self?.setOpacity(CGFloat(value)) },
             setZoom: { [weak self] value in self?.setZoom(CGFloat(value)) },
+            openHistory: { CaptureHistoryWindowController.shared.show() },
             move: { [weak self] in self?.toolbar.moveWithMouse() },
             endMove: { [weak self] in self?.toolbar.endMoveWithMouse() }
         )

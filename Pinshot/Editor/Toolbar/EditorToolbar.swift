@@ -6,10 +6,10 @@ struct ToolbarActions {
     var copy: @MainActor () -> Void
     var save: @MainActor () -> Void
     var done: @MainActor () -> Void
-    /// 画像を閉じる（編集中でもそのまま閉じる。メニューの「閉じた画像を戻す」で戻せる）
-    var close: @MainActor () -> Void
     var setOpacity: (Double) -> Void
     var setZoom: (Double) -> Void
+    /// 撮った画像の履歴を開く
+    var openHistory: @MainActor () -> Void
     /// つまみのドラッグで動かす（最初の呼び出しでマウスと位置を覚え、そこからの差で動かす）。
     /// ツールバーが画像に付いているときは画像ごと、切り離しているときはツールバーだけを動かす
     var move: @MainActor () -> Void
@@ -99,6 +99,7 @@ struct EditorToolbar: View {
 
             ToolbarDivider()
 
+            ToolbarIconButton(state: state, symbol: "clock.arrow.circlepath", hint: "撮った画像の履歴：これまでに撮った画像を一覧で見る・もう一度浮かせる", action: actions.openHistory)
             layoutMenu
 
             Button {
@@ -115,9 +116,6 @@ struct EditorToolbar: View {
             .buttonStyle(.plain)
             .padding(.leading, 4)
             .hint("編集を終える（esc・⌘E）", state: state)
-
-            // 右端に、画像ごと捨てるボタン（ゴミ箱。メニューの「閉じた画像を戻す」で戻せる）
-            ToolbarIconButton(state: state, symbol: "trash", hint: "画像を捨てる（⌘W）：書き込みごと閉じる。メニューの「閉じた画像を戻す」で戻せる", action: actions.close)
         }
     }
 

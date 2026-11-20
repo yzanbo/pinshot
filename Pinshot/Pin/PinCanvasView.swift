@@ -97,7 +97,6 @@ final class PinCanvasView: NSView, NSTextFieldDelegate, NSDraggingSource {
     /// space を押している間はドラッグで画像を動かす
     var isSpaceHeld = false
     private var isHovering = false
-    let closeButton = PinCloseButton(frame: NSRect(x: 6, y: 6, width: 20, height: 20))
     private let hud = HUDView(frame: .zero)
     var selectionBar: NSView?
 
@@ -115,11 +114,6 @@ final class PinCanvasView: NSView, NSTextFieldDelegate, NSDraggingSource {
         self.baseNSImage = NSImage(cgImage: image, size: imageSize)
         self.document = AnnotationDocument(imageSize: imageSize)
         super.init(frame: NSRect(origin: .zero, size: imageSize))
-
-        // 左上に固定（flipped なので下の余白を伸ばす）
-        closeButton.autoresizingMask = [.maxXMargin, .maxYMargin]
-        closeButton.onClick = { [weak self] in self?.controller?.close() }
-        addSubview(closeButton)
 
         addSubview(hud)
         updateChrome()
@@ -180,7 +174,7 @@ final class PinCanvasView: NSView, NSTextFieldDelegate, NSDraggingSource {
                 guard let menu = self?.controller?.makeContextMenu() else { return }
                 menu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
             },
-            close: { [weak self] in self?.controller?.close() }
+            history: { CaptureHistoryWindowController.shared.show() }
         )
     }
 
@@ -249,9 +243,9 @@ final class PinCanvasView: NSView, NSTextFieldDelegate, NSDraggingSource {
         return annotations.lastIndex { $0.hitTest(point, tolerance: tolerance) }
     }
 
-    // MARK: - 見た目（捨てるボタン・枠・HUD）
+    // MARK: - 見た目（閉じるボタン・枠・HUD）
 
-    /// 捨てるボタン・操作バーの表示を、設定・マウスの位置・編集中かどうかに合わせる
+    /// 閉じるボタン・操作バーの表示を、設定・マウスの位置・編集中かどうかに合わせる
     func updateChrome() {
         // マウスを乗せたときだけ出す設定では、画像の外に出した部品の上にマウスがあるときも「乗せている」とみなす
         let hovering = isHovering || isHoveringOutsideParts
@@ -265,12 +259,8 @@ final class PinCanvasView: NSView, NSTextFieldDelegate, NSDraggingSource {
         // 画像の外の部品は、マウスを乗せたときだけ出す設定では、画像から部品へマウスを動かす間に消えないよう、少し待って隠す
         let hideDelay: TimeInterval = settings.closeButtonMode == .hover ? 0.6 : 0
 
-        // 捨てるボタン（ゴミ箱）は操作バーの右端に入れる。操作バーを出さない設定のときだけ、左上に単独で出す
-        // （中に入らないほど小さいときは、画像の左に出す）
-        let showsStandaloneClose = visible && !editing && !settings.showsQuickActions
-        let closeFits = bounds.width >= 44 && bounds.height >= 32
-        closeButton.isHidden = !(showsStandaloneClose && closeFits)
-        updateOutsideClose(visible: showsStandaloneClose && !closeFits && !clickThrough, hideDelay: hideDelay)
+        // 閉じるボタン（×）：画像を隠さないよう、編集中かどうかに関係なく、画像の左上の外側に出す
+        updateOutsideClose(visible: visible && !clickThrough, hideDelay: hideDelay)
 
         // 操作バー：画像を隠さないよう、どんな大きさの画像でも画像の外（下。画面に入らなければ上）に出す
         let showsBar = settings.showsQuickActions && visible && !editing
