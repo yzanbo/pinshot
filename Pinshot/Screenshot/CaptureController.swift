@@ -89,16 +89,16 @@ final class CaptureController {
             if timer > 0 {
                 await CountdownPanel.run(seconds: timer, on: screen(of: target))
             }
-            // タイマーを使ったときは、待ったあとの画面を撮り直す
-            let content = try await ScreenCapturer.shareableContent()
-
+            // タイマーを使ったときは、待ったあとの画面を撮り直す（使わないときは、範囲を選ぶ前に撮った画面を使う）。
+            // 画面に出ているものの一覧（shareableContent）は、撮り直すときだけ取る（撮ってある画面を使うときは待たない）
             switch target {
             case .region(let screen, let rect):
-                guard let shot = try await shot(of: screen, shots: shots, fresh: timer > 0, content: content),
+                guard let shot = try await shot(of: screen, shots: shots, fresh: timer > 0),
                       let cropped = ScreenCapturer.crop(shot, to: rect) else { return }
                 PinManager.shared.pin(image: cropped.image, imageSize: cropped.size, frame: rect)
 
             case .window(let info):
+                let content = try await ScreenCapturer.shareableContent()
                 if let captured = try await ScreenCapturer.captureWindow(id: info.id, content: content) {
                     let frame = NSRect(origin: info.frame.origin, size: captured.size)
                     PinManager.shared.pin(image: captured.image, imageSize: captured.size, frame: frame)
@@ -114,7 +114,7 @@ final class CaptureController {
                 RecordingController.shared.start(screen: screen, rect: rect)
 
             case .screen(let screen):
-                guard let shot = try await shot(of: screen, shots: shots, fresh: timer > 0, content: content) else { return }
+                guard let shot = try await shot(of: screen, shots: shots, fresh: timer > 0) else { return }
                 // 画面全体は大きいので、半分の大きさで画面の真ん中に浮かせる
                 let size = screen.frame.size
                 let zoom: CGFloat = 0.5
@@ -131,11 +131,18 @@ final class CaptureController {
         }
     }
 
-    private func shot(of screen: NSScreen, shots: [ScreenShot], fresh: Bool, content: SCShareableContent) async throws -> ScreenShot? {
+    /// screen の画面。fresh でなければ、範囲を選ぶ前に撮った画面を使う。撮り直すときは content（なければ取り直す）で撮る
+    private func shot(of screen: NSScreen, shots: [ScreenShot], fresh: Bool, content: SCShareableContent? = nil) async throws -> ScreenShot? {
         if !fresh, let shot = shots.first(where: { $0.screen == screen }) {
             return shot
         }
-        return try await ScreenCapturer.capture(screen: screen, content: content)
+        let current: SCShareableContent
+        if let content {
+            current = content
+        } else {
+            current = try await ScreenCapturer.shareableContent()
+        }
+        return try await ScreenCapturer.capture(screen: screen, content: current)
     }
 
     private func screen(of target: CaptureTarget) -> NSScreen? {
