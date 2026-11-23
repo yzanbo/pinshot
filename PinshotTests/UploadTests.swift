@@ -1,5 +1,21 @@
 import XCTest
 
+/// 録画を GIF にして上げるときの大きさと、進み具合の知らせの文
+final class GIFUploadRulesTests: XCTestCase {
+    func testGIFSizeLimit() {
+        XCTAssertTrue(UploadRules.fitsGIFUpload(bytes: UploadRules.gifMaxBytes))
+        XCTAssertFalse(UploadRules.fitsGIFUpload(bytes: UploadRules.gifMaxBytes + 1))
+    }
+
+    func testStatusText() {
+        XCTAssertEqual(UploadStatus.working("Gyazo に上げています…", progress: 0.454).displayText, "Gyazo に上げています… 45%")
+        XCTAssertEqual(UploadStatus.working("GIF を作っています…", progress: nil).displayText, "GIF を作っています…")
+        XCTAssertEqual(UploadStatus.finished("リンクをコピーしました").displayText, "リンクをコピーしました")
+        XCTAssertTrue(UploadStatus.working("", progress: nil).isWorking)
+        XCTAssertFalse(UploadStatus.finished("").isWorking)
+    }
+}
+
 /// クリップボードに入れる文・ファイル名・multipart の本文
 final class UploadRulesTests: XCTestCase {
     private let page = URL(string: "https://gyazo.com/abc")!

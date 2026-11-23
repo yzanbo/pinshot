@@ -46,6 +46,15 @@ enum RecordingRules {
     /// GIF の長い辺の上限（ピクセル。GIF は大きいと重いため）
     static let gifMaxSide: CGFloat = 800
 
+    /// GIF を上げるときに試す作り方（上から順に。大きすぎたら、次の小さい作り方で作り直す）。
+    /// いちばん上は「GIF で保存」と同じ。下へ行くほど、長い辺・1 秒あたりのコマ・コマの数の上限を小さくする
+    static let gifUploadSteps: [GIFSettings] = [
+        .standard,
+        GIFSettings(maxSide: 640, framesPerSecond: 8, maxFrames: 400),
+        GIFSettings(maxSide: 480, framesPerSecond: 6, maxFrames: 300),
+        GIFSettings(maxSide: 360, framesPerSecond: 5, maxFrames: 200),
+    ]
+
     /// 残す決まりから外れた録画（期間を過ぎたもの・数を超えた古いもの）。期間を過ぎたものは、数に数えない
     static func expired(_ files: [(url: URL, date: Date)], now: Date, period: TimeInterval?, keep: Int) -> [URL] {
         var kept = 0
@@ -59,6 +68,23 @@ enum RecordingRules {
     /// 本数と容量（例: 「12 本・340 MB」。なければ「なし」）
     static func summaryText(count: Int, bytes: Int64) -> String {
         count == 0 ? "なし" : "\(count) 本・\(ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file))"
+    }
+}
+
+/// GIF の作り方（長い辺の上限・1 秒あたりのコマの数・コマの数の上限）
+struct GIFSettings: Equatable {
+    /// 長い辺の上限（ピクセル。元より大きくはしない）
+    var maxSide: CGFloat
+    /// 1 秒あたりのコマの数（長い録画は、コマが maxFrames を超えないよう下げる）
+    var framesPerSecond: Double
+    var maxFrames: Int
+
+    /// 「GIF で保存」の作り方（長い辺 800・1 秒 10 コマ・600 コマまで）
+    static let standard = GIFSettings(maxSide: RecordingRules.gifMaxSide, framesPerSecond: 10, maxFrames: 600)
+
+    /// duration 秒の録画で使う、1 秒あたりのコマの数
+    func framesPerSecond(duration: TimeInterval) -> Double {
+        RecordingRules.gifFramesPerSecond(duration: duration, preferred: framesPerSecond, maxFrames: maxFrames)
     }
 }
 

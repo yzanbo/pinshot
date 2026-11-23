@@ -40,6 +40,27 @@ final class RecordingRulesTests: XCTestCase {
         XCTAssertEqual(RecordingRules.gifFrameTimes(duration: 0, framesPerSecond: 4), [0])
     }
 
+    /// GIF を上げるときの作り方：最初は「GIF で保存」と同じで、あとほど小さくなる（大きすぎたら作り直すため）
+    func testGIFUploadStepsGetSmaller() {
+        let steps = RecordingRules.gifUploadSteps
+        XCTAssertEqual(steps.first, .standard)
+        XCTAssertGreaterThanOrEqual(steps.count, 2)
+        for (larger, smaller) in zip(steps, steps.dropFirst()) {
+            XCTAssertLessThan(smaller.maxSide, larger.maxSide)
+            XCTAssertLessThan(smaller.framesPerSecond, larger.framesPerSecond)
+            XCTAssertLessThan(smaller.maxFrames, larger.maxFrames)
+        }
+    }
+
+    func testGIFSettingsFramesPerSecond() {
+        let small = GIFSettings(maxSide: 360, framesPerSecond: 5, maxFrames: 200)
+        XCTAssertEqual(small.framesPerSecond(duration: 10), 5)
+        // 1 分なら 200 コマに収めるため 1 秒 3.33… コマ、長くても 2 コマより下げない
+        XCTAssertEqual(small.framesPerSecond(duration: 60), 200.0 / 60, accuracy: 0.001)
+        XCTAssertEqual(small.framesPerSecond(duration: 600), 2)
+        XCTAssertEqual(GIFSettings.standard.framesPerSecond(duration: 120), RecordingRules.gifFramesPerSecond(duration: 120))
+    }
+
     func testGIFSizeFitsLongestSide() {
         // 長い辺を 800 に収める（元より大きくはしない）
         XCTAssertEqual(CGSize(width: 1600, height: 900).fittingLongestSide(RecordingRules.gifMaxSide), CGSize(width: 800, height: 450))
@@ -121,6 +142,40 @@ final class GIFExporterTests: XCTestCase {
         XCTAssertEqual(gifProperties?[kCGImagePropertyGIFLoopCount] as? Int, 0, "くり返し再生する")
         let first = try XCTUnwrap(CGImageSourceCreateImageAtIndex(source, 0, nil))
         XCTAssertEqual(first.width, 64)
+    }
+
+    /// 一時フォルダに GIF を作って場所を返す（消すのは呼ぶ側）。最初のコマは、上げたものの一覧の縮小画像に使う
+    @MainActor
+    func testTemporaryGIFAndFirstFrame() async throws {
+        let video = try await makeVideo(seconds: 1, fps: 10, size: CGSize(width: 64, height: 48))
+        defer { try? FileManager.default.removeItem(at: video) }
+        let gif = try await GIFExporter.exportToTemporaryFile(videoAt: video) { _ in }
+        defer { try? FileManager.default.removeItem(at: gif) }
+        XCTAssertTrue(FileManager.default.fileExists(atPath: gif.path))
+        XCTAssertEqual(gif.deletingLastPathComponent().standardizedFileURL, FileManager.default.temporaryDirectory.standardizedFileURL)
+        XCTAssertEqual(gif.pathExtension, "gif")
+        let frame = await GIFExporter.firstFrame(of: video)
+        XCTAssertEqual(frame?.width, 64)
+    }
+
+    /// 小さい作り方では、コマが少なく、長い辺も小さくなる（上げるときに大きすぎたら、これで作り直す）
+    func testSmallerSettingsMakeSmallerGIF() async throws {
+        let video = try await makeVideo(seconds: 2, fps: 10, size: CGSize(width: 640, height: 480))
+        let standard = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString).gif")
+        let small = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString).gif")
+        defer {
+            [video, standard, small].forEach { try? FileManager.default.removeItem(at: $0) }
+        }
+        try await GIFExporter.export(videoAt: video, to: standard) { _ in }
+        try await GIFExporter.export(videoAt: video, to: small, settings: RecordingRules.gifUploadSteps.last!) { _ in }
+        let standardSource = try XCTUnwrap(CGImageSourceCreateWithURL(standard as CFURL, nil))
+        let smallSource = try XCTUnwrap(CGImageSourceCreateWithURL(small as CFURL, nil))
+        XCTAssertEqual(CGImageSourceGetCount(standardSource), 20)
+        XCTAssertEqual(CGImageSourceGetCount(smallSource), 10, "2 秒 × 1 秒 5 コマ")
+        XCTAssertEqual(try XCTUnwrap(CGImageSourceCreateImageAtIndex(smallSource, 0, nil)).width, 360)
+        let standardBytes = try Data(contentsOf: standard).count
+        let smallBytes = try Data(contentsOf: small).count
+        XCTAssertLessThan(smallBytes, standardBytes)
     }
 }
 

@@ -23,7 +23,7 @@ Pinshot/
 │   ├── ScreenRecorder        画面を受け取って MP4 に書く（ScreenCaptureKit の SCStream → AVAssetWriter）
 │   ├── RecordingController   録画を始める・止める入口（赤い点線の枠・操作パネル・上限）
 │   ├── RecordingStore        アプリの中に残す録画（期間と数で古いものを削除・本数と容量）
-│   ├── RecordingPlayer       録画を浮かせてくり返し再生する窓（見た目は浮かせた画像にそろえる：左上の外の ×・下の操作バーと左端の ✙。再生・一時停止・位置のつまみ・コピー・MP4 / GIF で保存・Finder で表示）
+│   ├── RecordingPlayer       録画を浮かせてくり返し再生する窓（見た目は浮かせた画像にそろえる：左上の外の ×・下の操作バーと左端の ✙。再生・一時停止・位置のつまみ・コピー・MP4 / GIF で保存・GIF にして上げる・Finder で表示）
 │   ├── GIFExporter           録画から GIF を作る（テストあり）
 │   └── CaptureOutline        録画している範囲の外側の赤い点線の枠（録画には写らない）
 ├── Pin/            最前面に浮かぶウィンドウと、画像の表示・操作
@@ -43,7 +43,7 @@ Pinshot/
 ├── Upload/         アップロードして共有リンク（いまは Gyazo。ほかの保存先を足せるように分けてある）
 │   ├── UploadTypes・UploadRules  保存先の種類・できること・上げたファイル・共有リンク・コピーする形・失敗の知らせ、コピーする文・ファイル名・トークンらしさ・multipart の本文（テストあり）
 │   ├── UploadDestination     保存先の protocol（上げる・共有リンク・消す・ログアウト）と、使える保存先の一覧
-│   ├── UploadCenter          どの保存先でも同じ流れ（上げる → リンク → コピー → 履歴 → 知らせる・進み具合・自動で上げる）
+│   ├── UploadCenter          どの保存先でも同じ流れ（上げる → リンク → コピー → 履歴 → 知らせる・進み具合・自動で上げる）と、録画を GIF にして上げる流れ（大きすぎたら小さく作り直す）
 │   ├── UploadHistoryEntry・UploadHistory  上げたものの 1 件と決まり（テストあり）、その保存（~/Library/Application Support/Pinshot/Uploads に一覧の JSON と縮小画像）
 │   ├── UploadHTTP・UploadNotifier  通信と返事の番号の読み替え・送った割合、macOS の通知
 │   ├── Destinations/GyazoDestination  Gyazo（利用者が貼ったアクセストークンで上げる・消す）

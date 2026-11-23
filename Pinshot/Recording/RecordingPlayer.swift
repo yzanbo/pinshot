@@ -5,7 +5,8 @@ import SwiftUI
 
 /// 録画を浮かせて、くり返し再生する窓（画像を浮かせるのと同じく、ほかのウィンドウより前に出す）。
 /// 見た目は浮かせた画像にそろえる：動画の左上の外側に閉じるボタン（×）、動画の下に操作バー（黒い半透明の台）。
-/// 操作バーから、再生・一時停止・好きな所へ動かす、コピー（ファイルとして貼り付けられる）・MP4 で保存・GIF で保存・Finder で表示、ができる
+/// 操作バーから、再生・一時停止・好きな所へ動かす、コピー（ファイルとして貼り付けられる）・MP4 で保存・GIF で保存・
+/// GIF にして上げて共有リンクをコピー・Finder で表示、ができる
 @MainActor
 final class RecordingPlayer: NSObject, NSWindowDelegate {
     /// 開いている窓（閉じたら手放す）
@@ -74,6 +75,8 @@ final class RecordingPlayerModel: ObservableObject {
     @Published private(set) var duration: Double = 0
     /// GIF を作っている途中の進み具合（0〜1。作っていなければ nil）
     @Published private(set) var gifProgress: Double?
+    /// GIF にして上げている途中か（終わるまで、上げるボタンは押せない）
+    @Published private(set) var isUploading = false
     /// 操作したあとの短い知らせ
     @Published private(set) var notice: String?
     /// 動画にマウスを乗せているか（乗せている間は、浮かせた画像と同じく細い白い枠を出す）
@@ -164,14 +167,13 @@ final class RecordingPlayerModel: ObservableObject {
     /// GIF を作って保存する（作っている間は、進み具合を出す）
     func saveGIF() {
         guard gifProgress == nil else { return }
-        let temporary = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString).gif")
         let name = (url.deletingPathExtension().lastPathComponent as NSString).appendingPathExtension("gif") ?? "Pinshot.gif"
         gifProgress = 0
         let source = url
         exportTask = Task { [weak self] in
             do {
-                try await GIFExporter.export(videoAt: source, to: temporary) { value in
-                    Task { @MainActor in self?.gifProgress = value }
+                let temporary = try await GIFExporter.exportToTemporaryFile(videoAt: source) { value in
+                    self?.gifProgress = value
                 }
                 guard let self, !Task.isCancelled else {
                     try? FileManager.default.removeItem(at: temporary)
@@ -188,7 +190,6 @@ final class RecordingPlayerModel: ObservableObject {
                 )
             } catch {
                 self?.gifProgress = nil
-                try? FileManager.default.removeItem(at: temporary)
                 if !(error is CancellationError) {
                     AppAlert.inform("GIF を作れませんでした", detail: error.localizedDescription)
                 }
@@ -196,13 +197,27 @@ final class RecordingPlayerModel: ObservableObject {
         }
     }
 
+    /// GIF にして上げ、共有リンクをコピーする（上げる先は設定の「共有」）。
+    /// 大きすぎたら小さくして作り直す・上げられなかったら知らせるのは、UploadCenter が行う
+    func uploadGIF() {
+        guard !isUploading else { return }
+        isUploading = true
+        UploadCenter.shared.shareGIF(fromMovieAt: url) { [weak self] status in
+            guard let self else { return }
+            self.show(status.displayText, sticky: status.isWorking)
+            if !status.isWorking { self.isUploading = false }
+        }
+    }
+
     func revealInFinder() {
         NSWorkspace.shared.activateFileViewerSelecting([url])
     }
 
-    private func show(_ text: String) {
+    /// 短い知らせを出す（sticky なら、次の知らせを出すまで消さない。上げている途中など）
+    private func show(_ text: String, sticky: Bool = false) {
         notice = text
         noticeTask?.cancel()
+        guard !sticky else { return }
         noticeTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(1.8))
             guard !Task.isCancelled else { return }
@@ -282,6 +297,13 @@ private struct RecordingPlayerView: View {
             QuickActionButton(symbol: "doc.on.doc", help: "コピー（ファイルとして貼り付けられる）", action: model.copy)
             QuickActionButton(symbol: "square.and.arrow.down", help: "MP4 で保存", action: model.saveMovie)
             gifButton
+            QuickActionButton(
+                symbol: "link",
+                help: "GIF にして \(UploadDestinations.current?.id.label ?? "上げる先") に上げ、共有リンクをコピー（上げる先は設定の「共有」。大きいときは小さくして上げる）",
+                action: model.uploadGIF
+            )
+            .disabled(model.isUploading)
+            .opacity(model.isUploading ? 0.4 : 1)
             QuickActionButton(symbol: "folder", help: "Finder で表示", action: model.revealInFinder)
         }
         .quickActionBarBackground()

@@ -123,3 +123,32 @@ enum UploadError: LocalizedError, Equatable {
         }
     }
 }
+
+/// アップロードの進み具合と結果の知らせ
+enum UploadStatus {
+    /// 途中（知らせを出したままにする。progress は進み具合 0〜1（送った割合・GIF を作った割合）。分からなければ nil）
+    case working(String, progress: Double?)
+    /// 終わった・やめた（少したつと消える）
+    case finished(String)
+
+    var text: String {
+        switch self {
+        case .working(let text, _), .finished(let text): text
+        }
+    }
+
+    var isWorking: Bool {
+        if case .working = self { return true }
+        return false
+    }
+
+    var progress: Double? {
+        if case .working(_, let progress) = self { return progress }
+        return nil
+    }
+
+    /// 出す文（割合が分かっていれば「Gyazo に上げています… 45%」のように添える）
+    var displayText: String {
+        progress.map { "\(text) \(Int(($0 * 100).rounded()))%" } ?? text
+    }
+}

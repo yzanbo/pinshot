@@ -275,8 +275,7 @@ final class PinCanvasView: NSView, NSTextFieldDelegate, NSDraggingSource {
 
     /// アップロードの進み具合（途中は、終わるまでゲージ付きで出したままにする）
     func showUploadStatus(_ status: UploadStatus) {
-        let text = status.progress.map { "\(status.text) \(Int(($0 * 100).rounded()))%" } ?? status.text
-        showHUD(text, progress: status.progress, sticky: status.isWorking)
+        showHUD(status.displayText, progress: status.progress, sticky: status.isWorking)
     }
 
     override func setFrameSize(_ newSize: NSSize) {

@@ -26,6 +26,18 @@ enum UploadRules {
         return token.unicodeScalars.allSatisfy { allowed.contains($0) }
     }
 
+    // MARK: - GIF を上げるときの大きさ
+
+    /// 録画を GIF にして上げるときの、Pinshot で決める大きさの上限（バイト）。
+    /// 上げる先の上限は資料に数字が書かれていないので、貼った先で重くなりすぎない大きさを Pinshot で決める。
+    /// これを超えたら、小さい作り方（RecordingRules.gifUploadSteps）で作り直す
+    static let gifMaxBytes = 10_000_000
+
+    /// 作った GIF（bytes バイト）を、このまま上げてよいか
+    static func fitsGIFUpload(bytes: Int) -> Bool {
+        bytes <= gifMaxBytes
+    }
+
     // MARK: - ファイル名
 
     /// 保存先に付けるファイル名（例: 「Pinshot-2026-11-20-154012.png」）。

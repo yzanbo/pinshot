@@ -93,7 +93,7 @@ struct ShareSettingsView: View {
                 Text(id.label).tag(UploadDestinationID?.some(id))
             }
         } label: {
-            SettingTitle("上げる先", info: "Gyazo：あなたの Gyazo に入ります（誰でも見られる設定で上げます）。動画は上げられません。")
+            SettingTitle("上げる先", info: "Gyazo：あなたの Gyazo に入ります（誰でも見られる設定で上げます）。動画（MP4）は上げられないので、録画は浮かせた録画の窓から GIF にして上げます。")
         }
     }
 
