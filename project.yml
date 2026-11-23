@@ -25,7 +25,7 @@ targets:
         CFBundleLocalizations:
           - ja
         CFBundleShortVersionString: "0.4.0"
-        CFBundleVersion: "4"
+        CFBundleVersion: "5"
         # Dock に出さず、メニューバーだけに常駐する
         LSUIElement: true
         # 録画にマイクの音を入れるときに、macOS の確かめるダイアログに出す説明
