@@ -55,13 +55,19 @@ enum RecordingRules {
         GIFSettings(maxSide: 360, framesPerSecond: 5, maxFrames: 200),
     ]
 
-    /// 残す決まりから外れた録画（期間を過ぎたもの・数を超えた古いもの）。期間を過ぎたものは、数に数えない
-    static func expired(_ files: [(url: URL, date: Date)], now: Date, period: TimeInterval?, keep: Int) -> [URL] {
+    /// 残す決まりから外れた録画（期間を過ぎたもの・数を超えた古いもの・合計が maxBytes を超えた古いもの）。
+    /// 期間を過ぎたものは、数と容量に数えない。いちばん新しいものは、それだけで容量を超えていても残す（止めたばかりで、浮かせて再生しているため）。
+    /// 容量を超えたら、それより古いものはすべて外す（新しいものを消して、古い小さなものを残すことはしない）
+    static func expired(_ files: [RecordingFile], now: Date, period: TimeInterval?, keep: Int, maxBytes: Int64? = nil) -> [URL] {
         var kept = 0
+        var keptBytes: Int64 = 0
+        var isOverSize = false
         return files.sorted { $0.date > $1.date }.compactMap { file in
             if let period, now.timeIntervalSince(file.date) > period { return file.url }
             kept += 1
-            return kept > keep ? file.url : nil
+            keptBytes += file.bytes
+            if let maxBytes, kept > 1, keptBytes > maxBytes { isOverSize = true }
+            return kept > keep || isOverSize ? file.url : nil
         }
     }
 
@@ -145,6 +151,25 @@ struct GIFSettings: Equatable {
     func framesPerSecond(duration: TimeInterval) -> Double {
         RecordingRules.gifFramesPerSecond(duration: duration, preferred: framesPerSecond, maxFrames: maxFrames)
     }
+}
+
+/// アプリの中に残している録画のファイル 1 つ（場所・作った日時・大きさ）
+struct RecordingFile: Equatable {
+    var url: URL
+    var date: Date
+    var bytes: Int64
+}
+
+/// 録画をアプリの中に残す容量の合計の上限（GB。Finder と同じく 1 GB = 10 億バイト）
+enum RecordingSizeLimit: Int, CaseIterable, Identifiable {
+    case two = 2
+    case five = 5
+    case ten = 10
+    case twenty = 20
+
+    var id: Int { rawValue }
+    var label: String { "\(rawValue) GB まで" }
+    var bytes: Int64 { Int64(rawValue) * 1_000_000_000 }
 }
 
 /// 録画をアプリの中に残す数の上限

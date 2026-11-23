@@ -22,7 +22,7 @@ Pinshot/
 │   ├── RecordingRules        録画の決まり（大きさを偶数に・座標・時間の表示・ファイル名・GIF のコマ数と大きさ・古い録画の整理・録画の音の選択肢 RecordingAudio。テストあり）
 │   ├── ScreenRecorder        画面（と Mac の音・マイクの音）を受け取って MP4 に書く（ScreenCaptureKit の SCStream → AVAssetWriter。両方の音のときは、止めたあとに AudioMixdown で 1 本に混ぜる）
 │   ├── RecordingController   録画を始める・止める入口（赤い点線の枠・操作パネル・上限）
-│   ├── RecordingStore        アプリの中に残す録画（期間と数で古いものを削除・本数と容量）
+│   ├── RecordingStore        アプリの中に残す録画（期間・数・容量の上限で古いものを削除・本数と容量）
 │   ├── RecordingPlayer       録画を浮かせてくり返し再生する窓（見た目は浮かせた画像にそろえる：左上の外の ×・下の操作バーと左端の ✙。再生・一時停止・位置のつまみ・音を出す / 消す・コピー・MP4 / GIF で保存・GIF にして上げる・Finder で表示）
 │   ├── MicrophoneCapture     マイクの音を受け取る（AVCaptureSession。時刻を画面のコマと同じホストの時計に直す）
 │   ├── AudioMixdown          Mac の音とマイクの 2 本の音を 1 本に混ぜて書き直す（映像はそのまま。テストあり）
@@ -46,7 +46,7 @@ Pinshot/
 │   ├── UploadTypes・UploadRules  保存先の種類・できること・上げたファイル・共有リンク・コピーする形・失敗の知らせ、コピーする文・ファイル名・トークンらしさ・multipart の本文（テストあり）
 │   ├── UploadDestination     保存先の protocol（上げる・共有リンク・消す・ログアウト）と、使える保存先の一覧
 │   ├── UploadCenter          どの保存先でも同じ流れ（上げる → リンク → コピー → 履歴 → 知らせる・進み具合・自動で上げる）と、録画を GIF にして上げる流れ（大きすぎたら小さく作り直す）
-│   ├── UploadHistoryEntry・UploadHistory  上げたものの 1 件と決まり（テストあり）、その保存（~/Library/Application Support/Pinshot/Uploads に一覧の JSON と縮小画像）
+│   ├── UploadHistoryEntry・UploadHistory  上げたものの 1 件と決まり（テストあり）、その保存（~/Library/Application Support/Pinshot/Uploads に一覧の JSON と縮小画像。新しい 1000 件まで）
 │   ├── UploadHTTP・UploadNotifier  通信と返事の番号の読み替え・送った割合、macOS の通知
 │   ├── Destinations/GyazoDestination  Gyazo（利用者が貼ったアクセストークンで上げる・消す）
 │   └── OAuth/                OAuth 2.0 の共通の部品（PKCE・ログインの画面・localhost の受け口・許可証の取り直し・キーチェーン）。いまは使う保存先がないが、ほかの保存先を足すときに使う（テストあり）

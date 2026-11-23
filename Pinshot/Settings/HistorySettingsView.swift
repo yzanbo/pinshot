@@ -43,6 +43,7 @@ struct HistorySettingsView: View {
                     keeps: nil,
                     period: $settings.recordingPeriod,
                     limit: $settings.recordingLimit,
+                    sizeLimit: $settings.recordingSizeLimit,
                     amount: recordings.summaryText,
                     open: nil,
                     folder: recordings.folder,
@@ -50,7 +51,7 @@ struct HistorySettingsView: View {
                     removeAll: recordings.confirmRemoveAll
                 )
             } header: {
-                SettingTitle("残し方", info: "どれも、この Mac の中（~/Library/Application Support/Pinshot）にだけ置きます。期間を過ぎたもの・数を超えた古いものは自動で削除します（浮かせて再生している録画は残します）。\n\n手元に残したいものは「保存」してください。保存した画像・GIF・動画は削除されません。")
+                SettingTitle("残し方", info: "どれも、この Mac の中（~/Library/Application Support/Pinshot）にだけ置きます。期間を過ぎたもの・数を超えた古いものは自動で削除します。録画は、合計が容量を超えたときも古いものから削除します（いちばん新しい録画と、浮かせて再生している録画は残します）。\n\n上げたものの一覧（リンクと小さな縮小画像）は、新しい \(UploadHistoryRules.limit) 件まで残します。外した古いものも、Gyazo からは消えません。\n\n手元に残したいものは「保存」してください。保存した画像・GIF・動画は削除されません。")
             }
             Section("一覧の表示") {
                 layoutPicker("撮った画像", selection: $settings.historyLayout)
@@ -61,13 +62,14 @@ struct HistorySettingsView: View {
     }
 
     /// 1 種類ぶんの残し方（同じ形で 3 つ並べる）。
-    /// 1 行目は 名前・いまの量・⋯・残す（スイッチ。録画は「いつも」）、2 行目は 残す期間・残す数
+    /// 1 行目は 名前・いまの量・⋯・残す（スイッチ。録画は「いつも」）、2 行目は 残す期間・残す数（録画は容量も）
     private func kindRow<Period: SettingsOption, Limit: SettingsOption>(
         _ title: String,
         symbol: String,
         keeps: Binding<Bool>?,
         period: Binding<Period>,
         limit: Binding<Limit>,
+        sizeLimit: Binding<RecordingSizeLimit>? = nil,
         amount: String,
         open: (() -> Void)?,
         folder: URL,
@@ -104,6 +106,12 @@ struct HistorySettingsView: View {
                 fieldTitle("残す数")
                     .padding(.leading, 8)
                 compactPicker(limit)
+                if let sizeLimit {
+                    fieldTitle("容量")
+                        .padding(.leading, 8)
+                    compactPicker(sizeLimit)
+                        .help("合計がこれを超えたら、古い録画から削除する")
+                }
                 Spacer(minLength: 0)
             }
             .padding(.leading, 26)

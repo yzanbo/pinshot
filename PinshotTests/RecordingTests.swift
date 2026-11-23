@@ -69,16 +69,46 @@ final class RecordingRulesTests: XCTestCase {
 
     func testExpiredKeepsNewest() {
         let base = Date(timeIntervalSince1970: 1_800_000_000)
-        let files = (0..<5).map { (url: URL(fileURLWithPath: "/tmp/\($0).mp4"), date: base.addingTimeInterval(Double($0))) }
+        let files = (0..<5).map { RecordingFile(url: URL(fileURLWithPath: "/tmp/\($0).mp4"), date: base.addingTimeInterval(Double($0)), bytes: 0) }
         XCTAssertEqual(RecordingRules.expired(files, now: base, period: nil, keep: 3).map(\.lastPathComponent).sorted(), ["0.mp4", "1.mp4"])
+    }
+
+    /// 合計が容量を超えたら、それより古いものをすべて削除する（古い小さなものを残して、新しいものを消すことはしない）
+    func testExpiredRemovesOldOnesOverSize() {
+        let base = Date(timeIntervalSince1970: 1_800_000_000)
+        let gb: Int64 = 1_000_000_000
+        // 新しい順に 3 GB・2 GB・2 GB・0.5 GB
+        let files = [
+            RecordingFile(url: URL(fileURLWithPath: "/tmp/a.mp4"), date: base, bytes: 3 * gb),
+            RecordingFile(url: URL(fileURLWithPath: "/tmp/b.mp4"), date: base.addingTimeInterval(-1), bytes: 2 * gb),
+            RecordingFile(url: URL(fileURLWithPath: "/tmp/c.mp4"), date: base.addingTimeInterval(-2), bytes: 2 * gb),
+            RecordingFile(url: URL(fileURLWithPath: "/tmp/d.mp4"), date: base.addingTimeInterval(-3), bytes: gb / 2),
+        ]
+        let expired = RecordingRules.expired(files, now: base, period: nil, keep: 20, maxBytes: 5 * gb)
+        XCTAssertEqual(expired.map(\.lastPathComponent), ["c.mp4", "d.mp4"])
+        // 容量の上限がなければ、数だけで決める
+        XCTAssertEqual(RecordingRules.expired(files, now: base, period: nil, keep: 20), [])
+    }
+
+    /// いちばん新しい録画は、それだけで容量を超えていても残す（止めたばかりで、浮かせて再生しているため）
+    func testExpiredKeepsNewestEvenIfOverSize() {
+        let base = Date(timeIntervalSince1970: 1_800_000_000)
+        let gb: Int64 = 1_000_000_000
+        let files = [
+            RecordingFile(url: URL(fileURLWithPath: "/tmp/new.mp4"), date: base, bytes: 6 * gb),
+            RecordingFile(url: URL(fileURLWithPath: "/tmp/old.mp4"), date: base.addingTimeInterval(-60), bytes: gb),
+        ]
+        XCTAssertEqual(RecordingRules.expired(files, now: base, period: nil, keep: 20, maxBytes: 5 * gb).map(\.lastPathComponent), ["old.mp4"])
+        XCTAssertEqual(RecordingSizeLimit.five.bytes, 5 * gb)
+        XCTAssertEqual(RecordingSizeLimit.five.label, "5 GB まで")
     }
 
     func testExpiredRemovesOldOnesWithoutCountingThem() {
         // 2 日前のものは期間（1 日）を過ぎたので削除し、数には数えない
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let files = [
-            (url: URL(fileURLWithPath: "/tmp/new.mp4"), date: now.addingTimeInterval(-60)),
-            (url: URL(fileURLWithPath: "/tmp/old.mp4"), date: now.addingTimeInterval(-2 * 86_400)),
+            RecordingFile(url: URL(fileURLWithPath: "/tmp/new.mp4"), date: now.addingTimeInterval(-60), bytes: 0),
+            RecordingFile(url: URL(fileURLWithPath: "/tmp/old.mp4"), date: now.addingTimeInterval(-2 * 86_400), bytes: 0),
         ]
         XCTAssertEqual(RecordingRules.expired(files, now: now, period: 86_400, keep: 1).map(\.lastPathComponent), ["old.mp4"])
     }

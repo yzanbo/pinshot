@@ -3,7 +3,7 @@ import Combine
 
 /// アプリの中に残す録画（~/Library/Application Support/Pinshot/Recordings）。
 /// 録画を止めたら、ここに MP4 で残す（利用者が保存するときは、ここから保存先へコピーする）。
-/// 残す期間と数は設定の「履歴」で決め、外れた古いものは自動で削除する
+/// 残す期間・数・容量の上限は設定の「履歴」で決め、外れた古いものは自動で削除する
 @MainActor
 final class RecordingStore: ObservableObject {
     static let shared = RecordingStore()
@@ -19,12 +19,12 @@ final class RecordingStore: ObservableObject {
     var summaryText: String { RecordingRules.summaryText(count: count, bytes: totalBytes) }
 
     private init() {
-        // 期間・数の設定を変えたら、外れた分をすぐ削除する
+        // 期間・数・容量の設定を変えたら、外れた分をすぐ削除する
         let settings = AppSettings.shared
-        settings.$recordingPeriod.combineLatest(settings.$recordingLimit)
+        settings.$recordingPeriod.combineLatest(settings.$recordingLimit, settings.$recordingSizeLimit)
             .dropFirst()
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] _, _ in self?.prune() }
+            .sink { [weak self] _ in self?.prune() }
             .store(in: &cancellables)
         prune()
     }
@@ -40,15 +40,15 @@ final class RecordingStore: ObservableObject {
         prune()
     }
 
-    /// 期間を過ぎたもの・数を超えた古いものを削除する（浮かせて再生している録画は残す）
+    /// 期間を過ぎたもの・数を超えた古いもの・合計が容量の上限を超えた古いものを削除する（浮かせて再生している録画は残す）
     func prune() {
         let settings = AppSettings.shared
-        let files = recordings()
         let expired = RecordingRules.expired(
-            files.map { ($0.url, $0.date) },
+            recordings(),
             now: Date(),
             period: settings.recordingPeriod.duration,
-            keep: settings.recordingLimit.rawValue
+            keep: settings.recordingLimit.rawValue,
+            maxBytes: settings.recordingSizeLimit.bytes
         )
         let playing = RecordingPlayer.openURLs
         for url in expired where !playing.contains(url) {
@@ -80,12 +80,12 @@ final class RecordingStore: ObservableObject {
 
     // MARK: - フォルダの中身
 
-    private func recordings() -> [(url: URL, date: Date, bytes: Int64)] {
+    private func recordings() -> [RecordingFile] {
         let keys: Set<URLResourceKey> = [.creationDateKey, .fileSizeKey]
         guard let urls = try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: Array(keys)) else { return [] }
         return urls.filter { $0.pathExtension == "mp4" }.map { url in
             let values = try? url.resourceValues(forKeys: keys)
-            return (url, values?.creationDate ?? .distantPast, Int64(values?.fileSize ?? 0))
+            return RecordingFile(url: url, date: values?.creationDate ?? .distantPast, bytes: Int64(values?.fileSize ?? 0))
         }
     }
 

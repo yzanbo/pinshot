@@ -43,6 +43,7 @@ extension HistoryPeriod: SettingsOption {}
 extension ShareLinkFormat: SettingsOption {}
 extension HistoryLimit: SettingsOption {}
 extension RecordingLimit: SettingsOption {}
+extension RecordingSizeLimit: SettingsOption {}
 
 /// 選択肢をすべて並べた Picker（名前は選択肢の label）
 struct OptionPicker<Option: SettingsOption>: View where Option.AllCases: RandomAccessCollection {

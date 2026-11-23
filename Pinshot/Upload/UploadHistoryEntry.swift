@@ -24,9 +24,17 @@ extension ExportKind: Codable {}
 
 /// 上げたものの履歴の決まり
 enum UploadHistoryRules {
+    /// 一覧に残す数（超えた古いものは一覧から外す。上げる先からは消さない）
+    static let limit = 1000
+
     /// 新しいものを先頭に足す（同じ ID のものがあれば置き換える）
     static func adding(_ entry: UploadHistoryEntry, to entries: [UploadHistoryEntry]) -> [UploadHistoryEntry] {
         [entry] + entries.filter { $0.id != entry.id }
+    }
+
+    /// 残す数を超えた古いもの（entries は新しい順）
+    static func overLimit(_ entries: [UploadHistoryEntry], limit: Int = limit) -> [UploadHistoryEntry] {
+        Array(entries.dropFirst(limit))
     }
 
     /// サムネイルの下に出す、短いリンク（例: 「gyazo.com/8980c524…」。https:// を外す）

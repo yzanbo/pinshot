@@ -207,6 +207,14 @@ final class UploadHistoryTests: XCTestCase {
         XCTAssertEqual(list.first?.fileName, "new.png")
     }
 
+    /// 一覧は新しい 1000 件まで残し、超えた古いものを外す（新しい順に並んでいる）
+    func testOverLimitReturnsOldest() {
+        let list = (0..<5).map { _ in entry() }
+        XCTAssertEqual(UploadHistoryRules.overLimit(list, limit: 3).map(\.id), list.suffix(2).map(\.id))
+        XCTAssertEqual(UploadHistoryRules.overLimit(list, limit: 5), [])
+        XCTAssertEqual(UploadHistoryRules.limit, 1000)
+    }
+
     func testShortLink() {
         XCTAssertEqual(UploadHistoryRules.shortLink(URL(string: "https://gyazo.com/8980c524")!), "gyazo.com/8980c524")
         XCTAssertEqual(UploadHistoryRules.shortLink(URL(string: "https://example.com/")!), "example.com")

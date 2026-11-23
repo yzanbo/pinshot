@@ -1,7 +1,8 @@
 import AppKit
 
 /// 上げたものの履歴（共有リンクの一覧と、小さな縮小画像）。
-/// 上げたもの自体は保存先にあるので、ここには置かない。期間や数で自動では消さない（消すと、リンクを探せなくなるため）
+/// 上げたもの自体は保存先にあるので、ここには置かない。期間では消さない（消すと、リンクを探せなくなるため）。
+/// 増え続けないよう、新しい UploadHistoryRules.limit 件（1000 件）まで残し、超えた古いものは一覧から外す（上げる先からは消さない）
 @MainActor
 final class UploadHistory: ObservableObject {
     static let shared = UploadHistory()
@@ -16,6 +17,7 @@ final class UploadHistory: ObservableObject {
 
     private init() {
         entries = loadIndex()
+        if removeOverLimit() { saveIndex() }
     }
 
     // MARK: - 足す
@@ -25,11 +27,22 @@ final class UploadHistory: ObservableObject {
     func add(remote: RemoteFile, link: SharedLink, kind: ExportKind, fileName: String, thumbnail: CGImage?) -> UploadHistoryEntry {
         let entry = UploadHistoryEntry(id: UUID(), date: Date(), remote: remote, link: link, kind: kind, fileName: fileName)
         entries = UploadHistoryRules.adding(entry, to: entries)
+        removeOverLimit()
         if let thumbnail {
             writeThumbnail(thumbnail, to: folder.appendingPathComponent(entry.thumbnailFileName))
         }
         saveIndex()
         return entry
+    }
+
+    /// 残す数を超えた古いものを、一覧から外して縮小画像も消す（外したものがあれば true。一覧のファイルは呼ぶ側が書く）
+    @discardableResult
+    private func removeOverLimit() -> Bool {
+        let removed = UploadHistoryRules.overLimit(entries)
+        guard !removed.isEmpty else { return false }
+        entries.removeLast(removed.count)
+        deleteThumbnails(of: removed)
+        return true
     }
 
     // MARK: - 使う
