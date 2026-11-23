@@ -135,6 +135,16 @@ struct WelcomeView: View {
             ) {
                 EmptyView()
             }
+            PermissionCard(
+                symbol: "mic",
+                title: "マイク",
+                badge: permission.microphoneGranted ? .granted : .optional,
+                detail: "なくても使えます。録画の音にマイクの音を入れて、自分の声を録るときに使います。",
+                actionTitle: permission.microphoneGranted ? nil : "許可する…",
+                action: { permission.requestMicrophone() }
+            ) {
+                EmptyView()
+            }
         }
     }
 

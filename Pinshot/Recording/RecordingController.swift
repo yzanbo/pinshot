@@ -46,6 +46,7 @@ final class RecordingController {
         self.rect = rect
         model.elapsed = 0
         model.isReady = false
+        model.audio = AppSettings.shared.recordingAudio
         model.stop = { [weak self] in self?.stop() }
         model.cancel = { [weak self] in self?.cancel() }
         showBorder()
@@ -53,6 +54,12 @@ final class RecordingController {
 
         Task { @MainActor in
             do {
+                // マイクを使うときは、許可を確かめる（使えなければ、マイクなしで録るか聞く）
+                guard let audio = await resolveAudio(model.audio) else {
+                    cancel()
+                    return
+                }
+                model.audio = audio
                 // 枠と操作パネルは写さない（浮かせた画像などは写す）
                 let content = try await ScreenCapturer.shareableContent()
                 guard let display = content.display(for: screen) else { throw ScreenRecorder.RecorderError.cannotWrite }
@@ -64,6 +71,7 @@ final class RecordingController {
                     sourceRect: RecordingRules.localRect(rect, inScreenFrame: screen.frame),
                     pixelWidth: size.width,
                     pixelHeight: size.height,
+                    audio: audio,
                     url: try RecordingStore.shared.newURL()
                 )
                 // 録画は 1 つだけ（shared）なので、止まった知らせはそのまま返す
@@ -79,6 +87,32 @@ final class RecordingController {
                 startTicker()
             } catch {
                 fail(error)
+            }
+        }
+    }
+
+    /// audio で録れるか確かめる。マイクを使うのに、マイクがない・許可がないときは、マイクなしで録るか聞く（やめたら nil）
+    private func resolveAudio(_ audio: RecordingAudio) async -> RecordingAudio? {
+        guard audio.capturesMicrophone else { return audio }
+        let problem: (message: String, detail: String)
+        if !MicrophoneCapture.isAvailable {
+            problem = ("マイクが見つかりません", "マイクの音を入れるには、マイクをつないでから録画し直してください。")
+        } else if await MicrophonePermission.requestIfNeeded() {
+            return audio
+        } else {
+            problem = ("マイクを使う許可がありません", "マイクの音を入れるには、システム設定の「プライバシーとセキュリティ」→「マイク」で Pinshot をオンにしてください。")
+        }
+        // 聞いている間に止めた・やめたとき
+        guard isActive, !isStopping else { return nil }
+        let without = audio.withoutMicrophone
+        var choices = [without == .none ? "音なしで録画する" : "\(without.label)だけで録画する"]
+        if MicrophoneCapture.isAvailable { choices.append("システム設定を開く") }
+        return await withCheckedContinuation { continuation in
+            AppAlert.choose(problem.message, detail: problem.detail, choices: choices, onCancel: {
+                continuation.resume(returning: nil)
+            }) { index in
+                if index != 0 { MicrophonePermission.openSettings() }
+                continuation.resume(returning: index == 0 ? without : nil)
             }
         }
     }
@@ -190,6 +224,8 @@ final class RecordingPanelModel: ObservableObject {
     @Published var elapsed: TimeInterval = 0
     /// 録画が始まったか（準備している間は「準備しています…」）
     @Published var isReady = false
+    /// 入れている音（音なしのときは、印を出さない）
+    @Published var audio: RecordingAudio = .none
     var stop: () -> Void = {}
     var cancel: () -> Void = {}
 }
@@ -217,6 +253,13 @@ private struct RecordingPanelView: View {
                 }
             }
             .frame(minWidth: 64, alignment: .leading)
+            // 音を録っているときは、何の音かの印を出す
+            if model.audio != .none {
+                Image(systemName: model.audio.symbolName)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .hoverHint("録画の音：\(model.audio.label)", keepOut: { RecordingController.shared.hintKeepOutRect })
+            }
             Button(action: model.stop) {
                 Label("停止", systemImage: "stop.fill")
                     .font(.system(size: 12, weight: .semibold))

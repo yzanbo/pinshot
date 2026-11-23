@@ -5,7 +5,7 @@ import SwiftUI
 
 /// 録画を浮かせて、くり返し再生する窓（画像を浮かせるのと同じく、ほかのウィンドウより前に出す）。
 /// 見た目は浮かせた画像にそろえる：動画の左上の外側に閉じるボタン（×）、動画の下に操作バー（黒い半透明の台）。
-/// 操作バーから、再生・一時停止・好きな所へ動かす、コピー（ファイルとして貼り付けられる）・MP4 で保存・GIF で保存・
+/// 操作バーから、再生・一時停止・好きな所へ動かす・音を出す、コピー（ファイルとして貼り付けられる）・MP4 で保存・GIF で保存・
 /// GIF にして上げて共有リンクをコピー・Finder で表示、ができる
 @MainActor
 final class RecordingPlayer: NSObject, NSWindowDelegate {
@@ -73,6 +73,10 @@ final class RecordingPlayerModel: ObservableObject {
     /// いまの位置と、録画の長さ（秒）
     @Published private(set) var currentTime: Double = 0
     @Published private(set) var duration: Double = 0
+    /// 録画に音が入っているか（読み込んでから決める。入っていなければ、音のボタンは押せない）
+    @Published private(set) var hasAudio = false
+    /// 音を消しているか（開いたらすぐ再生するので、初めは消しておく）
+    @Published private(set) var isMuted = true
     /// GIF を作っている途中の進み具合（0〜1。作っていなければ nil）
     @Published private(set) var gifProgress: Double?
     /// GIF にして上げている途中か（終わるまで、上げるボタンは押せない）
@@ -108,7 +112,10 @@ final class RecordingPlayerModel: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] status in self?.isPlaying = status != .paused }
         Task { [weak self] in
-            let duration = try? await AVURLAsset(url: url).load(.duration)
+            let asset = AVURLAsset(url: url)
+            let hasAudio = (try? await asset.loadTracks(withMediaType: .audio).isEmpty == false) ?? false
+            self?.hasAudio = hasAudio
+            let duration = try? await asset.load(.duration)
             guard let seconds = duration?.seconds, seconds.isFinite else { return }
             self?.duration = seconds
         }
@@ -120,6 +127,13 @@ final class RecordingPlayerModel: ObservableObject {
     /// 再生・一時停止を切り替える
     func togglePlay() {
         if isPlaying { player.pause() } else { player.play() }
+    }
+
+    /// 音を出す・消すを切り替える
+    func toggleMute() {
+        guard hasAudio else { return }
+        isMuted.toggle()
+        player.isMuted = isMuted
     }
 
     /// 位置のつまみを動かし始めた（動かしている間は止めておく）
@@ -293,13 +307,14 @@ private struct RecordingPlayerView: View {
             .padding(.horizontal, 4)
             .hoverHint("ドラッグで、見たい所へ動かす")
             .hoverRole()
+            muteButton
             QuickActionDivider()
             QuickActionButton(symbol: "doc.on.doc", help: "コピー（ファイルとして貼り付けられる）", action: model.copy)
             QuickActionButton(symbol: "square.and.arrow.down", help: "MP4 で保存", action: model.saveMovie)
             gifButton
             QuickActionButton(
                 symbol: "link",
-                help: "GIF にして \(UploadDestinations.current?.id.label ?? "上げる先") に上げ、共有リンクをコピー（上げる先は設定の「共有」。大きいときは小さくして上げる）",
+                help: "GIF にして \(UploadDestinations.current?.id.label ?? "上げる先") に上げ、共有リンクをコピー（上げる先は設定の「共有」。大きいときは小さくして上げる。音は入らない）",
                 action: model.uploadGIF
             )
             .disabled(model.isUploading)
@@ -317,6 +332,16 @@ private struct RecordingPlayerView: View {
             .overlay(WindowDragArea())
             .hoverHint("ドラッグで録画の窓を移動（動画の上やバーの何もない所をドラッグしても動く）")
             .hoverRole(.movable)
+    }
+
+    /// 音を出す・消す（音の入っていない録画では押せない。録画ごとにバーの幅が変わらないよう、いつも出しておく）
+    private var muteButton: some View {
+        QuickActionButton(
+            symbol: model.hasAudio && !model.isMuted ? "speaker.wave.2.fill" : "speaker.slash.fill",
+            help: model.hasAudio ? (model.isMuted ? "音を出す" : "音を消す") : "この録画には音が入っていません（録画の音は、範囲を選ぶ画面の下のバーか、メニューバーの「録画の音」で選ぶ）",
+            action: model.toggleMute
+        )
+        .opacity(model.hasAudio ? 1 : 0.4)
     }
 
     /// GIF で保存（作っている間は、同じ幅に進み具合を出す。バーの幅が変わらないように）
@@ -340,7 +365,7 @@ private struct RecordingPlayerView: View {
                     .contentShape(Capsule())
             }
             .buttonStyle(.plain)
-            .hoverHint("GIF を作って保存（長い録画は、コマを減らして軽くする）")
+            .hoverHint("GIF を作って保存（音は入らない。長い録画は、コマを減らして軽くする）")
             .hoverRole()
         }
     }

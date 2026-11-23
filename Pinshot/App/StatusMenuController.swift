@@ -22,6 +22,8 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
     /// 「読み取った文字 ▸」の項目と、その中のメニュー（開くたびに作り直す）
     private var textHistoryItem: NSMenuItem?
     private var textHistoryMenu: NSMenu?
+    /// 「録画の音 ▸」の項目（いま選んでいる音を名前に出す）
+    private var recordingAudioItem: NSMenuItem?
     /// 「読み取った文字 ▸」に並べる数
     private let recentTextCount = 10
 
@@ -67,6 +69,18 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
         let (recordWindowListItem, recordWindowList) = makeWindowListItem("ウィンドウを選んで録画")
         menu.addItem(recordWindowListItem)
         recordWindowListMenu = recordWindowList
+        // 録画に入れる音（範囲を選ぶ画面の下のバーと同じ設定。選んだものは次の録画でも使う）
+        let audioItem = makeItem("録画の音", symbol: "speaker.wave.2", action: nil)
+        let audioMenu = NSMenu()
+        for audio in RecordingAudio.allCases {
+            let item = makeItem(audio.label, symbol: audio.symbolName, action: #selector(chooseRecordingAudio(_:)))
+            item.representedObject = audio.rawValue
+            item.toolTip = audio.detail
+            audioMenu.addItem(item)
+        }
+        audioItem.submenu = audioMenu
+        menu.addItem(audioItem)
+        recordingAudioItem = audioItem
 
         // 履歴（撮った画像・読み取った文字・上げたもの。見出しは付けず、上下の区切り線で分ける。
         // 最近撮った画像は並べない。見るのは履歴のウィンドウ）
@@ -188,6 +202,9 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
         pinsHeaderItem?.title = pins.pinCount > 0 ? "浮かせた画像（\(pins.pinCount) 枚）" : "浮かせた画像"
         let textCount = TextHistory.shared.entries.count
         textHistoryItem?.title = textCount > 0 ? "読み取った文字（\(textCount) 件）" : "読み取った文字"
+        let audio = AppSettings.shared.recordingAudio
+        recordingAudioItem?.title = "録画の音（\(audio.shortLabel)）"
+        recordingAudioItem?.image = NSImage(systemSymbolName: audio.symbolName, accessibilityDescription: nil)
     }
 
     // MARK: - メニューを開くとき
@@ -250,6 +267,10 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
 
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
         switch menuItem.action {
+        case #selector(chooseRecordingAudio(_:)):
+            menuItem.state = menuItem.representedObject as? String == AppSettings.shared.recordingAudio.rawValue ? .on : .off
+            // 録画している間は変えない（いまの録画には効かないため）
+            return !RecordingController.shared.isRecording
         case #selector(captureWithTimer(_:)), #selector(captureListedWindow(_:)),
              #selector(recordWithTimer(_:)), #selector(recordListedWindow(_:)):
             return !RecordingController.shared.isRecording
@@ -287,6 +308,11 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
 
     @objc private func recordListedWindow(_ sender: NSMenuItem) {
         AppActions.shared.recordWindow(id: CGWindowID(sender.tag))
+    }
+
+    @objc private func chooseRecordingAudio(_ sender: NSMenuItem) {
+        guard let raw = sender.representedObject as? String, let audio = RecordingAudio(rawValue: raw) else { return }
+        AppSettings.shared.recordingAudio = audio
     }
 
     @objc private func captureListedWindow(_ sender: NSMenuItem) {

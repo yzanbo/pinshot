@@ -18,12 +18,13 @@ enum AppAlert {
     }
 
     /// いくつかの中から選んでもらう（choices の順にボタンを並べ、最初を決定ボタンにする。キャンセルは esc でも押せる）。
-    /// 選んだら、その番号（choices の何番目か）を onChoose に渡す。キャンセルでは何もしない
+    /// 選んだら、その番号（choices の何番目か）を onChoose に渡す。キャンセルでは onCancel を呼ぶ
     static func choose(
         _ message: String,
         detail: String,
         choices: [String],
         in window: NSWindow? = nil,
+        onCancel: @escaping () -> Void = {},
         onChoose: @escaping (Int) -> Void
     ) {
         let alert = make(message, detail: detail)
@@ -32,7 +33,7 @@ enum AppAlert {
         cancel.keyEquivalent = "\u{1b}"
         present(alert, in: window) { response in
             let index = response.rawValue - NSApplication.ModalResponse.alertFirstButtonReturn.rawValue
-            if choices.indices.contains(index) { onChoose(index) }
+            if choices.indices.contains(index) { onChoose(index) } else { onCancel() }
         }
     }
 

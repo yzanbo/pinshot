@@ -89,6 +89,15 @@ final class RecordingRulesTests: XCTestCase {
         XCTAssertEqual(ExportKind.allCases.map(\.fileExtension), ["png", "gif", "mp4"])
         XCTAssertEqual(RecordingLimit.twenty.label, "20 本")
     }
+
+    /// 録画の音の選択肢（この順に並べる。設定に残す値は変えない）
+    func testRecordingAudioChoices() {
+        XCTAssertEqual(RecordingAudio.allCases.map(\.rawValue), ["none", "system", "microphone", "systemAndMicrophone"])
+        XCTAssertEqual(RecordingAudio.allCases.filter(\.capturesSystemAudio), [.system, .systemAndMicrophone])
+        XCTAssertEqual(RecordingAudio.allCases.filter(\.capturesMicrophone), [.microphone, .systemAndMicrophone])
+        // マイクを使えないときは、マイクを除いて録る
+        XCTAssertEqual(RecordingAudio.allCases.map(\.withoutMicrophone), [.none, .system, .none, .system])
+    }
 }
 
 /// 録画（MP4）から GIF を作る
@@ -176,6 +185,185 @@ final class GIFExporterTests: XCTestCase {
         let standardBytes = try Data(contentsOf: standard).count
         let smallBytes = try Data(contentsOf: small).count
         XCTAssertLessThan(smallBytes, standardBytes)
+    }
+}
+
+/// Mac の音とマイクを別々の線に書いた録画を、映像はそのまま、音を 1 本に混ぜる
+final class AudioMixdownTests: XCTestCase {
+    private let sampleRate = 48_000
+    /// 録画と同じく、書き始めの時刻はホストの時計の時刻（0 ではない）にする
+    private let base = CMTime(seconds: 1000, preferredTimescale: 48_000)
+    private var files: [URL] = []
+
+    override func tearDown() {
+        files.forEach { try? FileManager.default.removeItem(at: $0) }
+    }
+
+    private func temporaryURL() -> URL {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString).mp4")
+        files.append(url)
+        return url
+    }
+
+    /// 440 Hz の音（frames コマ分。startFrame は書き始めからのコマの位置）
+    private func tone(frames: Int, channels: Int, startFrame: Int) throws -> CMSampleBuffer {
+        var description = AudioStreamBasicDescription(
+            mSampleRate: Float64(sampleRate), mFormatID: kAudioFormatLinearPCM,
+            mFormatFlags: kAudioFormatFlagIsFloat | kAudioFormatFlagIsPacked,
+            mBytesPerPacket: UInt32(4 * channels), mFramesPerPacket: 1, mBytesPerFrame: UInt32(4 * channels),
+            mChannelsPerFrame: UInt32(channels), mBitsPerChannel: 32, mReserved: 0
+        )
+        var format: CMAudioFormatDescription?
+        CMAudioFormatDescriptionCreate(allocator: nil, asbd: &description, layoutSize: 0, layout: nil, magicCookieSize: 0, magicCookie: nil, extensions: nil, formatDescriptionOut: &format)
+        var samples = [Float](repeating: 0, count: frames * channels)
+        for frame in 0..<frames {
+            let value = Float(0.3 * sin(2 * Double.pi * 440 * Double(startFrame + frame) / Double(sampleRate)))
+            for channel in 0..<channels { samples[frame * channels + channel] = value }
+        }
+        let byteCount = samples.count * 4
+        var block: CMBlockBuffer?
+        CMBlockBufferCreateWithMemoryBlock(allocator: nil, memoryBlock: nil, blockLength: byteCount, blockAllocator: nil, customBlockSource: nil, offsetToData: 0, dataLength: byteCount, flags: kCMBlockBufferAssureMemoryNowFlag, blockBufferOut: &block)
+        let blockBuffer = try XCTUnwrap(block)
+        _ = samples.withUnsafeBytes { CMBlockBufferReplaceDataBytes(with: $0.baseAddress!, blockBuffer: blockBuffer, offsetIntoDestination: 0, dataLength: byteCount) }
+        var buffer: CMSampleBuffer?
+        CMAudioSampleBufferCreateReadyWithPacketDescriptions(
+            allocator: nil, dataBuffer: blockBuffer, formatDescription: try XCTUnwrap(format), sampleCount: frames,
+            presentationTimeStamp: base + CMTime(value: CMTimeValue(startFrame), timescale: CMTimeScale(sampleRate)),
+            packetDescriptions: nil, sampleBufferOut: &buffer
+        )
+        return try XCTUnwrap(buffer)
+    }
+
+    /// 録画と同じ形の動画を作る：映像 2 秒（1 秒 10 コマ）、2.5 秒で止める（録画と同じく、最後のコマを止めた時刻の 1 コマ前にもう一度書く）。
+    /// withAudio なら、Mac の音（ステレオ）を 0〜1 秒、マイク（モノラル）を 1〜2 秒に書く
+    private func makeRecording(withAudio: Bool) async throws -> URL {
+        let url = temporaryURL()
+        let writer = try AVAssetWriter(outputURL: url, fileType: .mp4)
+        let size = CGSize(width: 64, height: 48)
+        let video = AVAssetWriterInput(mediaType: .video, outputSettings: [
+            AVVideoCodecKey: AVVideoCodecType.h264, AVVideoWidthKey: Int(size.width), AVVideoHeightKey: Int(size.height),
+        ])
+        let adaptor = AVAssetWriterInputPixelBufferAdaptor(assetWriterInput: video, sourcePixelBufferAttributes: [
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+            kCVPixelBufferWidthKey as String: Int(size.width),
+            kCVPixelBufferHeightKey as String: Int(size.height),
+        ])
+        let system = AVAssetWriterInput(mediaType: .audio, outputSettings: RecordingAudioFormat.aacSettings(channels: 2))
+        let microphone = AVAssetWriterInput(mediaType: .audio, outputSettings: RecordingAudioFormat.aacSettings(channels: 1))
+        let inputs = withAudio ? [video, system, microphone] : [video]
+        for input in inputs {
+            input.expectsMediaDataInRealTime = true
+            writer.add(input)
+        }
+        XCTAssertTrue(writer.startWriting())
+        writer.startSession(atSourceTime: base)
+        let chunk = sampleRate / 10
+        var last: CVPixelBuffer?
+        for step in 0..<20 {
+            while !video.isReadyForMoreMediaData { try await Task.sleep(for: .milliseconds(5)) }
+            var pixel: CVPixelBuffer?
+            CVPixelBufferPoolCreatePixelBuffer(nil, adaptor.pixelBufferPool!, &pixel)
+            let frame = try XCTUnwrap(pixel)
+            CVPixelBufferLockBaseAddress(frame, [])
+            memset(CVPixelBufferGetBaseAddress(frame), Int32(step * 10), CVPixelBufferGetDataSize(frame))
+            CVPixelBufferUnlockBaseAddress(frame, [])
+            XCTAssertTrue(adaptor.append(frame, withPresentationTime: base + CMTime(value: CMTimeValue(step), timescale: 10)))
+            last = frame
+            guard withAudio else { continue }
+            let input = step < 10 ? system : microphone
+            while !input.isReadyForMoreMediaData { try await Task.sleep(for: .milliseconds(5)) }
+            XCTAssertTrue(input.append(try tone(frames: chunk, channels: step < 10 ? 2 : 1, startFrame: step * chunk)))
+        }
+        let stopTime = base + CMTime(seconds: 2.5, preferredTimescale: 600)
+        while !video.isReadyForMoreMediaData { try await Task.sleep(for: .milliseconds(5)) }
+        XCTAssertTrue(adaptor.append(try XCTUnwrap(last), withPresentationTime: stopTime - CMTime(value: 1, timescale: RecordingRules.framesPerSecond)))
+        inputs.forEach { $0.markAsFinished() }
+        writer.endSession(atSourceTime: stopTime)
+        await writer.finishWriting()
+        XCTAssertEqual(writer.status, .completed, writer.error?.localizedDescription ?? "")
+        return url
+    }
+
+    /// 混ぜた音を読み、from〜to 秒の音の大きさ（二乗平均の平方根）を返す
+    private func loudness(of url: URL, from: Double, to: Double) async throws -> Float {
+        let asset = AVURLAsset(url: url)
+        let tracks = try await asset.loadTracks(withMediaType: .audio)
+        let track = try XCTUnwrap(tracks.first)
+        let reader = try AVAssetReader(asset: asset)
+        reader.timeRange = CMTimeRange(start: CMTime(seconds: from, preferredTimescale: 600), end: CMTime(seconds: to, preferredTimescale: 600))
+        let output = AVAssetReaderTrackOutput(track: track, outputSettings: RecordingAudioFormat.mixingPCMSettings)
+        reader.add(output)
+        XCTAssertTrue(reader.startReading())
+        var sum: Float = 0
+        var count = 0
+        while let buffer = output.copyNextSampleBuffer() {
+            guard let block = CMSampleBufferGetDataBuffer(buffer) else { continue }
+            let length = CMBlockBufferGetDataLength(block)
+            var samples = [Float](repeating: 0, count: length / 4)
+            _ = samples.withUnsafeMutableBytes { CMBlockBufferCopyDataBytes(block, atOffset: 0, dataLength: length, destination: $0.baseAddress!) }
+            sum += samples.reduce(0) { $0 + $1 * $1 }
+            count += samples.count
+        }
+        return count == 0 ? 0 : (sum / Float(count)).squareRoot()
+    }
+
+    func testMixesTwoAudioTracksIntoOne() async throws {
+        let source = try await makeRecording(withAudio: true)
+        let sourceAudio = try await AVURLAsset(url: source).loadTracks(withMediaType: .audio)
+        XCTAssertEqual(sourceAudio.count, 2)
+        // 音を録っていても、映像は止めた時刻まで続く
+        let sourceDuration = try await AVURLAsset(url: source).load(.duration)
+        XCTAssertEqual(sourceDuration.seconds, 2.5, accuracy: 0.05)
+        let mixed = temporaryURL()
+        try await AudioMixdown.mix(source, to: mixed)
+
+        let asset = AVURLAsset(url: mixed)
+        let videoTracks = try await asset.loadTracks(withMediaType: .video)
+        XCTAssertEqual(videoTracks.count, 1)
+        let audioTracks = try await asset.loadTracks(withMediaType: .audio)
+        XCTAssertEqual(audioTracks.count, 1, "音は 1 本にまとめる")
+        let formats = try await audioTracks[0].load(.formatDescriptions)
+        XCTAssertEqual(try XCTUnwrap(formats.first).audioStreamBasicDescription?.mChannelsPerFrame, 2)
+        // 長さは元と同じ（止めた時刻まで）
+        let duration = try await asset.load(.duration)
+        XCTAssertEqual(duration.seconds, 2.5, accuracy: 0.1)
+        // 前半は Mac の音、後半はマイクの音が、同じ位置に入っている
+        let first = try await loudness(of: mixed, from: 0.2, to: 0.8)
+        let second = try await loudness(of: mixed, from: 1.2, to: 1.8)
+        let after = try await loudness(of: mixed, from: 2.1, to: 2.4)
+        XCTAssertGreaterThan(first, 0.05)
+        XCTAssertGreaterThan(second, 0.05)
+        XCTAssertLessThan(after, 0.01, "2 秒より後は、どちらの音もない")
+    }
+
+    /// 音の入った録画からも GIF を作れる（GIF は映像だけを使い、音は入らない）。混ぜる前（音の線 2 本）・混ぜたあと（1 本）のどちらでも
+    func testMakesGIFFromRecordingWithAudio() async throws {
+        let source = try await makeRecording(withAudio: true)
+        let mixed = temporaryURL()
+        try await AudioMixdown.mix(source, to: mixed)
+        for video in [source, mixed] {
+            let gif = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString).gif")
+            files.append(gif)
+            try await GIFExporter.export(videoAt: video, to: gif) { _ in }
+            let image = try XCTUnwrap(CGImageSourceCreateWithURL(gif as CFURL, nil))
+            // 2.5 秒 × 1 秒 10 コマ
+            XCTAssertEqual(CGImageSourceGetCount(image), 25)
+            XCTAssertEqual(try XCTUnwrap(CGImageSourceCreateImageAtIndex(image, 0, nil)).width, 64)
+        }
+    }
+
+    /// 音の線がなければ、映像だけを写す
+    func testCopiesVideoWithoutAudio() async throws {
+        let source = try await makeRecording(withAudio: false)
+        let mixed = temporaryURL()
+        try await AudioMixdown.mix(source, to: mixed)
+        let asset = AVURLAsset(url: mixed)
+        let videoTracks = try await asset.loadTracks(withMediaType: .video)
+        let audioTracks = try await asset.loadTracks(withMediaType: .audio)
+        let duration = try await asset.load(.duration)
+        XCTAssertEqual(videoTracks.count, 1)
+        XCTAssertEqual(audioTracks.count, 0)
+        XCTAssertEqual(duration.seconds, 2.5, accuracy: 0.1)
     }
 }
 

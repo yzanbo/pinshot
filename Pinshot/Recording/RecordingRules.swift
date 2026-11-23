@@ -71,6 +71,65 @@ enum RecordingRules {
     }
 }
 
+/// 録画に入れる音（範囲を選ぶ画面の下のバー・メニューバーの「録画の音」で選ぶ。選んだものは次の録画でも使う）
+enum RecordingAudio: String, CaseIterable, Identifiable {
+    /// 音を録らない
+    case none
+    /// Mac の音（アプリ・動画などの音。Pinshot 自身の音は入れない）
+    case system
+    /// マイクの音（声など）
+    case microphone
+    /// Mac の音とマイクの音（1 本の音に混ぜる）
+    case systemAndMicrophone
+
+    var id: String { rawValue }
+
+    /// 名前（選択肢・メニューバー・知らせに出す）
+    var label: String {
+        switch self {
+        case .none: "音なし"
+        case .system: "Mac の音"
+        case .microphone: "マイクの音"
+        case .systemAndMicrophone: "Mac の音＋マイクの音"
+        }
+    }
+
+    /// 範囲を選ぶ画面の下のバーのボタン・メニューバーの「録画の音（…）」に出す短い名前（ボタンの幅に収める）
+    var shortLabel: String {
+        switch self {
+        case .none: "音なし"
+        case .system: "Mac の音"
+        case .microphone: "マイク"
+        case .systemAndMicrophone: "Mac＋マイク"
+        }
+    }
+
+    /// 選択肢の名前の下に出す説明（何の音が入るか）
+    var detail: String {
+        switch self {
+        case .none: "映像だけを録画する"
+        case .system: "アプリや動画など、Mac から出る音"
+        case .microphone: "自分の声など、マイクが拾う音"
+        case .systemAndMicrophone: "Mac から出る音と、自分の声の両方"
+        }
+    }
+
+    var symbolName: String {
+        switch self {
+        case .none: "speaker.slash"
+        case .system: "speaker.wave.2"
+        case .microphone: "mic"
+        case .systemAndMicrophone: "waveform.and.mic"
+        }
+    }
+
+    var capturesSystemAudio: Bool { self == .system || self == .systemAndMicrophone }
+    var capturesMicrophone: Bool { self == .microphone || self == .systemAndMicrophone }
+
+    /// マイクを除いたもの（マイクを使えないときに、マイクなしで録画する）
+    var withoutMicrophone: RecordingAudio { capturesSystemAudio ? .system : .none }
+}
+
 /// GIF の作り方（長い辺の上限・1 秒あたりのコマの数・コマの数の上限）
 struct GIFSettings: Equatable {
     /// 長い辺の上限（ピクセル。元より大きくはしない）

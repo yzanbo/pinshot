@@ -8,6 +8,9 @@ final class SelectionController {
     private var windows: [SelectionWindow] = []
     private var overlays: [SelectionView] = []
     private var modeBar: NSView?
+    /// 「録画の音」の選択肢（バーのボタンで開く。開いている間だけ、バーと同じ画面に出す）
+    private let audioPicker = RecordingAudioPicker()
+    private var audioMenu: NSView?
     private var isDragging = false
     /// マウスのある画面（モードバーを置いている画面）
     private var activeWindowIndex: Int?
@@ -76,6 +79,17 @@ final class SelectionController {
         for window in unused {
             window.orderOut(nil)
         }
+
+        // 「録画の音」の選択肢を出す・片付ける
+        // （値が変わる前に知らされるので、変わり終えてから出し入れする）
+        audioPicker.$isOpen.dropFirst().removeDuplicates()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] isOpen in isOpen ? self?.showAudioMenu() : self?.hideAudioMenu() }
+            .store(in: &cancellables)
+        // 録画から別のモードにしたら、選択肢を閉じる
+        options.$mode.filter { $0 != .record }
+            .sink { [weak self] _ in self?.audioPicker.isOpen = false }
+            .store(in: &cancellables)
 
         // モード（録画でウィンドウだけを選ぶかも）を切り替えたら、すべての画面を描き直す
         options.$mode.dropFirst().map { _ in () }
@@ -150,13 +164,26 @@ final class SelectionController {
         if let global = NSEvent.addGlobalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged], handler: handler) {
             mouseMonitors.append(global)
         }
+        // 「録画の音」の選択肢を開いている間は、バーと選択肢の外をクリックしたら閉じる（そのクリックで範囲を選び始めない）
+        if let clicks = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown, handler: { [weak self] event in
+            guard let self, self.audioPicker.isOpen, !self.isMouseOverModeBar else { return event }
+            self.audioPicker.isOpen = false
+            return nil
+        }) {
+            mouseMonitors.append(clicks)
+        }
 
         // esc と space は、どこにフォーカスがあっても受ける
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self else { return event }
             switch event.keyCode {
             case KeyCode.escape:
-                self.finish(nil)
+                // 「録画の音」の選択肢を開いているときは、選択肢だけを閉じる
+                if self.audioPicker.isOpen {
+                    self.audioPicker.isOpen = false
+                } else {
+                    self.finish(nil)
+                }
                 return nil
             case KeyCode.space: // 範囲 ⇄ ウィンドウ（録画のときは切り替えない）
                 self.options.toggleRegionAndWindow()
@@ -171,6 +198,7 @@ final class SelectionController {
     private func addModeBar(to window: SelectionWindow) {
         let bar = FirstMouseHostingView(rootView: CaptureModeBar(
             options: options,
+            audioPicker: audioPicker,
             cancel: { [weak self] in self?.finish(nil) }
         ))
         bar.frame.size = bar.fittingSize
@@ -200,6 +228,9 @@ final class SelectionController {
 
     private func moveModeBar(to window: SelectionWindow) {
         guard !isDragging, let bar = modeBar, let container = window.contentView, bar.superview !== container else { return }
+        // 選択肢は、前の画面に置いたまま残さない
+        audioPicker.isOpen = false
+        hideAudioMenu()
         bar.removeFromSuperview()
         bar.frame.origin = NSPoint(x: ((container.bounds.width - bar.frame.width) / 2).rounded(), y: 56)
         container.addSubview(bar)
@@ -218,10 +249,38 @@ final class SelectionController {
         applyCaptureCursor()
     }
 
-    /// マウスがモードバーの上にあるか
+    /// マウスがモードバー（開いていれば「録画の音」の選択肢も）の上にあるか
     private var isMouseOverModeBar: Bool {
         guard let bar = modeBar, !bar.isHidden, let window = bar.window, let container = bar.superview else { return false }
-        return bar.frame.contains(container.convert(window.mouseLocationOutsideOfEventStream, from: nil))
+        let mouse = container.convert(window.mouseLocationOutsideOfEventStream, from: nil)
+        if let audioMenu, audioMenu.superview === container, audioMenu.frame.contains(mouse) { return true }
+        return bar.frame.contains(mouse)
+    }
+
+    /// 「録画の音」の選択肢を、バーの「録画の音」のボタンの上に出す（画面の左右からははみ出さない）
+    private func showAudioMenu() {
+        guard !finished, audioPicker.isOpen, audioMenu == nil, let bar = modeBar, let container = bar.superview else { return }
+        let menu = FirstMouseHostingView(rootView: RecordingAudioMenu(
+            picker: audioPicker,
+            exitCursor: CaptureCursors.cursor(for: options),
+            choose: { [weak self] audio in
+                AppSettings.shared.recordingAudio = audio
+                self?.audioPicker.isOpen = false
+            }
+        ))
+        let size = menu.fittingSize
+        // バーのホスティングビューは左上が原点なので、convert で画面の座標に直す
+        let button = bar.convert(audioPicker.buttonFrame, to: container)
+        let x = min(max(button.midX - size.width / 2, 8), container.bounds.width - size.width - 8)
+        menu.frame = NSRect(x: x.rounded(), y: bar.frame.maxY + 8, width: size.width, height: size.height)
+        container.addSubview(menu)
+        audioMenu = menu
+    }
+
+    private func hideAudioMenu() {
+        audioMenu?.removeFromSuperview()
+        audioMenu = nil
+        audioPicker.hovered = nil
     }
 
     /// いまのモードに合ったキャプチャ用のカーソル（範囲は ⌘⇧4 と同じ十字、ウィンドウ・画面全体はカメラ）

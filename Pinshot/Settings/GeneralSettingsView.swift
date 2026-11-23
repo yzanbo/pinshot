@@ -40,6 +40,12 @@ struct GeneralSettingsView: View {
                     isGranted: permission.accessibilityGranted,
                     request: { permission.requestAccessibility() }
                 )
+                PermissionRow(
+                    title: "マイク",
+                    detail: "録画の音にマイクの音を入れて、自分の声を録るときに使います。",
+                    isGranted: permission.microphoneGranted,
+                    request: { permission.requestMicrophone() }
+                )
             } header: {
                 Text("許可")
             } footer: {

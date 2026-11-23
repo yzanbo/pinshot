@@ -77,6 +77,7 @@ final class AppSettings: ObservableObject {
         static let separatesSaveFoldersByMonth = "settings.separatesSaveFoldersByMonth"
         static let recordingPeriod = "settings.recordingPeriod"
         static let recordingLimit = "settings.recordingLimit"
+        static let recordingAudio = "settings.recordingAudio"
         static let showsQuickActions = "settings.showsQuickActions"
         static let alwaysOnTop = "settings.alwaysOnTop"
         static let detailedCaptureUI = "settings.detailedCaptureUI"
@@ -319,6 +320,11 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(recordingLimit.rawValue, forKey: Key.recordingLimit) }
     }
 
+    /// 録画に入れる音（範囲を選ぶ画面の下のバー・メニューバーで選ぶ。初めは音なし）
+    @Published var recordingAudio: RecordingAudio {
+        didSet { defaults.set(recordingAudio.rawValue, forKey: Key.recordingAudio) }
+    }
+
     /// ショートカットを記録している操作（記録中は、すべてのショートカットを止める）
     @Published var recordingAction: ShortcutAction?
 
@@ -381,6 +387,7 @@ final class AppSettings: ObservableObject {
         separatesSaveFoldersByMonth = defaults.bool(Key.separatesSaveFoldersByMonth, default: false)
         recordingPeriod = defaults.option(Key.recordingPeriod, default: .month)
         recordingLimit = defaults.option(Key.recordingLimit, default: .twenty)
+        recordingAudio = defaults.option(Key.recordingAudio, default: .none)
         if let path = defaults.string(forKey: Key.saveFolder) {
             saveFolder = URL(fileURLWithPath: path, isDirectory: true)
         } else {

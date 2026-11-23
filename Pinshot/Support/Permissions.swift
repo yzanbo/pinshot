@@ -1,5 +1,6 @@
 import AppKit
 import ApplicationServices
+import AVFoundation
 import Combine
 import ScreenCaptureKit
 
@@ -61,9 +62,42 @@ enum AccessibilityPermission {
     }
 }
 
+// MARK: - マイク
+
+/// マイク（録画に声を入れるときに使う）の許可
+@MainActor
+enum MicrophonePermission {
+    static var isGranted: Bool { AVCaptureDevice.authorizationStatus(for: .audio) == .authorized }
+
+    /// まだ聞いていないか（聞いていなければ、「許可する…」で macOS の確かめるダイアログを出せる）
+    static var isUndetermined: Bool { AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined }
+
+    /// 許可されているか。まだ聞いていなければ、macOS の確かめるダイアログを出して聞く
+    static func requestIfNeeded() async -> Bool {
+        switch AVCaptureDevice.authorizationStatus(for: .audio) {
+        case .authorized: return true
+        case .notDetermined: return await AVCaptureDevice.requestAccess(for: .audio)
+        default: return false
+        }
+    }
+
+    /// 許可を求める（まだ聞いていなければダイアログ、断ったことがあればシステム設定のマイクのページを開く）
+    static func request(onChange: @escaping @MainActor () -> Void = {}) {
+        guard isUndetermined else { return openSettings() }
+        Task { @MainActor in
+            _ = await requestIfNeeded()
+            onChange()
+        }
+    }
+
+    static func openSettings() {
+        PrivacySettings.open("Privacy_Microphone")
+    }
+}
+
 // MARK: - 設定・案内の画面に出す状態
 
-/// 画面収録・アクセシビリティの許可の状態（出している間だけ、1 秒ごとに確かめ直す）。
+/// 画面収録・アクセシビリティ・マイクの許可の状態（出している間だけ、1 秒ごとに確かめ直す）。
 /// 設定と使い方の画面で同じものを使う（「許可する…」を押したかも、どちらの画面にも出すため）
 @MainActor
 final class PermissionModel: ObservableObject {
@@ -74,6 +108,8 @@ final class PermissionModel: ObservableObject {
     @Published private(set) var requested = false
     /// アクセシビリティ（メニューを開いている間のショートカットに使う）
     @Published private(set) var accessibilityGranted = AccessibilityPermission.isGranted
+    /// マイク（録画に声を入れるときに使う）
+    @Published private(set) var microphoneGranted = MicrophonePermission.isGranted
     private var timer: AnyCancellable?
     /// 許可の状態を出している窓の数（0 になったら、確かめ直すのをやめる）
     private var watchers = 0
@@ -102,6 +138,8 @@ final class PermissionModel: ObservableObject {
         if granted != screen { granted = screen }
         let accessibility = AccessibilityPermission.isGranted
         if accessibilityGranted != accessibility { accessibilityGranted = accessibility }
+        let microphone = MicrophonePermission.isGranted
+        if microphoneGranted != microphone { microphoneGranted = microphone }
     }
 
     func request() {
@@ -111,5 +149,9 @@ final class PermissionModel: ObservableObject {
 
     func requestAccessibility() {
         AccessibilityPermission.request()
+    }
+
+    func requestMicrophone() {
+        MicrophonePermission.request { [weak self] in self?.refresh() }
     }
 }
