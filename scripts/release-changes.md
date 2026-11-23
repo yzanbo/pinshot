@@ -1,27 +1,9 @@
-## この版の主な変更（0.1.0-beta.1 から）
+## この版の主な変更（0.2.0-beta.1 から）
 
 ### 新しく使えるようになったこと
 
-- **履歴**：撮った画像・読み取った文字・上げたもの（共有リンク）を、日付ごとの一覧で見られます。もう一度浮かせる・コピー・保存・削除ができます（メニューバーの「履歴…」）
-- **文字の読み取り**：浮かせた画像の文字を読み取ってコピーします（全体か、ドラッグで選んだ範囲。日本語と英語。Mac の中で読み、ネットには送りません）。読み取った文字は吹き出しで直して、コピーし直せます
-- **文字マーカー**：画像の文字の位置に合わせて、蛍光ペン・下線・取り消し線・囲みを引けます。文字の書き込みにもマーカーを付けられます
-- **画面の録画**：範囲・ウィンドウ・画面全体・タイマーで録画し、止めたらその場に浮かせて再生します（再生・一時停止・見たい所へ移動）。MP4 か GIF で保存・コピーできます（最長 10 分）
-- **共有リンク（Gyazo）**：浮かせた画像を自分の Gyazo に上げて、リンクをクリップボードに入れます。撮ったら自動で上げることもできます（初期設定はオフ）
-- **終了・再起動のあとも戻す**：浮かせていた画像と、閉じた画像（最大 10 枚）を、書き込みごと元の場所に戻します
-- **メニューを開いたまま撮る**：ほかのアプリのメニューや右クリックのメニューを開いたままショートカットを押すと、メニューごと撮れます（アクセシビリティを許可しておくと、どのメニューでも効きます）
-- 編集中のツールバーを 2 段に分けました。ボタンに乗せると説明が出ます（Pinshot が前面にないときも）
-- 画像の操作バーに、保存先のフォルダを Finder で開くボタンを足しました。閉じるボタン（×）は画像の左上の外側に出ます
-- 設定・履歴などを開いている間だけ、Dock にアイコンが出ます
+- **録画を GIF にして共有リンクに**：録画を止めたあとの窓の操作バーの 🔗（リンク）で、録画を GIF にして Gyazo に上げ、リンクをクリップボードに入れます。Slack・Discord・GitHub などに貼ると、その場で動く画像が出ます
+  - GIF が大きいとき（10 MB を超えたとき・Gyazo に「大きすぎる」と断られたとき）は、大きさとコマの数を減らして作り直してから上げます。いちばん小さくしても上げられないときは、そう知らせます（録画を短くするか、範囲を小さくして録り直してください）
+  - 動画（MP4）のままでは上げません（Gyazo の MP4 は有料プランだけのため）
 
-### なくしたもの
-
-- スクロールキャプチャ
-- クリック透過
-- メニューバーの「最近撮った画像」の一覧（履歴のウィンドウで見られます）
-
-### そのほか
-
-- 細かな不具合を直しました（「撮ったら、クリップボードにもコピーする」が履歴から浮かせた画像にも効いていた、など）
-- 浮かせた画像と履歴を、Mac の中（`~/Library/Application Support/Pinshot`）に残すようになりました。残さないようにするときは、設定の「画像」「履歴」で変えられます
-
-**English:** Highlights — history window (captures, recognized text, shared links), text recognition (OCR), text markers, screen recording (MP4/GIF) with playback controls, Gyazo share links, and floating images restored after quit/restart. Removed: scrolling capture and click-through.
+**English:** New — share a screen recording as a GIF link: the link button in the recording window converts the recording to a GIF, uploads it to Gyazo, and copies the link. Large GIFs are automatically re-made smaller (size and frame rate) before uploading.
