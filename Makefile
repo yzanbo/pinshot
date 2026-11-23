@@ -1,6 +1,8 @@
 DERIVED_DATA := build
 APP := $(DERIVED_DATA)/Build/Products/Debug/Pinshot.app
 RELEASE_APP := $(DERIVED_DATA)/Build/Products/Release/Pinshot.app
+# アプリの識別子（project.yml の PRODUCT_BUNDLE_IDENTIFIER）
+BUNDLE_ID := dev.portfolio.pinshot
 # make install で入れる場所
 INSTALL_DIR ?= /Applications
 # アプリの版（project.yml の CFBundleShortVersionString）
@@ -88,11 +90,15 @@ test: generate
 
 # 動いている Pinshot を終了してから、ビルドして起動する
 run: build stop
-	open $(APP)
+	@# 念のため、開けなかったときは少し待って開き直す（最後の 1 回だけ、エラーを出す）
+	@for i in 1 2 3 4; do open "$(APP)" 2>/dev/null && exit 0; sleep 0.5; done; open "$(APP)"
 
-# 浮かせている画像を保存してから終わるので、終わり切るまで（最大 5 秒）待つ
+# 浮かせている画像を保存してから終わるので、終わり切るまで（最大 5 秒）待つ。
+# プロセスが消えても、macOS（LaunchServices）が終了を知るのは少し遅れる。知る前に open すると、
+# 終わった Pinshot に起動の知らせを送ろうとして -600 で失敗するので、知るまで待つ（最大 5 秒）
 stop:
 	-@killall Pinshot 2>/dev/null; for i in $$(seq 1 50); do pgrep -x Pinshot >/dev/null || break; sleep 0.1; done
+	@for i in $$(seq 1 50); do [ -z "$$(lsappinfo find bundleid=$(BUNDLE_ID) 2>/dev/null)" ] && break; sleep 0.1; done
 
 clean:
 	xcodebuild -project Pinshot.xcodeproj -scheme Pinshot -derivedDataPath $(DERIVED_DATA) clean
