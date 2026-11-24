@@ -24,8 +24,8 @@ targets:
         CFBundleDevelopmentRegion: ja
         CFBundleLocalizations:
           - ja
-        CFBundleShortVersionString: "0.4.0"
-        CFBundleVersion: "5"
+        CFBundleShortVersionString: "0.4.1"
+        CFBundleVersion: "6"
         # β 版か（設定の「バージョン」に「（β 版）」と出す。正式版にするときに false にする）
         PinshotIsBeta: true
         # Dock に出さず、メニューバーだけに常駐する
