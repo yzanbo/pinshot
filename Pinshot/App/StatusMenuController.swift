@@ -111,7 +111,6 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
         settingsItem.keyEquivalent = ","
         menu.addItem(settingsItem)
         menu.addItem(makeItem("使い方と許可…", symbol: "questionmark.circle", action: #selector(openWelcome)))
-        menu.addItem(makeItem("Pinshot について", symbol: "info.circle", action: #selector(openAbout)))
 
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Pinshot を終了", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
@@ -340,17 +339,6 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
 
     @objc private func openWelcome() {
         WelcomeWindowController.shared.show()
-    }
-
-    @objc private func openAbout() {
-        NSApp.activate()
-        // 「Pinshot について」は、渡さないと macOS が覚えているアイコン（古いもの・仮のもの）を出すので、はっきり渡す
-        // 括弧で出るビルド番号（CFBundleVersion）は使っていないので出さず、「Version 0.2.0」のような版の番号だけにする
-        var options: [NSApplication.AboutPanelOptionKey: Any] = [.version: ""]
-        if let icon = AppSupport.appIcon {
-            options[.applicationIcon] = icon
-        }
-        NSApp.orderFrontStandardAboutPanel(options: options)
     }
 
     // MARK: - ショートカットの表示

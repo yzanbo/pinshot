@@ -7,6 +7,14 @@ enum AppSupport {
     /// macOS が覚えているアイコンは、アイコンを変える前の古いもの・仮のもののことがあるため
     static let appIcon: NSImage? = Bundle.main.image(forResource: "AppIcon")
 
+    /// 版の番号の表示（β 版なら「0.4.0 (β 版)」）。版は Info.plist の CFBundleShortVersionString、
+    /// β 版かは PinshotIsBeta（どちらも project.yml で決める）
+    static var versionText: String {
+        let info = Bundle.main.infoDictionary ?? [:]
+        let number = info["CFBundleShortVersionString"] as? String ?? "—"
+        return info["PinshotIsBeta"] as? Bool == true ? "\(number) (β 版)" : number
+    }
+
     /// 文字の入力欄で ⌘C・⌘V・⌘A・⌘Z が効くよう、編集メニューを持つメインメニューを用意する
     /// （メニューバーに常駐するアプリはメニューが出ないが、キーの組み合わせはメニューを通して届く）
     static func installMainMenu() {

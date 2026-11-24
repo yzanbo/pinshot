@@ -7,10 +7,6 @@ struct GeneralSettingsView: View {
     @ObservedObject var loginItem: LoginItemModel
     @ObservedObject var permission: PermissionModel
 
-    private var version: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
-    }
-
     var body: some View {
         SettingsPane {
             Section("表示") {
@@ -71,7 +67,7 @@ struct GeneralSettingsView: View {
                 }
             }
             Section("Pinshot について") {
-                LabeledContent("バージョン", value: version)
+                LabeledContent("バージョン", value: AppSupport.versionText)
                 LabeledContent("使い方") {
                     Button("使い方を見る…") { WelcomeWindowController.shared.show() }
                         .hoverRole()
