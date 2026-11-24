@@ -7,6 +7,7 @@ struct ToolbarActions {
     var save: @MainActor () -> Void
     /// 画像の文字を読み取ってコピーする（範囲を選ぶときは「…」から）
     var copyText: @MainActor () -> Void
+    var copyLink: @MainActor () -> Void
     var done: @MainActor () -> Void
     var setOpacity: (Double) -> Void
     var setZoom: (Double) -> Void
@@ -54,6 +55,7 @@ struct EditorToolbar: View {
             copy: { actions.copy() },
             save: { actions.save() },
             copyText: { actions.copyText() },
+            copyLink: { actions.copyLink() },
             more: { actions.more() },
             history: { actions.openHistory() },
             isEditing: true,

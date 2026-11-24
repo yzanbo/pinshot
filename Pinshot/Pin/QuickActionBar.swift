@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// 浮かせた画像の下側に出す、よく使う操作のバー（不透明度・拡大率・コピー・保存・保存先を開く・文字・履歴・そのほか・編集）。
+/// 浮かせた画像の下側に出す、よく使う操作のバー（不透明度・拡大率・コピー・リンク・文字 | 保存・保存先を開く | 履歴・そのほか・編集）。
 /// 左端に動かすつまみ ✙ を置く。編集モードでも、ツールバーの上のバーとしてこのバーをそのまま出し（isEditing）、
 /// 違うのは「編集」が「完了」になることだけ（編集に入る前と後で、同じ場所に同じ見た目・同じ役割のボタンがある）。
 /// 閉じるボタン（×）は、画像の左上の外側に別に出す
@@ -15,6 +15,8 @@ struct QuickActionBar: View {
     var save: () -> Void
     /// 画像の文字を読み取ってコピーする（範囲を選ぶときは「…」から）
     var copyText: () -> Void
+    /// 上げて、共有リンクをコピーする（上げる先は設定の「共有」）
+    var copyLink: () -> Void
     var more: () -> Void
     /// 撮った画像の履歴を開く
     var history: () -> Void
@@ -36,11 +38,15 @@ struct QuickActionBar: View {
                 .padding(.leading, 2)
 
             divider
+            // クリップボードに入れるもの（画像・共有リンク・文字）。貼り付けて使うことが多い順
             QuickActionButton(symbol: "doc.on.doc", help: "コピー（⌘C）", action: copy)
+            QuickActionButton(symbol: "link", help: "\(UploadDestinations.current?.id.label ?? "上げる先") に上げ、共有リンクをコピー（⌘U。上げる先は設定の「共有」）", action: copyLink)
+            QuickActionButton(symbol: "text.viewfinder", help: "文字をコピー（⇧⌘T）：画像の文字を読み取る。範囲を選ぶときは「…」から", action: copyText)
+            divider
+            // ファイルにするもの（保存と、保存したものを見に行く）
             QuickActionButton(symbol: "square.and.arrow.down", help: "保存（⌘S）", action: save)
             // 保存した画像を見に行けるよう、保存先のフォルダを開く（どの画像からでも同じフォルダ）
             QuickActionButton(symbol: "folder", help: "保存先のフォルダを Finder で開く", action: { ImageSaver.openSaveFolder() })
-            QuickActionButton(symbol: "text.viewfinder", help: "文字をコピー（⇧⌘T）：画像の文字を読み取る。範囲を選ぶときは「…」から", action: copyText)
             divider
             QuickActionButton(symbol: "clock.arrow.circlepath", help: "履歴（撮った画像・読み取った文字・上げたもの）", action: history)
             QuickActionButton(symbol: "ellipsis", help: "そのほかの操作", action: more)

@@ -79,6 +79,7 @@ extension PinCanvasView {
             copy: { [weak self] in self?.controller?.copyToPasteboard() },
             save: { [weak self] in self?.controller?.save() },
             copyText: { [weak self] in self?.controller?.copyRecognizedText() },
+            copyLink: { [weak self] in self?.controller?.uploadAndCopyLink() },
             more: { [weak self] in self?.controller?.showMoreMenu() },
             history: { [weak self] in self?.controller?.openHistory() },
             move: { [weak self] in self?.controller?.moveWithHandle() },

@@ -23,7 +23,7 @@ Pinshot/
 │   ├── ScreenRecorder        画面（と Mac の音・マイクの音）を受け取って MP4 に書く（ScreenCaptureKit の SCStream → AVAssetWriter。両方の音のときは、止めたあとに AudioMixdown で 1 本に混ぜる）
 │   ├── RecordingController   録画を始める・止める入口（赤い点線の枠・操作パネル・上限）
 │   ├── RecordingStore        アプリの中に残す録画（期間・数・容量の上限で古いものを削除・本数と容量）
-│   ├── RecordingPlayer       録画を浮かせてくり返し再生する窓（見た目は浮かせた画像にそろえる：左上の外の ×・下の操作バーと左端の ✙。再生・一時停止・位置のつまみ・音を出す / 消す・コピー・MP4 / GIF で保存・GIF にして上げる・Finder で表示）
+│   ├── RecordingPlayer       録画を浮かせてくり返し再生する窓（見た目は浮かせた画像にそろえる：左上の外の ×・下の操作バーと左端の ✙。再生・一時停止・位置のつまみ・音を出す / 消す | コピー・GIF にして上げる | MP4 / GIF で保存・Finder で表示）
 │   ├── MicrophoneCapture     マイクの音を受け取る（AVCaptureSession。時刻を画面のコマと同じホストの時計に直す）
 │   ├── AudioMixdown          Mac の音とマイクの 2 本の音を 1 本に混ぜて書き直す（映像はそのまま。テストあり）
 │   ├── GIFExporter           録画から GIF を作る（テストあり）

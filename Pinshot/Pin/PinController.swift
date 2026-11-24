@@ -313,6 +313,7 @@ final class PinController: NSObject, NSWindowDelegate {
             copy: { [weak self] in self?.copyToPasteboard() },
             save: { [weak self] in self?.save() },
             copyText: { [weak self] in self?.copyRecognizedText() },
+            copyLink: { [weak self] in self?.uploadAndCopyLink() },
             done: { [weak self] in self?.setEditing(false) },
             setOpacity: { [weak self] value in self?.setOpacity(CGFloat(value)) },
             setZoom: { [weak self] value in self?.setZoom(CGFloat(value)) },

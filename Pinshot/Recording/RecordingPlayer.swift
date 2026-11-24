@@ -5,8 +5,8 @@ import SwiftUI
 
 /// 録画を浮かせて、くり返し再生する窓（画像を浮かせるのと同じく、ほかのウィンドウより前に出す）。
 /// 見た目は浮かせた画像にそろえる：動画の左上の外側に閉じるボタン（×）、動画の下に操作バー（黒い半透明の台）。
-/// 操作バーから、再生・一時停止・好きな所へ動かす・音を出す、コピー（ファイルとして貼り付けられる）・MP4 で保存・GIF で保存・
-/// GIF にして上げて共有リンクをコピー・Finder で表示、ができる
+/// 操作バーから、再生・一時停止・好きな所へ動かす・音を出す、コピー（ファイルとして貼り付けられる）・GIF にして上げて共有リンクをコピー、
+/// MP4 で保存・GIF で保存・Finder で表示、ができる（並びは浮かせた画像の操作バーにそろえる）
 @MainActor
 final class RecordingPlayer: NSObject, NSWindowDelegate {
     /// 開いている窓（閉じたら手放す）
@@ -309,9 +309,8 @@ private struct RecordingPlayerView: View {
             .hoverRole()
             muteButton
             QuickActionDivider()
+            // クリップボードに入れるもの（ファイル・共有リンク）。浮かせた画像の操作バーと同じ並び
             QuickActionButton(symbol: "doc.on.doc", help: "コピー（ファイルとして貼り付けられる）", action: model.copy)
-            QuickActionButton(symbol: "square.and.arrow.down", help: "MP4 で保存", action: model.saveMovie)
-            gifButton
             QuickActionButton(
                 symbol: "link",
                 help: "GIF にして \(UploadDestinations.current?.id.label ?? "上げる先") に上げ、共有リンクをコピー（上げる先は設定の「共有」。大きいときは小さくして上げる。音は入らない）",
@@ -319,6 +318,10 @@ private struct RecordingPlayerView: View {
             )
             .disabled(model.isUploading)
             .opacity(model.isUploading ? 0.4 : 1)
+            QuickActionDivider()
+            // ファイルにするもの（MP4・GIF で保存と、置き場所を見に行く）
+            QuickActionButton(symbol: "square.and.arrow.down", help: "MP4 で保存", action: model.saveMovie)
+            gifButton
             QuickActionButton(symbol: "folder", help: "Finder で表示", action: model.revealInFinder)
         }
         .quickActionBarBackground()
