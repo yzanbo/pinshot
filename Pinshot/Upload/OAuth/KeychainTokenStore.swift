@@ -5,7 +5,9 @@ import Security
 /// アドホック署名だと、ビルドし直すたびに macOS がキーチェーンへのアクセスを確かめることがある
 /// （「Pinshot Dev」の証明書で署名すると、聞かれにくい）
 enum KeychainTokenStore {
-    private static let service = "dev.portfolio.pinshot.upload"
+    /// キーチェーンでの置き場所の名前。アプリの ID から作る（配る Pinshot では dev.portfolio.pinshot.upload。
+    /// ID の違う更新の試験用アプリは別の名前になり、ふだんの Pinshot の許可証を読んだり消したりしない）
+    private static let service = (Bundle.main.bundleIdentifier ?? "dev.portfolio.pinshot") + ".upload"
 
     static func load(for destination: UploadDestinationID) -> OAuthToken? {
         var query = baseQuery(for: destination)

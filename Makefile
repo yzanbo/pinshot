@@ -33,9 +33,15 @@ SPARKLE_STAMP := $(SPARKLE_DIR)/.version-$(SPARKLE_VERSION)
 UPDATE_PUBLIC_KEY := $(shell sed -n 's/^ *SUPublicEDKey: *"\(.*\)"/\1/p' project.yml)
 # 配る更新ファイル（zip）を置く場所。版の一覧（appcast.xml）の中のダウンロード元になる
 RELEASE_DOWNLOAD_URL := https://github.com/yzanbo/pinshot/releases/download/v$(RELEASE_NAME)/
+# 更新の試験用アプリ（make update-test）に署名する証明書。配る版とまったく同じにする（許可が引き継がれるかを確かめるため）。
+# アドホック署名どうしの更新と比べるときは make update-test UPDATE_TEST_SIGN_IDENTITY=-
+UPDATE_TEST_SIGN_IDENTITY ?= $(RELEASE_SIGN_IDENTITY)
+# 更新の試験で、新しい版を配る手元のサーバーのポート（Pinshelf の試験の 8765 とぶつからないよう、8766 にする）。
+# ほかで使っているときは make update-test UPDATE_TEST_PORT=8800 のように替える
+UPDATE_TEST_PORT ?= 8766
 
 .PHONY: generate build release install uninstall dist publish publish-check test run stop clean cert icon readme-images \
-	sparkle update-key
+	sparkle update-key update-test update-test-log
 
 # アイコンを描くスクリプトをビルドする場所
 ICON_TOOL_DIR := $(DERIVED_DATA)/icon-tool
@@ -140,6 +146,18 @@ publish-check: $(SPARKLE_STAMP)
 update-key: $(SPARKLE_STAMP)
 	./scripts/update-key.sh
 
+# 更新を、手元で通しで試す（docs/TESTING.md の「更新を通しで試す」）。
+# ふだんの Pinshot とは別の ID・別のデータフォルダの試験用アプリを、配る版と同じ証明書で 2 つの版作り、
+# 新しい版を手元のサーバーから配る（止めるときは control + C）
+update-test: generate
+	SIGN_IDENTITY="$(UPDATE_TEST_SIGN_IDENTITY)" UPDATE_TEST_PORT="$(UPDATE_TEST_PORT)" ./scripts/update-test.sh
+
+# 更新の試験のあいだの macOS の記録を、build/update-test/system.log に書き出す
+# （許可が引き継がれたかの裏取りと、うまくいかないときの手がかりに使う）。
+# いつからの記録かは SINCE="2026-11-26 19:50:00" のように渡す（なければ、直近 30 分）
+update-test-log:
+	./scripts/update-test-log.sh
+
 # テストを動かす（アプリは起動しない）。
 # xcodebuild test は端末によっては動かないので、ビルドしてから xctest で直接動かす
 test: generate
@@ -161,6 +179,7 @@ stop:
 
 clean:
 	xcodebuild -project Pinshot.xcodeproj -scheme Pinshot -derivedDataPath $(DERIVED_DATA) clean
+	rm -rf $(DERIVED_DATA)/update-test
 
 # README の絵（docs/images のいちばん上の静止画 hero.png と、使い方の GIF）を作り直す（Pinshot の見た目・動きを変えたとき）。
 # アプリのコード（入口の AppDelegate と、Sparkle を読み込む SparkleUpdater を除く）と scripts/readme-images/main.swift を一緒にビルドし、
