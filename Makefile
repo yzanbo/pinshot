@@ -103,7 +103,7 @@ stop:
 clean:
 	xcodebuild -project Pinshot.xcodeproj -scheme Pinshot -derivedDataPath $(DERIVED_DATA) clean
 
-# README の動き（docs/images の GIF）を作り直す（Pinshot の見た目・動きを変えたとき）。
+# README の絵（docs/images のいちばん上の静止画 hero.png と、使い方の GIF）を作り直す（Pinshot の見た目・動きを変えたとき）。
 # アプリのコード（入口の AppDelegate を除く）と scripts/readme-images/main.swift を一緒にビルドし、Pinshot の部品を実際に出して描き写す。
 # 作っている間、画面に Pinshot の部品が少しのあいだ出る（マウス・キーボードの操作や、画面の収録はしない）
 README_TOOL_DIR := $(DERIVED_DATA)/readme-images

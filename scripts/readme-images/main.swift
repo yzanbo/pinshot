@@ -1,4 +1,4 @@
-// README に載せる動き（GIF）を作る（make readme-images が動かす）。
+// README に載せる絵（いちばん上の静止画と、使い方の GIF）を作る（make readme-images が動かす）。
 //
 // Pinshot の部品（範囲を選ぶ画面・下のバー・浮かせた画像・ツールバー・録画の枠と操作パネル・浮かせた録画）は、
 // アプリと同じコードで実際に画面に出し、その中身を描き写して、見本の画面の上に重ねる。
@@ -7,6 +7,7 @@
 // （操作は、部品にマウス・キーの知らせを直接渡して動かす）。作っている間、画面に Pinshot の部品が少しのあいだ出る。
 //
 // 使い方: ReadmeImages <書き出すフォルダ>
+//   - hero.png: いちばん上の静止画（書き込みを終えて浮かんでいる画像と操作バー。2 倍の細かさのまま書き出す）
 //   - capture.gif: ⌘⇧2 → 範囲をドラッグ → その場に浮かぶ → ドラッグで動かす
 //   - edit.gif: ダブルクリックで編集モード → モザイク → 番号 → 文字 → 矢印 → コピー → 編集を終える
 //   - record.gif: ⌘⇧2 → 下のバーで「録画」 → 範囲をドラッグ → 録画中の枠と操作パネル → 停止 → 浮かせて再生
@@ -425,6 +426,16 @@ func downscale(_ image: CGImage, by factor: Int) -> CGImage {
     return context.makeImage() ?? image
 }
 
+/// 静止画を PNG で書き出す（GIF と違い、描いた倍率のまま。README では幅を指定して小さく見せるので、Retina でもくっきり出る）
+func writePNG(_ image: CGImage, named name: String) throws {
+    let url = outputFolder.appendingPathComponent(name)
+    guard let data = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]) else {
+        throw ReadmeImagesError.writeFailed(name)
+    }
+    try data.write(to: url)
+    print("wrote \(url.path)")
+}
+
 func writeGIF(_ frames: [GIFFrame], named name: String) throws {
     let url = outputFolder.appendingPathComponent(name)
     guard let destination = CGImageDestinationCreateWithURL(url as CFURL, UTType.gif.identifier as CFString, frames.count, nil) else {
@@ -799,6 +810,14 @@ final class ReadmeImages {
         await showKeys("⌘E", hold: 0.6) { pin.setEditing(false) }
         await snap(hold: 1.6)
         try flush("edit.gif")
+
+        // いちばん上の静止画：書き込みを終えて浮かんでいる画像と操作バー。
+        // 「編集を終えました」の知らせ（0.9 秒出て 0.3 秒で消える）が消えてから撮る。カーソルは見本の範囲の外へ出して写さない
+        await settle(1500)
+        var still = overlay
+        still.mouse = CGPoint(x: -10_000, y: -10_000)
+        guard let hero = compositor.frame(background: background, overlay: still) else { throw ReadmeImagesError.captureFailed("hero") }
+        try writePNG(hero, named: "hero.png")
     }
 
     // MARK: 録画
