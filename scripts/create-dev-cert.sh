@@ -4,11 +4,14 @@
 # アドホック署名だと、ビルドし直すたびに macOS から「別のアプリ」と見なされ、
 # 画面収録の許可が効かなくなる。毎回同じ証明書で署名すれば、許可は一度で済む。
 # 途中で、キーチェーンの変更を許可するためのパスワードを聞かれる。
+# （Pinshelf・Pinstage の scripts/create-dev-cert.sh と同じ作り）
 set -euo pipefail
 
 NAME="Pinshot Dev"
 KEYCHAIN="$HOME/Library/Keychains/login.keychain-db"
 
+# 全角の文字のすぐ前の変数は、${NAME} と波かっこで囲む（macOS の bash 3.2 は、言語の設定が UTF-8 のとき、
+# 続く全角の文字のバイトまで変数名として読み、「NAME�: unbound variable」で止まるため）
 if security find-identity -v -p codesigning | grep -q "\"$NAME\""; then
   echo "「${NAME}」の証明書はすでにあります。"
   exit 0
