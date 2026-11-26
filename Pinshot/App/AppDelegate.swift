@@ -49,7 +49,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         RecordingController.shared.onStateChange = { [weak self] recording in self?.statusMenu.setRecording(recording) }
         // 上げている間は、メニューバーのアイコンを「上げている」印にする
         UploadCenter.shared.onActivityChange = { [weak self] uploading in self?.statusMenu.setUploading(uploading) }
-        // 新しい版を確かめる仕組みを始める。自動で見つけたら、メニューバーのアイコンに小さな丸を付ける
+        // 新しい版を確かめる仕組みを始める。見つけたら、入れるか飛ばすまで、メニューバーのアイコンに印を付ける
         AppUpdates.shared.onPendingVersionChange = { [weak self] _ in self?.statusMenu.pendingUpdateDidChange() }
         updater = SparkleUpdater.start(updates: .shared)
         keyTap.onShortcut = { [weak self] action in self?.performFromShortcut(action) }

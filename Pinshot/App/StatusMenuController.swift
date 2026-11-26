@@ -130,6 +130,8 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
         item.menu = menu
         statusItem = item
         statusMenu = menu
+        // 前の起動で見つけて、まだ入れていない新しい版があれば、はじめから印を付ける
+        updateStatusIcon()
         updateStatusMenu()
     }
 

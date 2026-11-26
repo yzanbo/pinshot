@@ -110,6 +110,7 @@ targets:
       - path: Pinshot/Upload/OAuth/PKCE.swift
       - path: Pinshot/Upload/OAuth/OAuthConfiguration.swift
       - path: Pinshot/App/AppUpdates.swift
+      - path: Pinshot/App/AppInfo.swift
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
