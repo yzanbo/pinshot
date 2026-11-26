@@ -3,6 +3,8 @@
 #
 # アドホック署名だと、ビルドし直すたびに macOS から「別のアプリ」と見なされ、
 # 画面収録の許可が効かなくなる。毎回同じ証明書で署名すれば、許可は一度で済む。
+# 作者の Mac では、この証明書で配る版（make dist）にも署名するので、作るのは最初の 1 回だけにし、
+# 別の Mac では控え（.p12）を取り込む（docs/ARCHITECTURE.md の「署名」）。
 # 途中で、キーチェーンの変更を許可するためのパスワードを聞かれる。
 # （Pinshelf・Pinstage の scripts/create-dev-cert.sh と同じ作り）
 set -euo pipefail
@@ -44,4 +46,5 @@ security import "$WORK/cert.p12" -k "$KEYCHAIN" -P pinshot -T /usr/bin/codesign
 security add-trusted-cert -r trustRoot -p codeSign -k "$KEYCHAIN" "$WORK/cert.pem"
 
 echo
-echo "「${NAME}」の証明書を作りました。make run でビルドすると、この証明書で署名されます。"
+echo "「${NAME}」の証明書を作りました。make run・make install でビルドすると、この証明書で署名されます。"
+echo "配る版（make dist）は、Makefile の RELEASE_SIGN_IDENTITY（SHA-1）の証明書でだけ署名します（作り直した証明書では止まります）。"

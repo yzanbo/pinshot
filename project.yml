@@ -56,6 +56,10 @@ targets:
         DEVELOPMENT_TEAM: ""
         ENABLE_HARDENED_RUNTIME: NO
         COMBINE_HIDPI_IMAGES: YES
+      configs:
+        # 配る版には、デバッガをつなぐための許可（get-task-allow）を入れない（何もしないと、Xcode がビルドのときに足す）
+        Release:
+          CODE_SIGN_INJECT_BASE_ENTITLEMENTS: NO
     scheme:
       testTargets:
         - PinshotTests
