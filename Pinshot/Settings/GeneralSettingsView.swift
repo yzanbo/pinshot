@@ -140,8 +140,11 @@ private struct PermissionRow: View {
 /// ログイン時に起動するかどうか（SMAppService）
 @MainActor
 final class LoginItemModel: ObservableObject {
-    @Published private(set) var isEnabled = SMAppService.mainApp.status == .enabled
+    @Published private(set) var isEnabled = LoginItemModel.isEnabledNow
     @Published private(set) var errorMessage: String?
+
+    /// いま、ログイン時に起動するようになっているか（システム設定で変えられることもあるので、使うたびに macOS に聞く）
+    static var isEnabledNow: Bool { SMAppService.mainApp.status == .enabled }
 
     func set(_ enabled: Bool) {
         do {
@@ -154,6 +157,6 @@ final class LoginItemModel: ObservableObject {
         } catch {
             errorMessage = "設定できませんでした: \(error.localizedDescription)"
         }
-        isEnabled = SMAppService.mainApp.status == .enabled
+        isEnabled = Self.isEnabledNow
     }
 }

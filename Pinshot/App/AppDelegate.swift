@@ -1,10 +1,13 @@
 import AppKit
 import Combine
+import os
 
 @main
 @MainActor
 /// 起動と、グローバルショートカットの登録
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    private static let logger = Logger(pinshot: "app")
+
     private let statusMenu = StatusMenuController()
     /// 更新の仕組み（公開鍵の入っていないビルドでは nil。状態は AppUpdates.shared から見る）
     private var updater: SparkleUpdater?
@@ -85,6 +88,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             UserDefaults.standard.set(true, forKey: Self.didShowWelcomeKey)
             WelcomeWindowController.shared.show(firstLaunch: true)
         }
+        logLaunch()
+    }
+
+    /// 起動したことを記録に残す（更新のあと、どの版が動いているか、画面収録・アクセシビリティの許可と
+    /// 「ログイン時に起動」が引き継がれたかを、あとから確かめられるように。make update-test-log で書き出せる）
+    private func logLaunch() {
+        let version = Bundle.main.shortVersion ?? "?"
+        let build = Bundle.main.buildNumber ?? "?"
+        let screen = ScreenPermission.isGranted ? "許可済み" : "未許可"
+        let accessibility = AccessibilityPermission.isGranted ? "許可済み" : "未許可"
+        let loginItem = LoginItemModel.isEnabledNow ? "オン" : "オフ"
+        Self.logger.notice("起動しました: 版 \(version, privacy: .public)（ビルド \(build, privacy: .public)）、画面収録: \(screen, privacy: .public)、アクセシビリティ: \(accessibility, privacy: .public)、ログイン時に起動: \(loginItem, privacy: .public)")
     }
 
     /// killall（make stop など）で送られる終了の合図でも、すぐには止まらず、ふつうに終了する
