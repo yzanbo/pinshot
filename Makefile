@@ -18,7 +18,7 @@ DIST_DMG := $(DIST_BASE).dmg
 # 毎回同じ証明書で署名すると、画面収録の許可がビルドし直しても外れない。
 SIGN_IDENTITY ?= $(shell security find-identity -v -p codesigning 2>/dev/null | grep -q '"Pinshot Dev"' && echo "Pinshot Dev" || echo "-")
 
-.PHONY: generate build release install uninstall dist publish test run stop clean cert icon readme-images
+.PHONY: generate build release install uninstall dist publish test run stop clean cert icon
 
 # アイコンを描くスクリプトをビルドする場所
 ICON_TOOL_DIR := $(DERIVED_DATA)/icon-tool
@@ -87,13 +87,6 @@ test: generate
 	xcodebuild -project Pinshot.xcodeproj -scheme Pinshot -configuration Debug \
 		-derivedDataPath $(DERIVED_DATA) CODE_SIGN_IDENTITY="$(SIGN_IDENTITY)" build-for-testing
 	xcrun xctest $(DERIVED_DATA)/Build/Products/Debug/PinshotTests.xctest
-
-# README の見本の画像（docs/images）を作り直す。書き込みはアプリと同じ描き方で描く（PinshotTests/ReadmeImages.swift）
-readme-images: generate
-	xcodebuild -project Pinshot.xcodeproj -scheme Pinshot -configuration Debug \
-		-derivedDataPath $(DERIVED_DATA) CODE_SIGN_IDENTITY="$(SIGN_IDENTITY)" build-for-testing
-	PINSHOT_README_IMAGES="$(CURDIR)/docs/images" xcrun xctest -XCTest ReadmeImages \
-		$(DERIVED_DATA)/Build/Products/Debug/PinshotTests.xctest
 
 # 動いている Pinshot を終了してから、ビルドして起動する
 run: build stop
