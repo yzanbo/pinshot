@@ -14,6 +14,10 @@
   <img src="https://img.shields.io/badge/Swift-5-orange.svg" alt="Swift 5">
 </p>
 
+<p align="center">
+  <img src="docs/images/hero.png" width="760" alt="Pinshot で書き込みを入れて書き出した画像の例。設定画面の見本に、番号・モザイク・蛍光ペン・四角・矢印・文字を入れ、背景と影を付けている">
+</p>
+
 > [!NOTE]
 > **いまは β 版です。** 思わぬ不具合があるかもしれません。見つけたら [Issues](https://github.com/yzanbo/pinshot/issues) で教えてください。操作や設定の保存形式は、正式版までに変わることがあります。
 
@@ -32,6 +36,25 @@
 - **複数のディスプレイ**にも対応しています
 
 くわしい操作は [docs/USAGE.md](docs/USAGE.md) を見てください。
+
+## 使い方
+
+1. **撮る**：`⌘⇧2` を押して、撮りたい範囲をドラッグします（`space` でウィンドウを撮るモードに切り替わります）。撮った画像は、その場に最前面で浮かびます
+2. **書き込む**：画像をダブルクリックするか、画像の下の操作バーの「編集」で編集モードに入ります。番号・モザイク・文字マーカー・四角・矢印・文字などを重ねられます
+
+   <p align="center">
+     <img src="docs/images/annotate.gif" width="640" alt="番号、メールアドレスを隠すモザイク、注意書きの蛍光ペン、ボタンを囲む四角、矢印と文字を、1 つずつ書き込んでいく様子">
+   </p>
+
+3. **書き出す**：`⌘C` でコピー、`⌘S` で保存します。`⌥` を押しながらドラッグすると、ほかのアプリや Finder に直接ドロップできます。ツールバーの「背景」で、余白・背景・角丸・影を付けた見た目にもできます
+
+見せたくないところはぼかしやモザイクで隠し、見せたいところはスポットライトで目立たせられます。
+
+<p align="center">
+  <img src="docs/images/focus.png" width="640" alt="名前とメールアドレスをぼかし、写真のところだけをスポットライトで明るくして、ラベルと矢印で示した例">
+</p>
+
+> この節の画像は、架空の画面に、Pinshot と同じ描き方で書き込みを入れて作った見本です（`make readme-images` で作り直せます）。
 
 ## ダウンロード
 
@@ -98,6 +121,7 @@ make uninstall
 | `make stop` | 動いている Pinshot を終了する |
 | `make generate` | `Pinshot.xcodeproj` を作るだけ（Xcode で開くとき） |
 | `make icon` | アプリのアイコンを描き直す（`scripts/make-app-icon.swift` を変えたとき） |
+| `make readme-images` | README の見本の画像（`docs/images`）を作り直す（`PinshotTests/ReadmeImages.swift`。書き込みの見た目を変えたとき） |
 
 `Pinshot.xcodeproj` は `project.yml` から作るため、リポジトリには入れていません。
 
