@@ -110,14 +110,13 @@ echo "${KEYS}" | sed -n 1p > "${KEY_FILE}"
 PUBLIC_KEY="$(echo "${KEYS}" | sed -n 2p)"
 
 # 試験用の Info.plist を作る（名前・データのフォルダ・版・配信元・公開鍵を差し替え、手元のサーバーから読めるようにする）。
-# 自動で確かめる間隔は、Sparkle が受け付けるいちばん短い 1 時間にする（続けて試すときも、丸の知らせを見られるように）
+# 自動で確かめる間隔は、配る版と同じ 1 時間（Info.plist のまま。Sparkle が受け付けるいちばん短い間隔）
 make_plist() {
   local output="$1" build="$2" version="$3"
   cp Pinshot/Info.plist "${output}"
   "${PLIST_BUDDY}" \
     -c "Set :CFBundleDisplayName ${TEST_NAME}" \
     -c "Add :PinshotDataFolderName string ${TEST_NAME}" \
-    -c "Set :SUScheduledCheckInterval 3600" \
     -c "Set :CFBundleVersion ${build}" \
     -c "Set :CFBundleShortVersionString ${version}" \
     -c "Set :SUFeedURL http://localhost:${PORT}/appcast.xml" \
