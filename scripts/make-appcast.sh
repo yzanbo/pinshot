@@ -7,7 +7,7 @@
 # 使い方: make-appcast.sh <更新ファイル.zip> <この版の変更.md> <ダウンロード元の URL の頭> <書き出す appcast.xml>
 #   環境変数 SPARKLE_KEY_FILE: 秘密鍵のファイル（試験用）。なければ、ログインキーチェーンの鍵を使う
 #
-# 変数のすぐ後ろに全角の文字を続けるときは、${NAME} と波かっこで囲む（create-dev-cert.sh と同じ理由）。
+# 変数のすぐ後ろに全角の文字を続けるときは、${NAME} と波かっこで囲む（create-signing-cert.sh と同じ理由）。
 set -euo pipefail
 
 ZIP="$1"

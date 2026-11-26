@@ -11,7 +11,7 @@
 #
 # 使い方: publish-check.sh <project.yml の公開鍵> <出す版（例: 0.5.0-beta.1）>
 #
-# 変数のすぐ後ろに全角の文字を続けるときは、${NAME} と波かっこで囲む（create-dev-cert.sh と同じ理由）。
+# 変数のすぐ後ろに全角の文字を続けるときは、${NAME} と波かっこで囲む（create-signing-cert.sh と同じ理由）。
 set -euo pipefail
 
 EXPECTED_KEY="${1:-}"

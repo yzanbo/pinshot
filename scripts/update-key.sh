@@ -6,7 +6,7 @@
 # Pinshelf で作った鍵があれば、それがそのまま入る）。
 # 途中でキーチェーンへのアクセスを聞かれたら、許可する。
 #
-# 変数のすぐ後ろに全角の文字を続けるときは、${NAME} と波かっこで囲む（create-dev-cert.sh と同じ理由）。
+# 変数のすぐ後ろに全角の文字を続けるときは、${NAME} と波かっこで囲む（create-signing-cert.sh と同じ理由）。
 set -euo pipefail
 
 BIN="Vendor/Sparkle/bin"

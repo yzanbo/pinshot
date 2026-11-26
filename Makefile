@@ -14,13 +14,15 @@ DIST_BASE := dist/Pinshot-$(RELEASE_NAME)
 DIST_ZIP := $(DIST_BASE).zip
 DIST_DMG := $(DIST_BASE).dmg
 
-# 「Pinshot Dev」の証明書があればそれで署名する（なければアドホック署名）。
+# コード署名の証明書（make cert で作る。作者のアプリすべてで共通の 1 つ）。この名前の証明書があればそれで署名する（なければアドホック署名）。
 # 毎回同じ証明書で署名すると、画面収録の許可がビルドし直しても外れない。
-SIGN_IDENTITY ?= $(shell security find-identity -v -p codesigning 2>/dev/null | grep -q '"Pinshot Dev"' && echo "Pinshot Dev" || echo "-")
+# 作者以外がソースからビルドするときは、CERT_NAME="〇〇 Code Signing" のように自分の名前を環境変数で渡せる
+CERT_NAME ?= yzanbo Code Signing
+SIGN_IDENTITY ?= $(shell security find-identity -v -p codesigning 2>/dev/null | grep -q '"$(CERT_NAME)"' && echo "$(CERT_NAME)" || echo "-")
 
-# 配る版（make dist）に署名する証明書。作者の「Pinshot Dev」を、名前ではなく SHA-1 で選ぶ
+# 配る版（make dist）に署名する証明書。作者の「yzanbo Code Signing」を、名前ではなく SHA-1 で選ぶ
 # （どの版も同じ証明書で署名して、更新しても許可が外れないようにする。理由は docs/ARCHITECTURE.md の「署名」）
-RELEASE_SIGN_IDENTITY := 7BE0770552795F55842DBA3F671DB54505C9992A
+RELEASE_SIGN_IDENTITY := 1AA5C85C695BC8F9AF6D9233A0210790B9472373
 
 # 更新の仕組み（Sparkle）。公式の配布物を取り寄せて Vendor/Sparkle に置く（リポジトリには入れない）。
 # 版を上げるときは、SPARKLE_VERSION と SPARKLE_SHA256（配布物 Sparkle-版.tar.xz の SHA-256）を一緒に変える
@@ -200,6 +202,6 @@ icon:
 	swiftc -O -module-cache-path $(ICON_TOOL_DIR)/cache scripts/make-app-icon.swift -o $(ICON_TOOL_DIR)/make-app-icon
 	$(ICON_TOOL_DIR)/make-app-icon
 
-# 開発用の署名の証明書を作る（一度だけ）
+# コード署名の証明書（CERT_NAME。作者は「yzanbo Code Signing」）を作る（作者のアプリすべてで共通。最初の 1 回だけ。あれば作らず、その SHA-1 を出す）
 cert:
-	./scripts/create-dev-cert.sh
+	./scripts/create-signing-cert.sh "$(CERT_NAME)"

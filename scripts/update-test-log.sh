@@ -8,7 +8,7 @@
 # 使い方: update-test-log.sh
 #   環境変数 SINCE: いつからの記録を集めるか（"2026-11-26 19:50:00" の形）。なければ、直近 30 分
 #
-# 変数のすぐ後ろに全角の文字を続けるときは、${NAME} と波かっこで囲む（create-dev-cert.sh と同じ理由）。
+# 変数のすぐ後ろに全角の文字を続けるときは、${NAME} と波かっこで囲む（create-signing-cert.sh と同じ理由）。
 set -euo pipefail
 
 OUTPUT="build/update-test/system.log"

@@ -122,12 +122,12 @@ make uninstall
 
 | コマンド | 内容 |
 |---|---|
-| `make cert` | 開発用の署名の証明書「Pinshot Dev」を作る（最初に一度だけ。任意） |
+| `make cert` | コード署名の証明書を作る（最初に一度だけ。任意。作者は「yzanbo Code Signing」で、ほかのアプリと共通） |
 | `make run` | 動いている Pinshot を終了し、開発用（Debug）にビルドして起動する |
 | `make build` | 開発用にビルドするだけ |
 | `make test` | テストを動かす（アプリは起動しない） |
 | `make install` | 配布用にビルドして `/Applications` に入れる |
-| `make dist` | Releases に置く DMG と zip（`dist/Pinshot-<版>.dmg`・`.zip`）を作る（決まった証明書「Pinshot Dev」で署名。証明書がない・作り直したものに替わっているときは止まる） |
+| `make dist` | Releases に置く DMG と zip（`dist/Pinshot-<版>.dmg`・`.zip`）を作る（作者の証明書「yzanbo Code Signing」で署名。証明書がない・作り直したものに替わっているときは止まる） |
 | `make publish` | DMG と zip を作り、GitHub に Release（タグ `v<版>`）を作ってアップロードする。β 版は `make publish BETA=1`（タグ `v<版>-beta.1`・プレリリース）。zip に更新用の鍵で署名し、版の一覧（`appcast.xml`）を作り直して、コミット・プッシュまで行う（コミット済みで、GitHub の main と同じ状態からだけ動く） |
 | `make update-key` | 更新ファイルの署名に使う鍵（EdDSA）を用意して、公開鍵を `project.yml` に書き込む（Pin シリーズで共通の鍵。すでにあれば、それを使う） |
 | `make update-test` | 更新を、手元で通しで試す（別の ID の試験用アプリを、配る版と同じ証明書で 2 つの版作り、手元のサーバーから配る。[docs/TESTING.md](docs/TESTING.md)） |
@@ -141,9 +141,9 @@ make uninstall
 
 ### `make cert` について
 
-macOS は、画面収録の許可をアプリの署名にひも付けて覚えます。アドホック署名だと、ビルドし直すたびに別のアプリと見なされ、許可が外れます。`make cert` は自己署名の証明書「Pinshot Dev」をログインキーチェーンに作り（途中でパスワードを聞かれます）、以後の `make run`・`make install` はそれで署名します（[scripts/create-dev-cert.sh](scripts/create-dev-cert.sh)）。
+macOS は、画面収録の許可をアプリの署名にひも付けて覚えます。アドホック署名だと、ビルドし直すたびに別のアプリと見なされ、許可が外れます。`make cert` は自己署名の証明書をログインキーチェーンに作り（途中でパスワードを聞かれます）、以後の `make run`・`make install` はそれで署名します（[scripts/create-signing-cert.sh](scripts/create-signing-cert.sh)）。名前は `Makefile` の `CERT_NAME` で、作者は「yzanbo Code Signing」です。ご自身の名前で作るときは、`make cert` や `make install` の前に `export CERT_NAME="〇〇 Code Signing"` としておきます（同じ名前の証明書がもうあれば、作り直しません）。
 
-作者の「Pinshot Dev」は、配る版（`make dist`）の署名にも使っています。`make dist` は、この証明書を名前ではなく SHA-1（`Makefile` の `RELEASE_SIGN_IDENTITY`）で選ぶので、作り直した証明書では署名できません（理由と、控えの取り方・取り込み方は [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) の「署名」）。
+作者の「yzanbo Code Signing」は、作者のアプリすべてで共通の証明書で、配る版（`make dist`）の署名にも使っています。`make dist` は、この証明書を名前ではなく SHA-1（`Makefile` の `RELEASE_SIGN_IDENTITY`）で選ぶので、作り直した証明書では署名できません（理由と、控えの取り方・取り込み方は [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) の「署名」）。
 
 許可しているのに案内の画面が出続けるときは、システム設定の画面収録の一覧から古い Pinshot を「−」で削除し、Pinshot を開き直してから許可し直してください。
 

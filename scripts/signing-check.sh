@@ -1,7 +1,7 @@
 #!/bin/bash
 # 配る版に署名する証明書を確かめる（make dist・make update-test が呼ぶ）。
 #
-# 配る版は、作者の「Pinshot Dev」を名前ではなく SHA-1 で選んで署名する（Makefile の RELEASE_SIGN_IDENTITY。
+# 配る版は、作者の「yzanbo Code Signing」を名前ではなく SHA-1 で選んで署名する（Makefile の RELEASE_SIGN_IDENTITY。
 # 理由は docs/ARCHITECTURE.md の「署名」）。SHA-1 で選ぶので、作り直した証明書では、そもそも署名できない。
 # ここでは、その証明書がないときに控えの取り込み方を出し、署名のあとに、その証明書で署名されたかを確かめる。
 #
@@ -9,7 +9,7 @@
 #   signing-check.sh keychain <証明書の SHA-1>        この Mac に、その証明書があるか（ビルドの前）
 #   signing-check.sh app <アプリ> <証明書の SHA-1>    ビルドしたアプリが、その証明書で署名されているか（ビルドのあと）
 #
-# 変数のすぐ後ろに全角の文字を続けるときは、${NAME} と波かっこで囲む（create-dev-cert.sh と同じ理由）。
+# 変数のすぐ後ろに全角の文字を続けるときは、${NAME} と波かっこで囲む（create-signing-cert.sh と同じ理由）。
 set -euo pipefail
 
 USAGE="使い方: signing-check.sh keychain <証明書の SHA-1> | app <アプリ> <証明書の SHA-1>"
@@ -19,8 +19,8 @@ case "${1:-}" in
     [ "$#" -eq 2 ] || { echo "${USAGE}" >&2; exit 1; }
     if ! security find-identity -v -p codesigning | grep -qi "$2"; then
       echo "配る版に署名する証明書（SHA-1: $2）が、この Mac にありません（有効期限が切れたときも、ここで止まります）。" >&2
-      echo "「Pinshot Dev」の控え（.p12）を取り込んでください（docs/ARCHITECTURE.md の「署名」）。" >&2
-      echo "make cert で作り直すと別の証明書になり、それで配ると、更新を入れた人の許可が外れます。" >&2
+      echo "「yzanbo Code Signing」の控え（.p12）を取り込んでください（共通のノート「署名の証明書の決まり」・docs/ARCHITECTURE.md の「署名」）。" >&2
+      echo "この Mac で make cert を流して作ると別の証明書になり、それで配ると、更新を入れた人の許可が外れます。" >&2
       exit 1
     fi
     ;;

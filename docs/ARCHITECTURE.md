@@ -105,7 +105,7 @@ Pinshot/
 PinshotTests/       画面に関係ない処理のテスト（make test）
 
 scripts/            ビルドと配る手順の道具（Makefile から使う）
-├── create-dev-cert.sh       署名の証明書「Pinshot Dev」を作る（make cert。配る版の署名にも使うので、作るのは最初の 1 回だけ）
+├── create-signing-cert.sh   コード署名の証明書を作る（make cert。作者は「yzanbo Code Signing」で、作者のアプリすべてで共通。作るのは最初の 1 回だけ）
 ├── signing-check.sh         配る版の証明書（SHA-1）が、ビルドの前にこの Mac にあるか・ビルドのあとにそれで署名されたかを確かめる（make dist・make update-test）
 ├── update-key.sh            更新ファイルの署名の鍵（EdDSA）を用意して、公開鍵を project.yml に書き込む（make update-key）
 ├── make-appcast.sh          更新ファイル（zip）に署名して、版の一覧（appcast.xml）を作る（make publish・make update-test）
@@ -131,13 +131,14 @@ Vendor/Sparkle/     更新の仕組み（Sparkle）の配布物。make が取り
 
 ### 署名
 
-- macOS は、画面収録・アクセシビリティ・マイクの許可を、アプリの「同じアプリ」の条件（designated requirement）にひも付けて覚える。アドホック署名は、条件が中身のハッシュなので、ビルドし直すたび・版が変わるたびに別のアプリと見なされ、許可が外れる。自己署名の証明書「Pinshot Dev」で署名すると、条件は「アプリの ID ＋ 証明書」になり、版が変わっても同じアプリと見なされる
-- 開発のビルド（`make run`・`make install`）は、Pinshot Dev があればそれで署名する（なければアドホック署名）
-- 配る版（`make dist`）は、いつも Pinshot Dev で署名する（0.5.0 から。0.4.1 まではアドホック署名だった）。Apple の公証ではないので、初めて開くときの「このまま開く」は残る
+- macOS は、画面収録・アクセシビリティ・マイクの許可を、アプリの「同じアプリ」の条件（designated requirement）にひも付けて覚える。アドホック署名は、条件が中身のハッシュなので、ビルドし直すたび・版が変わるたびに別のアプリと見なされ、許可が外れる。自己署名の証明書「yzanbo Code Signing」で署名すると、条件は「アプリの ID ＋ 証明書」になり、版が変わっても同じアプリと見なされる
+- 証明書は、作者のアプリ（Pin シリーズ・Kickoff など）すべてで共通の 1 つ（Developer ID と同じく、開発者ごとに 1 つ）。アプリの ID が違うので、同じ証明書でも、アプリどうしの許可やキーチェーンの中身は混ざらない。決まりの全体は、共通のノート「署名の証明書の決まり」。名前に「Dev」を付けないのは、配る版の署名にも使うため（前は「Pinshot Dev」というアプリごとの開発用の証明書だった）
+- 開発のビルド（`make run`・`make install`）は、`Makefile` の `CERT_NAME` の証明書があればそれで署名する（なければアドホック署名）。作者以外がソースからビルドするときは、`CERT_NAME` を自分の名前に替えられる
+- 配る版（`make dist`）は、いつも「yzanbo Code Signing」で署名する（0.5.0 から。0.4.1 まではアドホック署名だった）。Apple の公証ではないので、初めて開くときの「このまま開く」は残る
 - 名前が同じでも、作り直した証明書は別物で、それで配ると、更新を入れた人の許可が外れる。そのため配る版は、証明書を名前ではなく SHA-1（`Makefile` の `RELEASE_SIGN_IDENTITY`）で選んで署名する（`make update-test` も同じ証明書で署名する）。作り直した証明書や、同じ名前の別の証明書では署名できない。ビルドの前に、その証明書があるか（なければ控えの取り込み方を出して止まる）、ビルドのあとに、その証明書で署名されたかも確かめる（`scripts/signing-check.sh`）
-- 証明書の秘密鍵は作り直せない。キーチェーンアクセスで「Pinshot Dev」を選んで「書き出す…」で、強いパスワード付きの `.p12` にし、パスワード管理アプリなど Mac の外にも保管する。別の Mac でビルドするときは `make cert` で作らず、この控えを取り込み（ダブルクリック）、キーチェーンアクセスでその証明書の「信頼」→「コード署名」を「常に信頼」にする（`security find-identity -v -p codesigning` に出れば使える）
-- 有効期限は 2036 年 11 月まで。切れる前に、Developer ID に移るか作り直すかを決める（どちらも、切り替える版で 1 回だけ別のアプリ扱いになる）
-- Hardened Runtime は切っている（`ENABLE_HARDENED_RUNTIME = NO`）。埋め込んだ Sparkle は、Xcode が本体だけを Pinshot Dev で署名し直し、中の部品（`Autoupdate`・`Updater.app`・XPC サービス）は配布物のアドホック署名のまま。Hardened Runtime とライブラリの検証を使っていないので、このまま動く（`codesign --verify --deep --strict` も通る）
+- 証明書の秘密鍵は作り直せない。キーチェーンアクセスで「yzanbo Code Signing」を選んで「書き出す…」で、強いパスワード付きの `.p12` にし、パスワード管理アプリなど Mac の外にも保管する。別の Mac でビルドするときは `make cert` で作らず、この控えを取り込み（ダブルクリック）、キーチェーンアクセスでその証明書の「信頼」→「コード署名」を「常に信頼」にする（`security find-identity -v -p codesigning` に出れば使える）
+- 有効期限は、日本時間の 9999-12-31 23:59:59（世界標準時の 14:59:59）。9999-12-31 は、証明書の決まり（RFC 5280）で「期限を定めない」ことを表す日付で、実質、期限なし（期限は欄として必ず要るので、この日付にしている）。世界標準時の 23:59:59 にすると、日本時間では 10000-01-01 になるので、日本時間で 9999-12-31 に収めた。`openssl req -x509` は日数でしか渡せず、終わりの時刻が作った時刻になるので、終わりの日時をじかに渡せる `openssl ca -selfsign` で作る（`scripts/create-signing-cert.sh`）。将来 Developer ID に移るときは、切り替える版で 1 回だけ別のアプリ扱いになる
+- Hardened Runtime は切っている（`ENABLE_HARDENED_RUNTIME = NO`）。埋め込んだ Sparkle は、Xcode が本体だけをこの証明書で署名し直し、中の部品（`Autoupdate`・`Updater.app`・XPC サービス）は配布物のアドホック署名のまま。Hardened Runtime とライブラリの検証を使っていないので、このまま動く（`codesign --verify --deep --strict` も通る）
 - 配る版（Release）には、デバッガをつなぐための許可（`get-task-allow`）を入れない（`CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO`。何もしないと、Xcode がビルドのときに足す。0.4.1 までの配布物には入っていた）
 
 ### 更新
