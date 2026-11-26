@@ -822,10 +822,11 @@ final class ReadmeImages {
         canvas.commitPendingText()
         await snap(hold: 0.4)
 
-        // A: 矢印（文字の右下から、1 つ目の Pro のバッジへ）
+        // A: 矢印（文字の後ろ寄りの下から、1 つ目の Pro のバッジの左の真ん中へ。
+        // 表の見出し「プラン」の左を通り、バッジには重ならないよう、少しすき間を空ける）
         overlay.cursor = .crosshair
         await press("a", keyCode: 0)
-        await drag(from: onPin(title.maxX + 110, title.maxY + 4), to: onPin(pros[0].midX, pros[0].minY - 3), seconds: 0.5)
+        await drag(from: onPin(title.maxX + 100, title.maxY + 6), to: onPin(pros[0].minX - 6, pros[0].midY), seconds: 0.5)
 
         // ⌘C でコピー（クリップボードには入れず、知らせだけ出す） → ⌘E で編集を終える
         overlay.cursor = .arrow
