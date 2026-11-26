@@ -23,8 +23,6 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
     /// 録画している・上げている途中か（メニューバーのアイコンを変える）
     private var isRecording = false
     private var isUploading = false
-    /// 新しい版があるときに、アイコンの右上に出す小さな丸
-    private let updateBadge = UpdateBadgeView()
     /// 「読み取った文字 ▸」の項目と、その中のメニュー（開くたびに作り直す）
     private var textHistoryItem: NSMenuItem?
     private var textHistoryMenu: NSMenu?
@@ -38,11 +36,6 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
     /// メニューバーにアイコンを出し、メニューを付ける
     func install() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        item.button?.image = NSImage(systemSymbolName: "camera.viewfinder", accessibilityDescription: "Pinshot")
-        item.button?.toolTip = "Pinshot"
-        if let button = item.button {
-            installUpdateBadge(on: button)
-        }
 
         let menu = NSMenu()
         menu.delegate = self
@@ -130,7 +123,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
         item.menu = menu
         statusItem = item
         statusMenu = menu
-        // 前の起動で見つけて、まだ入れていない新しい版があれば、はじめから印を付ける
+        // 前の起動で見つけて、まだ入れていない新しい版があれば、はじめから印の入ったアイコンにする
         updateStatusIcon()
         updateStatusMenu()
     }
@@ -200,13 +193,13 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
         updateStatusIcon()
     }
 
-    /// 自動で見つけた新しい版が変わった（見つけた・見てもらった）。アイコンの右上の小さな丸を合わせる
+    /// 新しい版の知らせが変わった（見つけた・入れた・飛ばした）。アイコンの印を合わせる
     func pendingUpdateDidChange() {
         updateStatusIcon()
     }
 
     /// メニューバーのアイコン（録画中は赤い ●、上げている間は ↑ の雲。どちらでもなければいつものカメラ）。
-    /// 新しい版があるときは、どのアイコンでも右上に小さな丸を付ける
+    /// 新しい版があるときは、カメラを右下に下向きの矢印の印が入ったものに替える（録画中・上げている間は、終わってから替える）
     private func updateStatusIcon() {
         let button = statusItem?.button
         let pendingVersion = AppUpdates.shared.pendingVersion
@@ -218,23 +211,9 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
             button?.image = NSImage(systemSymbolName: "icloud.and.arrow.up", accessibilityDescription: "Pinshot（アップロード中）")
             button?.toolTip = "Pinshot（アップロード中）"
         } else {
-            button?.image = NSImage(systemSymbolName: "camera.viewfinder", accessibilityDescription: "Pinshot")
+            button?.image = pendingVersion == nil ? MenuBarIcon.normal : MenuBarIcon.withUpdateBadge
             button?.toolTip = pendingVersion.map { "Pinshot（新しいバージョン \($0) があります）" } ?? "Pinshot"
         }
-        updateBadge.isHidden = pendingVersion == nil
-    }
-
-    /// アイコンの右上に、新しい版の小さな丸を置く（ふだんは隠しておく）
-    private func installUpdateBadge(on button: NSStatusBarButton) {
-        updateBadge.isHidden = true
-        updateBadge.translatesAutoresizingMaskIntoConstraints = false
-        button.addSubview(updateBadge)
-        NSLayoutConstraint.activate([
-            updateBadge.widthAnchor.constraint(equalToConstant: UpdateBadgeView.diameter),
-            updateBadge.heightAnchor.constraint(equalToConstant: UpdateBadgeView.diameter),
-            updateBadge.trailingAnchor.constraint(equalTo: button.trailingAnchor, constant: -2),
-            updateBadge.topAnchor.constraint(equalTo: button.topAnchor, constant: 3),
-        ])
     }
 
     /// メニューを開くたびに、いまの状態（許可・新しい版・浮かせている画像の数・履歴の数）に合わせる
@@ -449,18 +428,4 @@ private struct MenuNotice {
             separator.isHidden = !newValue
         }
     }
-}
-
-/// 新しい版があるときに、メニューバーのアイコンの右上に出す小さな丸
-private final class UpdateBadgeView: NSView {
-    static let diameter: CGFloat = 6
-
-    override func draw(_ dirtyRect: NSRect) {
-        // 色は描くたびに決める（外観やアクセントカラーが変わっても合うように）
-        NSColor.controlAccentColor.setFill()
-        NSBezierPath(ovalIn: bounds).fill()
-    }
-
-    /// アイコンのクリックを邪魔しない
-    override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
