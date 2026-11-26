@@ -28,8 +28,10 @@ targets:
         CFBundleDevelopmentRegion: ja
         CFBundleLocalizations:
           - ja
-        CFBundleShortVersionString: "0.4.1"
-        CFBundleVersion: "6"
+        # アプリの版（make dist・make publish もここから読む）。出すたびに上げる。
+        # CFBundleVersion（ビルド番号）も 1 つずつ上げる（Sparkle は、ビルド番号で新旧を比べる）
+        CFBundleShortVersionString: "0.5.0"
+        CFBundleVersion: "7"
         # β 版か（設定の「バージョン」に「（β 版）」と出す。正式版にするときに false にする）
         PinshotIsBeta: true
         # Dock に出さず、メニューバーだけに常駐する

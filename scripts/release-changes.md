@@ -1,11 +1,16 @@
-## この版の主な変更（0.4.0-beta.1 から）
+## この版の主な変更（0.4.1-beta.1 から）
+
+<!-- 出すたびに、この版の変更に書き直す（make publish が、リリースの説明の先頭に入れる） -->
+
+### 新しく使えるようになったこと
+
+- **アプリの中から更新できるようにしました**：新しい版を 1 日に 1 回確かめ、見つけると、メニューバーのアイコンに小さな丸を付けて、メニューの上で知らせます（画面には割り込みません）。メニューの「アップデートを確認…」からも確かめられ、そのまま入れ替えられます。更新のときは、「このまま開く」も、画面収録などの許可の取り直しも要りません。**この版へは、これまでどおりダウンロードして入れ替えてください**（0.4.1 までの版には、この機能がないため）。次の版からは、アプリの中から更新できます
 
 ### 変わったこと
 
-- **浮かせた画像の操作バーに、リンクのボタン（🔗）を足しました**：押すと、いまの見た目（書き込み・背景を含む）を Gyazo に上げて、共有リンクをクリップボードに入れます（右クリックの「アップロードしてリンクをコピー」・⌘U と同じです）。編集中のツールバーの上のバーにも出ます
-- **操作バーのボタンの並びを整えました**：クリップボードに入れるもの → ファイルにするもの の順にそろえています
-  - 浮かせた画像：コピー・リンク・文字 ｜ 保存・保存先のフォルダ
-  - 録画の窓：コピー・リンク ｜ MP4 で保存・GIF で保存・Finder で表示
-- **メニューバーのメニューから「Pinshot について」をなくしました**：版の番号は、設定の「一般」のいちばん下の「バージョン」で見られます。β 版のあいだは「0.4.1 (β 版)」のように出ます
+- **配る版の署名を、決まった証明書に変えました**：これまでは版ごとに署名が変わり、新しい版に入れ替えるたびに、画面収録の許可を取り直す必要がありました。この版から、どの版も同じ証明書で署名するので、更新しても macOS から同じアプリと見なされ、許可はそのまま使えます。**この版に入れ替えるときだけは、これまでと同じく、許可を取り直してください**（システム設定の一覧で古い Pinshot を「−」で削除してから、もう一度許可します）
+- **新しい版の確認のために、GitHub に接続するようになりました**：新しい版の確認と、その更新のダウンロードのときだけ接続します。撮った画像や使い方は送りません。自動の確認は、設定の「一般」→「新しい版を自動で確かめる」で止められます
+- 設定の「一般」の「Pinshot について」に、「アップデートを確認…」・「新しい版を自動で確かめる」・最後に確かめた日時を足しました
+- 配る版から、デバッガをつなぐための許可（`get-task-allow`）を外しました
 
-**English:** Changed — the floating image's action bar now has a link button that uploads the image to Gyazo and copies the share link (same as ⌘U). Buttons in the image and recording bars are reordered consistently (clipboard actions first, then file actions). "About Pinshot" was removed from the menu bar menu; the version (marked as beta) is shown in Settings → General.
+**English:** New — Pinshot can now update itself: it checks GitHub once a day, shows a dot on the menu bar icon when a new version is found (no window pops up), and installs it from the menu ("アップデートを確認…"). Updates are verified with the author's EdDSA signature. This version still needs a manual install; later versions update in-app. Changed — releases are now signed with a fixed self-signed certificate, so Screen Recording and Accessibility permissions are kept across updates (grant them once more after installing this version). The app now also connects to GitHub, only for update checks and downloads; automatic checks can be turned off in Settings → General.
