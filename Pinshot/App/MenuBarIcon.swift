@@ -36,20 +36,19 @@ enum MenuBarIcon {
     /// 矢印をもとの寸法のまま、丸を直径 8.4pt にする（PNG に書き出して、実寸と拡大で見比べて決めた）
     private static func drawUpdateBadge(in context: CGContext, rect: CGRect) {
         let unit = rect.width / 18
-        /// 丸の中心の、右下の角からの距離
+        // 丸の中心の、右下の角からの距離
         let inset: CGFloat = 4.2
-        /// 切り抜く半径（丸の半径より 1.1 大きくして、カメラの絵とのあいだにすき間を作る）
+        // 切り抜く半径（丸の半径より 1.1 大きくして、カメラの絵とのあいだにすき間を作る）
         let cutoutRadius: CGFloat = 5.3
-        /// 丸の半径
+        // 丸の半径
         let dotRadius: CGFloat = 4.2
-        /// 矢印の倍率（下の矢印の座標と線の太さに掛ける）
-        let arrow: CGFloat = 1.0
         let center = CGPoint(x: rect.maxX - inset * unit, y: rect.minY + inset * unit)
         func circle(radius: CGFloat) -> CGRect {
             CGRect(x: center.x - radius * unit, y: center.y - radius * unit, width: radius * 2 * unit, height: radius * 2 * unit)
         }
+        // 丸の中心からの位置（矢印の座標。Pinshelf の印の、倍率を掛ける前の値）
         func point(_ dx: CGFloat, _ dy: CGFloat) -> CGPoint {
-            CGPoint(x: center.x + dx * arrow * unit, y: center.y + dy * arrow * unit)
+            CGPoint(x: center.x + dx * unit, y: center.y + dy * unit)
         }
         // 丸の周りを切り抜く
         context.setBlendMode(.clear)
@@ -60,7 +59,7 @@ enum MenuBarIcon {
         context.fillEllipse(in: circle(radius: dotRadius))
         // 下向きの矢印を、丸から抜く
         context.setBlendMode(.clear)
-        context.setLineWidth(1.4 * arrow * unit)
+        context.setLineWidth(1.4 * unit)
         context.setLineCap(.round)
         context.setLineJoin(.round)
         let tip = point(0, -2.0)
