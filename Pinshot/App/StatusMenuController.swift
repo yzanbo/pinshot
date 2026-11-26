@@ -13,12 +13,18 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
     private var actionTitles: [ShortcutAction: String] = [:]
     /// 操作ごとに割り当てたショートカットと、登録できたか（ほかのアプリが使っていると登録できない）
     private var shortcutStates: [ShortcutAction: (shortcut: Shortcut?, registered: Bool)] = [:]
-    /// 画面収録の許可がないときだけ出す項目（知らせと区切り線）
-    private var permissionItems: [NSMenuItem] = []
+    /// 画面収録の許可がないときだけ出す知らせ
+    private var permissionNotice: MenuNotice?
+    /// 自動で見つけた新しい版があるときだけ出す知らせ
+    private var updateNotice: MenuNotice?
+    /// 「アップデートを確認…」（更新の機能を使えるビルドだけ出す）
+    private var checkForUpdatesItem: NSMenuItem?
     private var pinsHeaderItem: NSMenuItem?
     /// 録画している・上げている途中か（メニューバーのアイコンを変える）
     private var isRecording = false
     private var isUploading = false
+    /// 新しい版があるときに、アイコンの右上に出す小さな丸
+    private let updateBadge = UpdateBadgeView()
     /// 「読み取った文字 ▸」の項目と、その中のメニュー（開くたびに作り直す）
     private var textHistoryItem: NSMenuItem?
     private var textHistoryMenu: NSMenu?
@@ -34,17 +40,19 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         item.button?.image = NSImage(systemSymbolName: "camera.viewfinder", accessibilityDescription: "Pinshot")
         item.button?.toolTip = "Pinshot"
+        if let button = item.button {
+            installUpdateBadge(on: button)
+        }
 
         let menu = NSMenu()
         menu.delegate = self
 
         // 画面収録の許可がないときだけ、いちばん上で知らせる（メニューを開くたびに確かめる）
-        let warning = makeItem("画面収録の許可が必要です…", symbol: "exclamationmark.triangle.fill", action: #selector(openWelcome))
-        warning.image = warning.image?.withSymbolConfiguration(.init(paletteColors: [.systemOrange]))
-        let warningSeparator = NSMenuItem.separator()
-        menu.addItem(warning)
-        menu.addItem(warningSeparator)
-        permissionItems = [warning, warningSeparator]
+        permissionNotice = addNotice("画面収録の許可が必要です…", symbol: "exclamationmark.triangle.fill",
+                                     color: .systemOrange, action: #selector(openWelcome), to: menu)
+        // 自動で見つけた新しい版も、上で知らせる（選ぶと、更新の画面が出る。名前の版は、メニューを開くたびに入れる）
+        updateNotice = addNotice("新しいバージョンがあります…", symbol: "arrow.down.circle.fill",
+                                 color: .controlAccentColor, action: #selector(checkForUpdates), to: menu)
 
         // キャプチャ
         menu.addItem(.sectionHeader(title: "キャプチャ"))
@@ -111,6 +119,10 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
         settingsItem.keyEquivalent = ","
         menu.addItem(settingsItem)
         menu.addItem(makeItem("使い方と許可…", symbol: "questionmark.circle", action: #selector(openWelcome)))
+        // 更新の機能を使えるビルドだけ出す（公開鍵の入っていないビルドでは隠す。メニューを開くたびに確かめる）
+        let checkItem = makeItem("アップデートを確認…", symbol: "arrow.down.circle", action: #selector(checkForUpdates))
+        menu.addItem(checkItem)
+        checkForUpdatesItem = checkItem
 
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Pinshot を終了", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
@@ -163,6 +175,16 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
         return item
     }
 
+    /// メニューの上に出す知らせ（色の付いたアイコンの項目と、その下の区切り線）を足す
+    private func addNotice(_ title: String, symbol: String, color: NSColor, action: Selector, to menu: NSMenu) -> MenuNotice {
+        let item = makeItem(title, symbol: symbol, action: action)
+        item.image = item.image?.withSymbolConfiguration(.init(paletteColors: [color]))
+        let separator = NSMenuItem.separator()
+        menu.addItem(item)
+        menu.addItem(separator)
+        return MenuNotice(item: item, separator: separator)
+    }
+
     /// 録画を始めた・止めたとき。録画中は、メニューバーのアイコンを赤い ● にし、「画面を録画」を「録画を止める」にする
     func setRecording(_ recording: Bool) {
         isRecording = recording
@@ -176,9 +198,16 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
         updateStatusIcon()
     }
 
-    /// メニューバーのアイコン（録画中は赤い ●、上げている間は ↑ の雲。どちらでもなければいつものカメラ）
+    /// 自動で見つけた新しい版が変わった（見つけた・見てもらった）。アイコンの右上の小さな丸を合わせる
+    func pendingUpdateDidChange() {
+        updateStatusIcon()
+    }
+
+    /// メニューバーのアイコン（録画中は赤い ●、上げている間は ↑ の雲。どちらでもなければいつものカメラ）。
+    /// 新しい版があるときは、どのアイコンでも右上に小さな丸を付ける
     private func updateStatusIcon() {
         let button = statusItem?.button
+        let pendingVersion = AppUpdates.shared.pendingVersion
         if isRecording {
             button?.image = NSImage(systemSymbolName: "record.circle.fill", accessibilityDescription: "Pinshot（録画中）")?
                 .withSymbolConfiguration(.init(paletteColors: [.systemRed]))
@@ -188,14 +217,33 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
             button?.toolTip = "Pinshot（アップロード中）"
         } else {
             button?.image = NSImage(systemSymbolName: "camera.viewfinder", accessibilityDescription: "Pinshot")
-            button?.toolTip = "Pinshot"
+            button?.toolTip = pendingVersion.map { "Pinshot（新しいバージョン \($0) があります）" } ?? "Pinshot"
         }
+        updateBadge.isHidden = pendingVersion == nil
     }
 
-    /// メニューを開くたびに、いまの状態（許可・浮かせている画像の数・履歴の数）に合わせる
+    /// アイコンの右上に、新しい版の小さな丸を置く（ふだんは隠しておく）
+    private func installUpdateBadge(on button: NSStatusBarButton) {
+        updateBadge.isHidden = true
+        updateBadge.translatesAutoresizingMaskIntoConstraints = false
+        button.addSubview(updateBadge)
+        NSLayoutConstraint.activate([
+            updateBadge.widthAnchor.constraint(equalToConstant: UpdateBadgeView.diameter),
+            updateBadge.heightAnchor.constraint(equalToConstant: UpdateBadgeView.diameter),
+            updateBadge.trailingAnchor.constraint(equalTo: button.trailingAnchor, constant: -2),
+            updateBadge.topAnchor.constraint(equalTo: button.topAnchor, constant: 3),
+        ])
+    }
+
+    /// メニューを開くたびに、いまの状態（許可・新しい版・浮かせている画像の数・履歴の数）に合わせる
     private func updateStatusMenu() {
-        let needsPermission = !ScreenPermission.isGranted
-        permissionItems.forEach { $0.isHidden = !needsPermission }
+        permissionNotice?.isShown = !ScreenPermission.isGranted
+        let updates = AppUpdates.shared
+        updateNotice?.isShown = updates.pendingVersion != nil
+        if let version = updates.pendingVersion {
+            updateNotice?.item.title = "新しいバージョン \(version) があります…"
+        }
+        checkForUpdatesItem?.isHidden = !updates.isAvailable
 
         let pins = PinManager.shared
         pinsHeaderItem?.title = pins.pinCount > 0 ? "浮かせた画像（\(pins.pinCount) 枚）" : "浮かせた画像"
@@ -273,6 +321,9 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
         case #selector(captureWithTimer(_:)), #selector(captureListedWindow(_:)),
              #selector(recordWithTimer(_:)), #selector(recordListedWindow(_:)):
             return !RecordingController.shared.isRecording
+        case #selector(checkForUpdates):
+            // 裏でダウンロードしている途中などは選べない（新しい版の知らせも同じ）
+            return AppUpdates.shared.canCheck
         case #selector(performActionItem(_:)):
             guard let action = action(of: menuItem) else { return true }
             // 録画している間は、録画に写ってしまうので撮らない・ほかの録画は始めない（「録画を止める」は押せる）
@@ -341,6 +392,11 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
         WelcomeWindowController.shared.show()
     }
 
+    /// 新しい版がないかを確かめる（自動で見つけていた版があれば、その更新の画面を前に出す）
+    @objc private func checkForUpdates() {
+        AppUpdates.shared.check()
+    }
+
     // MARK: - ショートカットの表示
 
     /// 操作の項目に、割り当てたショートカットを出す。
@@ -377,4 +433,32 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation
             item.keyEquivalent = ""
         }
     }
+}
+
+/// メニューの上に出す知らせ（項目と、その下の区切り線。いつも一緒に出し入れする）
+private struct MenuNotice {
+    let item: NSMenuItem
+    let separator: NSMenuItem
+
+    var isShown: Bool {
+        get { !item.isHidden }
+        nonmutating set {
+            item.isHidden = !newValue
+            separator.isHidden = !newValue
+        }
+    }
+}
+
+/// 新しい版があるときに、メニューバーのアイコンの右上に出す小さな丸
+private final class UpdateBadgeView: NSView {
+    static let diameter: CGFloat = 6
+
+    override func draw(_ dirtyRect: NSRect) {
+        // 色は描くたびに決める（外観やアクセントカラーが変わっても合うように）
+        NSColor.controlAccentColor.setFill()
+        NSBezierPath(ovalIn: bounds).fill()
+    }
+
+    /// アイコンのクリックを邪魔しない
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }

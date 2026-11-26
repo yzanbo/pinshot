@@ -131,12 +131,13 @@ clean:
 	xcodebuild -project Pinshot.xcodeproj -scheme Pinshot -derivedDataPath $(DERIVED_DATA) clean
 
 # README の絵（docs/images のいちばん上の静止画 hero.png と、使い方の GIF）を作り直す（Pinshot の見た目・動きを変えたとき）。
-# アプリのコード（入口の AppDelegate を除く）と scripts/readme-images/main.swift を一緒にビルドし、Pinshot の部品を実際に出して描き写す。
+# アプリのコード（入口の AppDelegate と、Sparkle を読み込む SparkleUpdater を除く）と scripts/readme-images/main.swift を一緒にビルドし、
+# Pinshot の部品を実際に出して描き写す。
 # 作っている間、画面に Pinshot の部品が少しのあいだ出る（マウス・キーボードの操作や、画面の収録はしない）
 README_TOOL_DIR := $(DERIVED_DATA)/readme-images
 readme-images:
 	mkdir -p "$(README_TOOL_DIR)"
-	find Pinshot -name '*.swift' ! -name AppDelegate.swift > "$(README_TOOL_DIR)/sources.txt"
+	find Pinshot -name '*.swift' ! -name AppDelegate.swift ! -name SparkleUpdater.swift > "$(README_TOOL_DIR)/sources.txt"
 	echo scripts/readme-images/main.swift >> "$(README_TOOL_DIR)/sources.txt"
 	xcrun swiftc -swift-version 5 -target $(shell uname -m)-apple-macos14.0 -module-name ReadmeImages \
 		-module-cache-path "$(README_TOOL_DIR)/module-cache" @"$(README_TOOL_DIR)/sources.txt" -o "$(README_TOOL_DIR)/ReadmeImages"

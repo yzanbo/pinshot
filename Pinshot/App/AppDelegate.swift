@@ -6,6 +6,8 @@ import Combine
 /// 起動と、グローバルショートカットの登録
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let statusMenu = StatusMenuController()
+    /// 更新の仕組み（公開鍵の入っていないビルドでは nil。状態は AppUpdates.shared から見る）
+    private var updater: SparkleUpdater?
     private var hotKeys: [ShortcutAction: HotKey] = [:]
     /// メニューを開いている間もショートカットを効かせる（アクセシビリティを許可しているとき）
     private let keyTap = ShortcutKeyTap()
@@ -44,6 +46,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         RecordingController.shared.onStateChange = { [weak self] recording in self?.statusMenu.setRecording(recording) }
         // 上げている間は、メニューバーのアイコンを「上げている」印にする
         UploadCenter.shared.onActivityChange = { [weak self] uploading in self?.statusMenu.setUploading(uploading) }
+        // 新しい版を確かめる仕組みを始める。自動で見つけたら、メニューバーのアイコンに小さな丸を付ける
+        AppUpdates.shared.onPendingVersionChange = { [weak self] _ in self?.statusMenu.pendingUpdateDidChange() }
+        updater = SparkleUpdater.start(updates: .shared)
         keyTap.onShortcut = { [weak self] action in self?.performFromShortcut(action) }
         registerHotKeys()
         keyTap.start()
