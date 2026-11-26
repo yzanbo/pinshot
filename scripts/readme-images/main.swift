@@ -124,14 +124,25 @@ final class SamplePage: NSObject, WKNavigationDelegate {
         loaded = nil
     }
 
-    /// ページの中の id の部品の範囲（見本の窓の左上からの位置。ポイント。上の帯の分を足す）。
-    /// ドラッグする範囲・押す場所を、決め打ちの座標ではなくページから測る（ページの見た目を変えても、ずれないように）
-    func frame(ofElement id: String) async throws -> CGRect {
-        let script = "(() => { const r = document.getElementById('\(id)').getBoundingClientRect(); return [r.left, r.top, r.width, r.height]; })()"
-        guard let values = try await webView.evaluateJavaScript(script) as? [Double], values.count == 4 else {
-            throw ReadmeImagesError.pageFailed("no element #\(id)")
+    /// ページの中で CSS の selector に当てはまる部品の範囲（ページの上から順。見本の窓の左上からの位置。ポイント。上の帯の分を足す）。
+    /// ドラッグする範囲・押す場所・書き込む場所を、決め打ちの座標ではなくページから測る（ページの見た目や画面の大きさを変えても、ずれないように）。
+    /// textOnly なら、部品の枠ではなく中の文字の範囲を測る（見出しのように、枠が横幅いっぱいに広がる部品で、文字の右を知りたいとき）
+    func frames(of selector: String, textOnly: Bool = false) async throws -> [CGRect] {
+        let measure = textOnly
+            ? "{ const range = document.createRange(); range.selectNodeContents(e); return range.getBoundingClientRect(); }"
+            : "e.getBoundingClientRect()"
+        let script = "Array.from(document.querySelectorAll('\(selector)')).flatMap(e => { const r = (() => \(measure))(); return [r.left, r.top, r.width, r.height]; })"
+        guard let values = try await webView.evaluateJavaScript(script) as? [Double], !values.isEmpty, values.count % 4 == 0 else {
+            throw ReadmeImagesError.pageFailed("no element \(selector)")
         }
-        return CGRect(x: values[0], y: values[1] + Stage.titleBarHeight, width: values[2], height: values[3])
+        return stride(from: 0, to: values.count, by: 4).map {
+            CGRect(x: values[$0], y: values[$0 + 1] + Stage.titleBarHeight, width: values[$0 + 2], height: values[$0 + 3])
+        }
+    }
+
+    /// ページの中の id の部品の範囲（frames(of:) の 1 つだけのもの）
+    func frame(ofElement id: String) async throws -> CGRect {
+        try await frames(of: "#\(id)")[0]
     }
 
     /// state のときのページを、renderScale 倍の画像にする（同じ状態は使い回す）
@@ -607,6 +618,8 @@ final class ReadmeImages {
     var overlay = Overlay(mouse: Stage.point(startPoint.x, startPoint.y))
     /// キャプチャの場面で浮かせ、書き込みの場面で使う画像
     var pin: PinController?
+    /// 浮かせた画像を、撮った場所から動かした量（スクリーン座標）。書き込みの場面で、ページで測った位置を画像の上の位置に直すのに使う
+    var pinOffset = CGPoint.zero
 
     func run() async throws {
         try FileManager.default.createDirectory(at: outputFolder, withIntermediateDirectories: true)
@@ -708,7 +721,8 @@ final class ReadmeImages {
         await move(to: grab, seconds: 0.4)
         overlay.cursor = .closedHand
         let origin = pin.panel.frame.origin
-        for offset in path(from: .zero, to: CGPoint(x: -360, y: 80), seconds: 0.9) {
+        pinOffset = CGPoint(x: -360, y: 80)
+        for offset in path(from: .zero, to: pinOffset, seconds: 0.9) {
             pin.panel.setFrameOrigin(CGPoint(x: origin.x + offset.x, y: origin.y + offset.y))
             overlay.mouse = CGPoint(x: grab.x + offset.x, y: grab.y + offset.y)
             await snap()
@@ -736,10 +750,17 @@ final class ReadmeImages {
         guard let pin else { throw ReadmeImagesError.captureFailed("no pin") }
         let window = pin.panel
         let canvas = pin.canvas
-        // 画像の左上からの位置（ポイント）を、スクリーン座標にする
-        func at(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
-            CGPoint(x: window.frame.minX + x, y: window.frame.maxY - y)
+        // 見本の窓の左上からの位置（ページで測ったもの）を、動かした画像の上のスクリーン座標にする
+        func onPin(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+            let point = Stage.point(x, y)
+            return CGPoint(x: point.x + pinOffset.x, y: point.y + pinOffset.y)
         }
+        // 書き込む場所は、表（最近の申し込み）の部品の位置から決める（画面の大きさを変えても、ずれないように）
+        let card = try await page.frame(ofElement: "signups")
+        // 見出しは横幅いっぱいの部品なので、文字の範囲を測る
+        let title = try await page.frames(of: "#signups h2", textOnly: true)[0]
+        let mails = try await page.frames(of: "#signups td.mail").reduce(CGRect.null) { $0.union($1) }
+        let pros = try await page.frames(of: "#signups .plan.pro")
         func send(_ type: NSEvent.EventType, _ point: CGPoint, clicks: Int = 1) {
             let event = mouseEvent(type, at: point, in: window, clickCount: clicks)
             switch type {
@@ -766,11 +787,11 @@ final class ReadmeImages {
         }
 
         overlay.cursor = .arrow
-        overlay.mouse = at(200, 200)
+        overlay.mouse = onPin(card.midX, card.midY + 40)
         await snap(hold: 0.8)
 
         // ダブルクリックで編集モード
-        let center = at(197, 160)
+        let center = onPin(card.midX, card.midY)
         await move(to: center, seconds: 0.4)
         send(.leftMouseDown, center)
         send(.leftMouseUp, center)
@@ -778,21 +799,22 @@ final class ReadmeImages {
         send(.leftMouseUp, center, clicks: 2)
         await snap(hold: 0.9)
 
-        // M: モザイクでメールアドレスを隠す
+        // M: モザイクでメールアドレス（表のメールの欄すべて）を隠す
         overlay.cursor = .crosshair
         await press("m", keyCode: 46)
-        await drag(from: at(100, 66), to: at(244, 228), seconds: 0.7)
+        await drag(from: onPin(mails.minX - 4, mails.minY + 2), to: onPin(mails.maxX + 4, mails.maxY - 2), seconds: 0.7)
 
-        // N: Pro の行に番号
+        // N: Pro の行に番号（Pro のバッジの右）
         await press("n", keyCode: 45)
-        await click(at(352, 77))
-        await click(at(352, 147))
+        for pro in pros {
+            await click(onPin(pro.maxX + 16, pro.midY))
+        }
         await snap(hold: 0.3)
 
-        // T: 文字（1 文字ずつ入れる）
+        // T: 文字（表の見出しの右。1 文字ずつ入れる）
         await press("t", keyCode: 17)
         overlay.cursor = .iBeam
-        await click(at(150, 6))
+        await click(onPin(title.maxX + 40, title.minY - 6))
         for character in "Pro プラン" {
             (window.firstResponder as? NSTextView)?.insertText(String(character), replacementRange: NSRange(location: NSNotFound, length: 0))
             await snap(hold: 0.09)
@@ -800,10 +822,10 @@ final class ReadmeImages {
         canvas.commitPendingText()
         await snap(hold: 0.4)
 
-        // A: 矢印
+        // A: 矢印（文字の右下から、1 つ目の Pro のバッジへ）
         overlay.cursor = .crosshair
         await press("a", keyCode: 0)
-        await drag(from: at(258, 28), to: at(312, 70), seconds: 0.5)
+        await drag(from: onPin(title.maxX + 110, title.maxY + 4), to: onPin(pros[0].midX, pros[0].minY - 3), seconds: 0.5)
 
         // ⌘C でコピー（クリップボードには入れず、知らせだけ出す） → ⌘E で編集を終える
         overlay.cursor = .arrow
