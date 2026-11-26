@@ -10,9 +10,8 @@ enum AppSupport {
     /// 版の番号の表示（β 版なら「0.4.0 (β 版)」）。版は Info.plist の CFBundleShortVersionString、
     /// β 版かは PinshotIsBeta（どちらも project.yml で決める）
     static var versionText: String {
-        let info = Bundle.main.infoDictionary ?? [:]
-        let number = info["CFBundleShortVersionString"] as? String ?? "—"
-        return info["PinshotIsBeta"] as? Bool == true ? "\(number) (β 版)" : number
+        let number = Bundle.main.shortVersion ?? "—"
+        return Bundle.main.object(forInfoDictionaryKey: "PinshotIsBeta") as? Bool == true ? "\(number) (β 版)" : number
     }
 
     /// 文字の入力欄で ⌘C・⌘V・⌘A・⌘Z が効くよう、編集メニューを持つメインメニューを用意する

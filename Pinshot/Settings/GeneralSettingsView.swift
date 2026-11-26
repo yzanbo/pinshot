@@ -1,11 +1,12 @@
 import ServiceManagement
 import SwiftUI
 
-/// 一般（見た目・キャプチャ・許可・起動・このアプリについて）
+/// 一般（見た目・キャプチャ・許可・起動・このアプリについて（版とアップデート））
 struct GeneralSettingsView: View {
     @ObservedObject var settings: AppSettings
     @ObservedObject var loginItem: LoginItemModel
     @ObservedObject var permission: PermissionModel
+    @ObservedObject var updates: AppUpdates
 
     var body: some View {
         SettingsPane {
@@ -66,14 +67,51 @@ struct GeneralSettingsView: View {
                         .foregroundStyle(.red)
                 }
             }
-            Section("Pinshot について") {
-                LabeledContent("バージョン", value: AppSupport.versionText)
+            Section {
+                LabeledContent("バージョン") {
+                    HStack(spacing: 10) {
+                        Text(AppSupport.versionText)
+                        // 更新の機能を使えるビルドだけ（公開鍵の入っていないビルドでは、版だけを出す）
+                        if updates.isAvailable {
+                            Button("アップデートを確認…") { updates.check() }
+                                .disabled(!updates.canCheck)
+                                .hoverRole()
+                        }
+                    }
+                }
+                if updates.isAvailable {
+                    Toggle(isOn: Binding(
+                        get: { updates.checksAutomatically },
+                        set: { updates.setChecksAutomatically($0) }
+                    )) {
+                        SettingTitle(
+                            "新しい版を自動で確かめる",
+                            info: "1 時間に 1 回、GitHub に新しい版がないかを確かめます。見つかると、メニューバーのアイコンの右下に下向きの矢印の印が付き、メニューの上に出る「新しいバージョン … があります…」から更新できます（画面には割り込みません）。印は、入れるか「このバージョンはスキップ」を選ぶまで残ります。オフにしても、メニューの「アップデートを確認…」でいつでも確かめられます。"
+                        )
+                    }
+                }
                 LabeledContent("使い方") {
                     Button("使い方を見る…") { WelcomeWindowController.shared.show() }
                         .hoverRole()
                 }
+            } header: {
+                Text("Pinshot について")
+            } footer: {
+                if updates.isAvailable {
+                    SettingsNote(Self.lastCheckNote(updates.lastCheckDate))
+                } else {
+                    SettingsNote("このビルドには、更新ファイルを確かめる鍵が入っていないので、アップデートの確認は使えません。")
+                }
             }
         }
+        // 最後に確かめた日時などを、開いたときに聞き直す
+        .onAppear { updates.refresh() }
+    }
+
+    /// 最後に確かめた日時の説明
+    private static func lastCheckNote(_ date: Date?) -> String {
+        guard let date else { return "新しい版は、まだ確かめていません。" }
+        return "新しい版を最後に確かめた日時：\(date.formatted(date: .abbreviated, time: .shortened))"
     }
 }
 
@@ -102,8 +140,11 @@ private struct PermissionRow: View {
 /// ログイン時に起動するかどうか（SMAppService）
 @MainActor
 final class LoginItemModel: ObservableObject {
-    @Published private(set) var isEnabled = SMAppService.mainApp.status == .enabled
+    @Published private(set) var isEnabled = LoginItemModel.isEnabledNow
     @Published private(set) var errorMessage: String?
+
+    /// いま、ログイン時に起動するようになっているか（システム設定で変えられることもあるので、使うたびに macOS に聞く）
+    static var isEnabledNow: Bool { SMAppService.mainApp.status == .enabled }
 
     func set(_ enabled: Bool) {
         do {
@@ -116,6 +157,6 @@ final class LoginItemModel: ObservableObject {
         } catch {
             errorMessage = "設定できませんでした: \(error.localizedDescription)"
         }
-        isEnabled = SMAppService.mainApp.status == .enabled
+        isEnabled = Self.isEnabledNow
     }
 }

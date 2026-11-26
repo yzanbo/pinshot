@@ -16,6 +16,10 @@ targets:
     platform: macOS
     sources:
       - path: Pinshot
+    dependencies:
+      # 更新の仕組み（Sparkle）。make が Vendor/Sparkle に取り寄せたものを、アプリに入れる
+      - framework: Vendor/Sparkle/Sparkle.framework
+        embed: true
     info:
       path: Pinshot/Info.plist
       properties:
@@ -24,8 +28,10 @@ targets:
         CFBundleDevelopmentRegion: ja
         CFBundleLocalizations:
           - ja
-        CFBundleShortVersionString: "0.4.1"
-        CFBundleVersion: "6"
+        # アプリの版（make dist・make publish もここから読む）。出すたびに上げる。
+        # CFBundleVersion（ビルド番号）も 1 つずつ上げる（Sparkle は、ビルド番号で新旧を比べる）
+        CFBundleShortVersionString: "0.5.0"
+        CFBundleVersion: "7"
         # β 版か（設定の「バージョン」に「（β 版）」と出す。正式版にするときに false にする）
         PinshotIsBeta: true
         # Dock に出さず、メニューバーだけに常駐する
@@ -33,6 +39,14 @@ targets:
         # 録画にマイクの音を入れるときに、macOS の確かめるダイアログに出す説明
         NSMicrophoneUsageDescription: 録画にマイクの音（あなたの声など）を入れるときに使います。マイクの音は録画のファイルにだけ書き、ほかには送りません。
         LSMinimumSystemVersion: "14.0"
+        # 更新（Sparkle）。版の一覧（appcast.xml）の場所
+        SUFeedURL: https://raw.githubusercontent.com/yzanbo/pinshot/main/appcast.xml
+        # 更新ファイルの署名を確かめる公開鍵（make update-key が書き込む。空のあいだは、更新の機能を出さない）。
+        # 鍵は Pin シリーズで共通（Pinshelf と同じ鍵）
+        SUPublicEDKey: "fIyKq+2V6b4ohDcJu6T86VEbZV01mUdv7mWw5IE7cpY="
+        # 新しい版を自動で確かめる（1 時間に 1 回。Sparkle が受け付けるいちばん短い間隔。VS Code と同じ間隔。設定の「一般」で切れる）
+        SUEnableAutomaticChecks: true
+        SUScheduledCheckInterval: 3600
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.portfolio.pinshot
@@ -44,6 +58,10 @@ targets:
         DEVELOPMENT_TEAM: ""
         ENABLE_HARDENED_RUNTIME: NO
         COMBINE_HIDPI_IMAGES: YES
+      configs:
+        # 配る版には、デバッガをつなぐための許可（get-task-allow）を入れない（何もしないと、Xcode がビルドのときに足す）
+        Release:
+          CODE_SIGN_INJECT_BASE_ENTITLEMENTS: NO
     scheme:
       testTargets:
         - PinshotTests
@@ -91,6 +109,8 @@ targets:
       - path: Pinshot/Upload/UploadHistoryEntry.swift
       - path: Pinshot/Upload/OAuth/PKCE.swift
       - path: Pinshot/Upload/OAuth/OAuthConfiguration.swift
+      - path: Pinshot/App/AppUpdates.swift
+      - path: Pinshot/App/AppInfo.swift
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES

@@ -24,7 +24,8 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             tabs.addTabViewItem(makeTab("一般", symbol: "gearshape", view: GeneralSettingsView(
                 settings: settings,
                 loginItem: LoginItemModel(),
-                permission: .shared
+                permission: .shared,
+                updates: .shared
             )))
             tabs.addTabViewItem(makeTab("画像", symbol: "photo.on.rectangle", view: PinSettingsView(settings: settings)))
             tabs.addTabViewItem(makeTab("保存", symbol: "square.and.arrow.down", view: ExportSettingsView(settings: settings)))
