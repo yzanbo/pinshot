@@ -6,3 +6,6 @@ xcuserdata/
 build-check/
 # make dist で作る配布用の zip
 dist/
+
+# make sparkle で取り寄せる Sparkle（更新の仕組み。配布物をそのまま使うので、リポジトリには入れない）
+Vendor/

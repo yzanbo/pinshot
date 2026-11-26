@@ -16,6 +16,10 @@ targets:
     platform: macOS
     sources:
       - path: Pinshot
+    dependencies:
+      # 更新の仕組み（Sparkle）。make が Vendor/Sparkle に取り寄せたものを、アプリに入れる
+      - framework: Vendor/Sparkle/Sparkle.framework
+        embed: true
     info:
       path: Pinshot/Info.plist
       properties:

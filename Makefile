@@ -18,14 +18,41 @@ DIST_DMG := $(DIST_BASE).dmg
 # 毎回同じ証明書で署名すると、画面収録の許可がビルドし直しても外れない。
 SIGN_IDENTITY ?= $(shell security find-identity -v -p codesigning 2>/dev/null | grep -q '"Pinshot Dev"' && echo "Pinshot Dev" || echo "-")
 
-.PHONY: generate build release install uninstall dist publish test run stop clean cert icon readme-images
+# 更新の仕組み（Sparkle）。公式の配布物を取り寄せて Vendor/Sparkle に置く（リポジトリには入れない）。
+# 版を上げるときは、SPARKLE_VERSION と SPARKLE_SHA256（配布物 Sparkle-版.tar.xz の SHA-256）を一緒に変える
+SPARKLE_VERSION := 2.10.1
+SPARKLE_SHA256 := 1a856d2a9edb8e628de88121d7be04cf0e2167f8641650b78fca00b14244cf27
+SPARKLE_DIR := Vendor/Sparkle
+# 取り寄せた版の印（版を上げると名前が変わり、取り寄せ直す）
+SPARKLE_STAMP := $(SPARKLE_DIR)/.version-$(SPARKLE_VERSION)
+
+.PHONY: generate build release install uninstall dist publish test run stop clean cert icon readme-images \
+	sparkle
 
 # アイコンを描くスクリプトをビルドする場所
 ICON_TOOL_DIR := $(DERIVED_DATA)/icon-tool
 
-# project.yml から Pinshot.xcodeproj を作る
-generate:
+# project.yml から Pinshot.xcodeproj を作る（Sparkle がまだなければ、先に取り寄せる）
+generate: $(SPARKLE_STAMP)
 	xcodegen generate
+
+# Sparkle（更新の仕組み）を取り寄せる。ビルドの前に自動で行うので、ふだんは自分で呼ばなくてよい。
+# 取り寄せたファイルは、決めてある SHA-256 と合うことを確かめてから使う（合わなければ止まる）
+sparkle: $(SPARKLE_STAMP)
+
+$(SPARKLE_STAMP):
+	rm -rf "$(SPARKLE_DIR)"
+	mkdir -p "$(SPARKLE_DIR)"
+	curl -fsSL -o "$(SPARKLE_DIR)/Sparkle.tar.xz" \
+		"https://github.com/sparkle-project/Sparkle/releases/download/$(SPARKLE_VERSION)/Sparkle-$(SPARKLE_VERSION).tar.xz"
+	echo "$(SPARKLE_SHA256)  $(SPARKLE_DIR)/Sparkle.tar.xz" | shasum -a 256 -c -
+	@# 使うものだけ取り出す: アプリに入れるフレームワーク・署名と版の一覧の道具・ライセンス
+	tar -xJf "$(SPARKLE_DIR)/Sparkle.tar.xz" -C "$(SPARKLE_DIR)" ./Sparkle.framework ./bin ./LICENSE
+	rm "$(SPARKLE_DIR)/Sparkle.tar.xz"
+	@# Sparkle のライセンスは、配るものに全文を含める決まりなので、アプリに同梱するファイルへ写す（リポジトリに入れる）
+	mkdir -p Pinshot/Licenses
+	cp "$(SPARKLE_DIR)/LICENSE" Pinshot/Licenses/Sparkle.txt
+	touch "$@"
 
 build: generate
 	@echo "署名: $(SIGN_IDENTITY)"
