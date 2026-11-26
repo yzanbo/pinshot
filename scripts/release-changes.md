@@ -4,7 +4,7 @@
 
 ### 新しく使えるようになったこと
 
-- **アプリの中から更新できるようにしました**：新しい版を 1 日に 1 回確かめ、見つけると、メニューバーのアイコンに小さな丸を付けて、メニューの上で知らせます（画面には割り込みません）。メニューの「アップデートを確認…」からも確かめられ、そのまま入れ替えられます。更新のときは、「このまま開く」も、画面収録などの許可の取り直しも要りません。**この版へは、これまでどおりダウンロードして入れ替えてください**（0.4.1 までの版には、この機能がないため）。次の版からは、アプリの中から更新できます
+- **アプリの中から更新できるようにしました**：新しい版を 1 時間に 1 回確かめ、見つけると、メニューバーのカメラのアイコンの右下に下向きの矢印の印を入れて、メニューの上で知らせます（画面には割り込みません）。印は、入れるか「このバージョンはスキップ」を選ぶまで残ります。メニューの「アップデートを確認…」からも確かめられ、そのまま入れ替えられます。更新のときは、「このまま開く」も、画面収録などの許可の取り直しも要りません。**この版へは、これまでどおりダウンロードして入れ替えてください**（0.4.1 までの版には、この機能がないため）。次の版からは、アプリの中から更新できます
 
 ### 変わったこと
 
@@ -13,4 +13,4 @@
 - 設定の「一般」の「Pinshot について」に、「アップデートを確認…」・「新しい版を自動で確かめる」・最後に確かめた日時を足しました
 - 配る版から、デバッガをつなぐための許可（`get-task-allow`）を外しました
 
-**English:** New — Pinshot can now update itself: it checks GitHub once a day, shows a dot on the menu bar icon when a new version is found (no window pops up), and installs it from the menu ("アップデートを確認…"). Updates are verified with the author's EdDSA signature. This version still needs a manual install; later versions update in-app. Changed — releases are now signed with a fixed self-signed certificate, so Screen Recording and Accessibility permissions are kept across updates (grant them once more after installing this version). The app now also connects to GitHub, only for update checks and downloads; automatic checks can be turned off in Settings → General.
+**English:** New — Pinshot can now update itself: it checks GitHub every hour, shows a down-arrow badge on the menu bar icon when a new version is found (no window pops up; the badge stays until you install or skip that version), and installs it from the menu ("アップデートを確認…"). Updates are verified with the author's EdDSA signature. This version still needs a manual install; later versions update in-app. Changed — releases are now signed with a fixed self-signed certificate, so Screen Recording and Accessibility permissions are kept across updates (grant them once more after installing this version). The app now also connects to GitHub, only for update checks and downloads; automatic checks can be turned off in Settings → General.

@@ -6,7 +6,8 @@ Pinshot/
 │   ├── AppDelegate           起動・グローバルショートカットの登録・更新の仕組みを始める・起動の記録（版と許可）
 │   ├── AppActions            操作の入口（撮る・録る・浮かせる・履歴を開くなど）。ショートカットとメニューバーのメニューは、どちらもここを呼ぶ
 │   ├── HotKey・ShortcutKeyTap  グローバルショートカット（Carbon）と、メニューを開いている間もショートカットを受けるキーの見張り
-│   ├── StatusMenuController  メニューバーのアイコン（録画中・アップロード中で変える。新しい版があるときは右上に小さな丸）とメニュー
+│   ├── StatusMenuController  メニューバーのアイコン（録画中・アップロード中・新しい版があるときで変える）とメニュー
+│   ├── MenuBarIcon           メニューバーのカメラのアイコンと、新しい版があるときの印入りのもの（右下に下向きの矢印の丸。1 色）
 │   ├── AppUpdates            更新の状態（使えるか・自動で確かめるか・知らせる新しい版）。更新そのものは AppUpdateService（アプリでは SparkleUpdater）が受け持つ（テストあり）
 │   ├── SparkleUpdater        更新（Sparkle）。新しい版を確かめる・知らせる・入れ替える。Sparkle を読み込むのは、このファイルだけ
 │   ├── DockIcon              設定・履歴などのウィンドウ（と Sparkle の更新の画面）を開いている間だけ、Dock にアイコンを出す
@@ -148,7 +149,10 @@ Developer ID に登録しない前提で、[Sparkle](https://sparkle-project.org
 - **「このまま開く」が要らない理由**: Sparkle が自分でダウンロードして確かめた版からは、ダウンロードのしるし（quarantine）を外す。だから、更新で入れた版は Gatekeeper に止められない
 - **許可が外れない理由**: どの版も同じ証明書で署名しているので（上の「署名」）、入れ替えた版も同じアプリと見なされる。リリースの前に `make update-test` で確かめる（docs/TESTING.md）
 - **サンドボックス**: Pinshot は使っていないので、Sparkle の入れ替え役（XPC サービス）も、ネット接続などの許可（entitlements）も要らない（Pinshelf はサンドボックスのため、どちらも足している）
-- **知らせ方**: メニューバーに常駐するアプリなので、自動で見つけた新しい版は画面に割り込ませず、アイコンの小さな丸とメニューで知らせる（Sparkle の「控えめな知らせ」の作法。`standardUserDriverShouldHandleShowingScheduledUpdate` で、いつも自分で受け持つ）。メニューから選ぶと、Sparkle の更新の画面が前面に出る
+- **知らせ方**: メニューバーに常駐するアプリなので、自動で見つけた新しい版は画面に割り込ませず、アイコンの印とメニューで知らせる（Sparkle の「控えめな知らせ」の作法。`standardUserDriverShouldHandleShowingScheduledUpdate` で、いつも自分で受け持つ）。メニューから選ぶと、Sparkle の更新の画面が前面に出る。知らせの決まりは Pin シリーズ共通（Pinshelf のノート「更新の仕組みの方針」の 8 の節）
+- **確かめる間隔**: 1 時間に 1 回（`SUScheduledCheckInterval` 3600。Sparkle が受け付けるいちばん短い間隔で、VS Code と同じ）。起動したときは、前に確かめてから 1 時間以上たっていれば、すぐ確かめる。版の一覧は小さな XML 1 つなので、1 時間ごとでも GitHub への負担は小さい
+- **印の形**: カメラのアイコンの右下を丸く切り抜き、下向きの矢印を抜いた丸を置いたものに替える（`MenuBarIcon`）。テンプレート画像のままにして、色は付けない（メニューバーの色付きの点は、マイク・カメラの使用中の印と紛れやすい）。Pinshelf は丸を直径 10pt にしているが、Pinshot でそうするとカメラのレンズが欠けるので、直径 8.4pt にした（PNG に書き出して見比べた）。録画中・アップロード中は、それぞれのアイコンを出し、終わってから印入りに戻す
+- **印を消すとき**: 印は「まだ入れていない新しい版がある」の意味で、入れるか飛ばすまで出しておく（VS Code・Chrome と同じ考え方）。Sparkle の説明書は「画面を見てもらったら印を消す」作り（`standardUserDriverDidReceiveUserAttention`）を勧めるが、それだと更新の画面を開いて「あとで通知」で閉じただけで消え、次に自動で確かめるまで戻らないので使わない。見つけた版とビルド番号を `UserDefaults` に保存し（`AppUpdates`）、起動したときに今の版より新しければ印を戻す（終了しても消えないように）。消すのは、利用者が「このバージョンはスキップ」を選んだとき（`updater(_:userDidMake:forUpdate:state:)` の `.skip`）・確かめ直して新しい版がなかったとき（`updaterDidNotFindUpdate`。通信の失敗では呼ばれない）・入れて今の版が同じか新しくなったとき。Sparkle の受け口は任意のメソッドで、Swift での名前を間違えてもエラーにならず呼ばれないだけなので、`#selector(SPUUpdaterDelegate.updater(_:userDidMake:forUpdate:state:))` のような型検査で確かめた
 - **Dock**: 更新の画面は Sparkle のウィンドウで、開け閉めを自分では知れないので、確かめ始めてから確かめ終えるまで、名前付きの印で Dock に出しておく（`DockIcon.hold`・`release`）
 - **確認中の小窓の長さ**: 問い合わせはすぐ終わり、「アップデートを確認中…」の小窓が一瞬で閉じてちらついて見えるので、Sparkle の標準の画面（`SPUStandardUserDriver`）を `PacedUserDriver` で包み、小窓を少なくとも 0.5 秒は出してから結果の画面に渡す（そのため `SPUStandardUpdaterController` ではなく、`SPUUpdater` を自分で作る）
 - **画面の側との分け方**: Sparkle を読み込むのは `SparkleUpdater` だけ。メニューと設定は `AppUpdates`（状態）を通して使う。Sparkle なしでアプリのコードをビルドする `make readme-images` と、テストのため
