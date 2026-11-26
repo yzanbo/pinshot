@@ -4,7 +4,7 @@
 // アプリと同じコードで実際に画面に出し、その中身を描き写して、見本の画面の上に重ねる。
 // 見本の画面（架空の分析ダッシュボード）は stage.html を WebKit で描き、マウスのカーソルは絵として描く。
 // 自分の画面・個人の情報は写さない。マウス・キーボードの操作も、画面の収録もしない
-// （操作は、部品にマウスの知らせを直接渡して動かす）。作っている間、画面に Pinshot の部品が少しのあいだ出る。
+// （操作は、部品にマウス・キーの知らせを直接渡して動かす）。作っている間、画面に Pinshot の部品が少しのあいだ出る。
 //
 // 使い方: ReadmeImages <書き出すフォルダ>
 //   - capture.gif: ⌘⇧2 → 範囲をドラッグ → その場に浮かぶ → ドラッグで動かす
@@ -16,8 +16,7 @@ import AVKit
 import SwiftUI
 import WebKit
 
-let arguments = CommandLine.arguments
-let outputFolder = URL(fileURLWithPath: arguments.count > 1 ? arguments[1] : "docs/images", isDirectory: true)
+let outputFolder = URL(fileURLWithPath: CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : "docs/images", isDirectory: true)
 /// 見本の画面（make を動かすリポジトリのいちばん上からの場所）
 let stageHTML = URL(fileURLWithPath: "scripts/readme-images/stage.html")
 
@@ -25,16 +24,16 @@ let stageHTML = URL(fileURLWithPath: "scripts/readme-images/stage.html")
 let renderScale: CGFloat = 2
 /// GIF の 1 秒あたりのコマの数
 let framesPerSecond: Double = 15
+/// 1 コマの秒数
+let frameDuration = 1 / framesPerSecond
 
 enum ReadmeImagesError: Error, CustomStringConvertible {
-    case noScreen
     case pageFailed(String)
     case captureFailed(String)
     case writeFailed(String)
 
     var description: String {
         switch self {
-        case .noScreen: "No screen"
         case .pageFailed(let detail): "Could not draw the sample page: \(detail)"
         case .captureFailed(let detail): "Could not capture: \(detail)"
         case .writeFailed(let name): "Could not write \(name)"
@@ -56,30 +55,21 @@ enum Stage {
     /// スクリーン座標（左下が原点）の範囲。画面の真ん中に置く
     static var frame: CGRect {
         let s = screen.frame
-        return CGRect(
-            x: (s.midX - size.width / 2).rounded(),
-            y: (s.midY - size.height / 2).rounded(),
-            width: size.width,
-            height: size.height
-        )
+        return CGRect(x: (s.midX - size.width / 2).rounded(), y: (s.midY - size.height / 2).rounded(), width: size.width, height: size.height)
     }
 
     /// 見本の窓の左上からの位置（ポイント、下へ行くほど大きい）を、スクリーン座標にする
     static func point(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
         CGPoint(x: frame.minX + x, y: frame.maxY - y)
     }
-
-    /// 見本の窓の左上からの範囲を、スクリーン座標にする
-    static func rect(_ x: CGFloat, _ y: CGFloat, _ width: CGFloat, _ height: CGFloat) -> CGRect {
-        CGRect(x: frame.minX + x, y: frame.maxY - y - height, width: width, height: height)
-    }
 }
 
 // MARK: - 見本のページ（WebKit で描く）
 
 /// ページの状態（stage.html の setState に渡す）
-struct PageState: Equatable {
+struct PageState {
     var progress: Double = 0
+    /// "idle"（待機中）・"running"（作成中）・"done"（できました）
     var status = "idle"
     var visitors = 128
 }
@@ -87,7 +77,8 @@ struct PageState: Equatable {
 @MainActor
 final class SamplePage: NSObject, WKNavigationDelegate {
     private let webView: WKWebView
-    private let window: NSWindow
+    /// ページを入れておく窓（WebKit が描くには窓に入れておく必要があるので、画面の外に置く）
+    let window: NSWindow
     private var loaded: CheckedContinuation<Void, Error>?
     private var cache: [String: CGImage] = [:]
 
@@ -96,7 +87,6 @@ final class SamplePage: NSObject, WKNavigationDelegate {
     override init() {
         let size = Self.contentSize
         webView = WKWebView(frame: NSRect(origin: .zero, size: size))
-        // 画面の外に置く（WebKit が描くには窓に入れておく必要がある）
         window = NSWindow(contentRect: NSRect(x: -20000, y: -20000, width: size.width, height: size.height),
                           styleMask: .borderless, backing: .buffered, defer: false)
         super.init()
@@ -104,8 +94,6 @@ final class SamplePage: NSObject, WKNavigationDelegate {
         window.orderFrontRegardless()
         webView.navigationDelegate = self
     }
-
-    var pageWindow: NSWindow { window }
 
     func load() async throws {
         guard FileManager.default.fileExists(atPath: stageHTML.path) else { throw ReadmeImagesError.pageFailed("stage.html not found") }
@@ -116,34 +104,29 @@ final class SamplePage: NSObject, WKNavigationDelegate {
     }
 
     nonisolated func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        MainActor.assumeIsolated {
-            loaded?.resume()
-            loaded = nil
-        }
+        MainActor.assumeIsolated { finishLoading(nil) }
     }
 
     nonisolated func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-        MainActor.assumeIsolated {
-            loaded?.resume(throwing: error)
-            loaded = nil
-        }
+        MainActor.assumeIsolated { finishLoading(error) }
+    }
+
+    private func finishLoading(_ error: Error?) {
+        if let error { loaded?.resume(throwing: error) } else { loaded?.resume() }
+        loaded = nil
     }
 
     /// state のときのページを、renderScale 倍の画像にする（同じ状態は使い回す）
     func image(_ state: PageState) async throws -> CGImage {
         let key = "\(state.progress)-\(state.status)-\(state.visitors)"
         if let image = cache[key] { return image }
-        let script = "setState({progress: \(state.progress), status: '\(state.status)', visitors: \(state.visitors)})"
-        _ = try await webView.evaluateJavaScript(script)
+        _ = try await webView.evaluateJavaScript("setState({progress: \(state.progress), status: '\(state.status)', visitors: \(state.visitors)})")
         let configuration = WKSnapshotConfiguration()
         configuration.afterScreenUpdates = true
         let snapshot = try await webView.takeSnapshot(configuration: configuration)
         let size = Self.contentSize
         guard let context = makeContext(size) else { throw ReadmeImagesError.pageFailed("context") }
-        NSGraphicsContext.saveGraphicsState()
-        NSGraphicsContext.current = NSGraphicsContext(cgContext: context, flipped: false)
-        snapshot.draw(in: CGRect(origin: .zero, size: size))
-        NSGraphicsContext.restoreGraphicsState()
+        drawWithAppKit(in: context) { snapshot.draw(in: CGRect(origin: .zero, size: size)) }
         guard let image = context.makeImage() else { throw ReadmeImagesError.pageFailed("image") }
         cache[key] = image
         return image
@@ -152,17 +135,15 @@ final class SamplePage: NSObject, WKNavigationDelegate {
 
 // MARK: - 画像の土台
 
+/// 画素の大きさを指定した描き場（左下が原点）
+func bitmapContext(width: Int, height: Int) -> CGContext? {
+    CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+              space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+}
+
 /// size（ポイント）の、renderScale 倍の画素の描き場（左下が原点、ポイントで描ける）
 func makeContext(_ size: CGSize) -> CGContext? {
-    guard let context = CGContext(
-        data: nil,
-        width: Int((size.width * renderScale).rounded()),
-        height: Int((size.height * renderScale).rounded()),
-        bitsPerComponent: 8,
-        bytesPerRow: 0,
-        space: CGColorSpace(name: CGColorSpace.sRGB)!,
-        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-    ) else { return nil }
+    guard let context = bitmapContext(width: Int((size.width * renderScale).rounded()), height: Int((size.height * renderScale).rounded())) else { return nil }
     context.scaleBy(x: renderScale, y: renderScale)
     context.interpolationQuality = .high
     return context
@@ -176,17 +157,21 @@ func drawWithAppKit(in context: CGContext, _ body: () -> Void) {
     NSGraphicsContext.restoreGraphicsState()
 }
 
+/// 0xRRGGBB の色
+func color(_ hex: Int, alpha: CGFloat = 1) -> CGColor {
+    NSColor(srgbRed: CGFloat(hex >> 16 & 0xFF) / 255, green: CGFloat(hex >> 8 & 0xFF) / 255, blue: CGFloat(hex & 0xFF) / 255, alpha: alpha).cgColor
+}
+
 /// 画面全体の背景（デスクトップの上に、見本の窓を置いたもの）。範囲を選ぶ画面に「撮った画面」として渡す
 @MainActor
 func screenImage(page: CGImage) -> CGImage? {
     let screenFrame = Stage.screen.frame
     guard let context = makeContext(screenFrame.size) else { return nil }
     // デスクトップ（落ち着いた色のグラデーション）
-    let colors = [NSColor(srgbRed: 0.42, green: 0.48, blue: 0.62, alpha: 1).cgColor, NSColor(srgbRed: 0.62, green: 0.56, blue: 0.70, alpha: 1).cgColor]
-    let gradient = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB), colors: colors as CFArray, locations: [0, 1])!
+    let gradient = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB), colors: [color(0x6B7A9E), color(0x9E8FB3)] as CFArray, locations: [0, 1])!
     context.drawLinearGradient(gradient, start: .zero, end: CGPoint(x: screenFrame.width, y: screenFrame.height), options: [])
 
-    // 見本の窓
+    // 見本の窓（影 → 中身の順に描く）
     let window = Stage.frame.offsetBy(dx: -screenFrame.minX, dy: -screenFrame.minY)
     let windowPath = CGPath(roundedRect: window, cornerWidth: 10, cornerHeight: 10, transform: nil)
     context.saveGState()
@@ -199,16 +184,15 @@ func screenImage(page: CGImage) -> CGImage? {
     context.saveGState()
     context.addPath(windowPath)
     context.clip()
-    // ページ
     context.draw(page, in: CGRect(x: window.minX, y: window.minY, width: window.width, height: window.height - Stage.titleBarHeight))
-    // タイトルバー
+    // タイトルバー（信号の 3 つの丸と、ページの名前）
     let titleBar = CGRect(x: window.minX, y: window.maxY - Stage.titleBarHeight, width: window.width, height: Stage.titleBarHeight)
-    context.setFillColor(NSColor(srgbRed: 0.93, green: 0.93, blue: 0.94, alpha: 1).cgColor)
+    context.setFillColor(color(0xEDEDF0))
     context.fill(titleBar)
-    context.setFillColor(NSColor(srgbRed: 0.82, green: 0.82, blue: 0.84, alpha: 1).cgColor)
+    context.setFillColor(color(0xD1D1D6))
     context.fill(CGRect(x: titleBar.minX, y: titleBar.minY, width: titleBar.width, height: 1))
     for (index, hex) in [0xFF5F57, 0xFEBC2E, 0x28C840].enumerated() {
-        context.setFillColor(NSColor(srgbRed: CGFloat(hex >> 16 & 0xFF) / 255, green: CGFloat(hex >> 8 & 0xFF) / 255, blue: CGFloat(hex & 0xFF) / 255, alpha: 1).cgColor)
+        context.setFillColor(color(hex))
         context.fillEllipse(in: CGRect(x: titleBar.minX + 12 + CGFloat(index) * 20, y: titleBar.midY - 6, width: 12, height: 12))
     }
     drawWithAppKit(in: context) {
@@ -278,13 +262,15 @@ struct Overlay {
 @MainActor
 final class Compositor {
     private let excluded: Set<Int>
+    /// 窓を重ねたあとに描くもの（浮かせた録画の動画の中身。動画は描き写せないので、ここで描く）
+    var afterWindows: ((CGContext, CGRect) -> Void)?
 
     init(excluding windows: [NSWindow]) {
         excluded = Set(windows.map(\.windowNumber))
     }
 
     /// 奥から手前の順の、出ている窓
-    var visibleWindows: [NSWindow] {
+    private var visibleWindows: [NSWindow] {
         NSWindow.windowNumbers(options: [])?.reversed().compactMap { number -> NSWindow? in
             guard !excluded.contains(number.intValue), let window = NSApp.window(withWindowNumber: number.intValue),
                   window.isVisible, window.alphaValue > 0.01 else { return nil }
@@ -292,26 +278,22 @@ final class Compositor {
         } ?? []
     }
 
-    /// background: 画面全体の背景。includesWindows: Pinshot の窓も重ねるか（録画した中身を作るときは重ねない）
-    /// 窓を重ねたあとに描くもの（浮かせた録画の動画の中身。動画は描き写せないので、ここで描く）
-    var afterWindows: ((CGContext, CGRect) -> Void)?
-
+    /// background: 画面全体の背景。includesWindows: Pinshot の窓も重ねるか（録画した中身を作るときは重ねない）。
+    /// area: 切り出す範囲（スクリーン座標。省くと見本の窓の範囲）
     func frame(background: CGImage, overlay: Overlay?, includesWindows: Bool = true, area: CGRect? = nil) -> CGImage? {
         let area = area ?? Stage.frame
         guard let context = makeContext(area.size) else { return nil }
         let screenFrame = Stage.screen.frame
-        context.draw(background, in: CGRect(x: screenFrame.minX - area.minX, y: screenFrame.minY - area.minY,
-                                            width: screenFrame.width, height: screenFrame.height))
+        context.draw(background, in: screenFrame.offsetBy(dx: -area.minX, dy: -area.minY))
         if includesWindows {
             for window in visibleWindows {
                 guard let view = window.contentView, let image = capture(view) else { continue }
-                let rect = window.frame.offsetBy(dx: -area.minX, dy: -area.minY)
                 context.saveGState()
                 context.setAlpha(window.alphaValue)
                 if window.hasShadow {
                     context.setShadow(offset: CGSize(width: 0, height: -4), blur: 16, color: NSColor.black.withAlphaComponent(0.3).cgColor)
                 }
-                context.draw(image, in: rect)
+                context.draw(image, in: window.frame.offsetBy(dx: -area.minX, dy: -area.minY))
                 context.restoreGState()
             }
             afterWindows?(context, area)
@@ -326,33 +308,29 @@ final class Compositor {
         // カーソル（画像の左上からのずれがホットスポット）
         let cursor = overlay.cursor.nsCursor
         let image = cursor.image
-        let hotSpot = cursor.hotSpot
-        let origin = CGPoint(x: overlay.mouse.x - area.minX - hotSpot.x, y: overlay.mouse.y - area.minY - (image.size.height - hotSpot.y))
-        drawWithAppKit(in: context) {
-            image.draw(in: CGRect(origin: origin, size: image.size))
-        }
+        let origin = CGPoint(x: overlay.mouse.x - area.minX - cursor.hotSpot.x,
+                             y: overlay.mouse.y - area.minY - (image.size.height - cursor.hotSpot.y))
+        drawWithAppKit(in: context) { image.draw(in: CGRect(origin: origin, size: image.size)) }
+
         // 押したキー（右上に、キーの形で出す）
-        if let keys = overlay.keys {
-            let text = NSAttributedString(string: keys, attributes: [
-                .font: NSFont.systemFont(ofSize: 22, weight: .semibold),
-                .foregroundColor: NSColor.white,
-            ])
-            let size = text.size()
-            let box = CGRect(x: area.width - size.width - 44, y: area.height - Stage.titleBarHeight - size.height - 34,
-                             width: size.width + 28, height: size.height + 14)
-            context.saveGState()
-            context.addPath(CGPath(roundedRect: box, cornerWidth: 10, cornerHeight: 10, transform: nil))
-            context.setFillColor(NSColor.black.withAlphaComponent(0.72).cgColor)
-            context.fillPath()
-            context.restoreGState()
-            drawWithAppKit(in: context) {
-                text.draw(at: CGPoint(x: box.minX + 14, y: box.minY + 7))
-            }
-        }
+        guard let keys = overlay.keys else { return }
+        let text = NSAttributedString(string: keys, attributes: [
+            .font: NSFont.systemFont(ofSize: 22, weight: .semibold),
+            .foregroundColor: NSColor.white,
+        ])
+        let size = text.size()
+        let box = CGRect(x: area.width - size.width - 44, y: area.height - Stage.titleBarHeight - size.height - 34,
+                         width: size.width + 28, height: size.height + 14)
+        context.saveGState()
+        context.addPath(CGPath(roundedRect: box, cornerWidth: 10, cornerHeight: 10, transform: nil))
+        context.setFillColor(NSColor.black.withAlphaComponent(0.72).cgColor)
+        context.fillPath()
+        context.restoreGState()
+        drawWithAppKit(in: context) { text.draw(at: CGPoint(x: box.minX + 14, y: box.minY + 7)) }
     }
 }
 
-// MARK: - マウスの知らせ（部品に直接渡す）
+// MARK: - マウス・キーの知らせ（部品に直接渡す）
 
 @MainActor
 func mouseEvent(_ type: NSEvent.EventType, at point: CGPoint, in window: NSWindow, clickCount: Int = 1) -> NSEvent {
@@ -370,11 +348,11 @@ func mouseEvent(_ type: NSEvent.EventType, at point: CGPoint, in window: NSWindo
 }
 
 @MainActor
-func keyEvent(_ characters: String, keyCode: UInt16, modifiers: NSEvent.ModifierFlags = [], in window: NSWindow) -> NSEvent {
+func keyEvent(_ characters: String, keyCode: UInt16, in window: NSWindow) -> NSEvent {
     NSEvent.keyEvent(
         with: .keyDown,
         location: .zero,
-        modifierFlags: modifiers,
+        modifierFlags: [],
         timestamp: ProcessInfo.processInfo.systemUptime,
         windowNumber: window.windowNumber,
         context: nil,
@@ -402,19 +380,30 @@ func path(from a: CGPoint, to b: CGPoint, seconds: Double) -> [CGPoint] {
     return (1...steps).map { lerp(a, b, smooth(CGFloat($0) / CGFloat(steps))) }
 }
 
+/// 少し待つ（窓を出したあと、SwiftUI が並べ終えるまで）
+@MainActor
+func settle(_ milliseconds: Int = 40) async {
+    try? await Task.sleep(for: .milliseconds(milliseconds))
+}
+
 // MARK: - 書き出す
 
 struct GIFFrame {
     let image: CGImage
+    /// このコマを見せる秒数
     let delay: Double
+}
+
+/// 録画した中身の 1 コマ
+struct RecordedFrame {
+    let image: CGImage
+    let time: Double
 }
 
 func downscale(_ image: CGImage, by factor: Int) -> CGImage {
     let width = image.width / factor
     let height = image.height / factor
-    guard let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
-                                  space: CGColorSpace(name: CGColorSpace.sRGB)!,
-                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return image }
+    guard let context = bitmapContext(width: width, height: height) else { return image }
     context.interpolationQuality = .high
     context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
     return context.makeImage() ?? image
@@ -438,15 +427,10 @@ func writeGIF(_ frames: [GIFFrame], named name: String) throws {
     print("wrote \(url.path) (\(frames.count) frames)")
 }
 
-/// 少し待つ（窓を出したあと、SwiftUI が並べ終えるまで）
-@MainActor
-func settle(_ milliseconds: Int = 40) async {
-    try? await Task.sleep(for: .milliseconds(milliseconds))
-}
-
 /// 録画した中身を、動画のファイルにする（浮かせた録画に読み込ませる）
-func writeMovie(_ frames: [(image: CGImage, time: Double)], size: CGSize, to url: URL) async throws {
+func writeMovie(_ frames: [RecordedFrame], size: CGSize, to url: URL) async throws {
     try? FileManager.default.removeItem(at: url)
+    // H.264 は縦横が偶数でないと書けない
     let width = Int(size.width * renderScale) / 2 * 2
     let height = Int(size.height * renderScale) / 2 * 2
     let writer = try AVAssetWriter(outputURL: url, fileType: .mov)
@@ -481,47 +465,145 @@ func writeMovie(_ frames: [(image: CGImage, time: Double)], size: CGSize, to url
     guard writer.status == .completed else { throw ReadmeImagesError.writeFailed(url.lastPathComponent) }
 }
 
+// MARK: - Pinshot の部品を出す
+
+/// 範囲を選ぶ画面（SelectionController と同じ並び。撮った画面の上に、範囲を選ぶビューと下のバー）
+@MainActor
+struct SelectionScreen {
+    let window: NSWindow
+    let view: SelectionView
+    let options: CaptureOptions
+    let bar: NSView
+
+    init(background: CGImage, mode: CaptureMode, mouse: CGPoint) {
+        let screen = Stage.screen
+        options = CaptureOptions(mode: mode, timer: 0)
+        window = SelectionWindow(screen: screen)
+        let container = NSView(frame: NSRect(origin: .zero, size: screen.frame.size))
+        let imageView = NSImageView(frame: container.bounds)
+        imageView.image = NSImage(cgImage: background, size: screen.frame.size)
+        imageView.imageScaling = .scaleAxesIndependently
+        container.addSubview(imageView)
+        view = SelectionView(shot: ScreenShot(screen: screen, image: background), windows: [], options: options)
+        view.frame = container.bounds
+        container.addSubview(view)
+        bar = FirstMouseHostingView(rootView: CaptureModeBar(options: options, audioPicker: RecordingAudioPicker(), cancel: {}))
+        bar.frame.size = bar.fittingSize
+        // 実際は画面のいちばん下（下から 56 ポイント）に出る。GIF は見本の窓の範囲を切り出すので、窓の下のほうに出す
+        let stageBottom = Stage.frame.minY - screen.frame.minY
+        bar.frame.origin = NSPoint(x: ((container.bounds.width - bar.frame.width) / 2).rounded(), y: stageBottom + 40)
+        container.addSubview(bar)
+        container.wantsLayer = true
+        window.contentView = container
+        window.backgroundColor = .clear
+        window.orderFrontRegardless()
+        view.updatePointer(screenPoint: mouse)
+    }
+
+    /// 下のバーの「録画」のボタンの真ん中（バーの横の真ん中、上から 4 割のあたり。スクリーン座標）
+    var recordButton: CGPoint {
+        let frame = window.convertToScreen(bar.convert(bar.bounds, to: nil))
+        return CGPoint(x: frame.minX + frame.width * 0.5, y: frame.maxY - frame.height * 0.39)
+    }
+
+    func movePointer(to point: CGPoint) {
+        view.updatePointer(screenPoint: point)
+    }
+
+    func mouse(_ type: NSEvent.EventType, at point: CGPoint) {
+        let event = mouseEvent(type, at: point, in: window)
+        switch type {
+        case .leftMouseDown: view.mouseDown(with: event)
+        case .leftMouseDragged: view.mouseDragged(with: event)
+        default: view.mouseUp(with: event)
+        }
+    }
+
+    func close() {
+        window.orderOut(nil)
+    }
+}
+
+/// 録画中の、赤い点線の枠と操作パネル（RecordingController と同じ並び。録画そのものはしない）
+@MainActor
+struct RecordingChrome {
+    let outline: NSWindow
+    let panel: NSPanel
+    let model = RecordingPanelModel()
+
+    init(around rect: CGRect) {
+        outline = CaptureOutline.show(around: rect)
+        let hosting = FirstMouseHostingView(rootView: RecordingPanelView(model: model))
+        let size = hosting.fittingSize
+        let candidates = [
+            NSPoint(x: rect.midX - size.width / 2, y: rect.minY - 12 - size.height),
+            NSPoint(x: rect.midX - size.width / 2, y: rect.maxY + 12),
+        ]
+        let origin = ScreenGeometry.firstFittingOrigin(candidates, size: size, in: Stage.screen.visibleFrame)
+        let panel = OverlayPanel(contentRect: NSRect(origin: origin, size: size), level: .statusBar)
+        hosting.frame = NSRect(origin: .zero, size: size)
+        panel.contentView = hosting
+        panel.orderFrontRegardless()
+        self.panel = panel
+    }
+
+    /// 操作パネルの「停止」のボタンの真ん中（パネルの左から 6 割弱のあたり。スクリーン座標）
+    var stopButton: CGPoint {
+        CGPoint(x: panel.frame.minX + panel.frame.width * 0.57, y: panel.frame.midY)
+    }
+
+    func close() {
+        outline.orderOut(nil)
+        panel.orderOut(nil)
+    }
+}
+
 /// 浮かせた録画の窓の中の、動画のビュー
 @MainActor
 func findPlayerView(in view: NSView) -> NSView? {
     if view is AVPlayerView { return view }
-    for subview in view.subviews {
-        if let found = findPlayerView(in: subview) { return found }
-    }
-    return nil
+    return view.subviews.lazy.compactMap { findPlayerView(in: $0) }.first
 }
 
 // MARK: - 見本を作る
 
 @MainActor
 final class ReadmeImages {
+    /// どの場面も、ここからカーソルを動かし始める
+    static let startPoint = CGPoint(x: 560, y: 380)
+
     let page = SamplePage()
     var frames: [GIFFrame] = []
     var background: CGImage!
     var compositor: Compositor!
-    var overlay = Overlay(mouse: Stage.point(560, 380))
+    var overlay = Overlay(mouse: Stage.point(startPoint.x, startPoint.y))
+    /// キャプチャの場面で浮かせ、書き込みの場面で使う画像
+    var pin: PinController?
 
     func run() async throws {
         try FileManager.default.createDirectory(at: outputFolder, withIntermediateDirectories: true)
         try await page.load()
-        compositor = Compositor(excluding: [page.pageWindow])
-        try await setPage(PageState())
+        compositor = Compositor(excluding: [page.window])
         try await makeCapture()
         try await makeEdit()
-        currentPin?.close()
-        currentPin = nil
+        pin?.close()
+        pin = nil
         await settle(200)
         try await makeRecord()
     }
 
     func setPage(_ state: PageState) async throws {
-        let image = try await page.image(state)
-        guard let screen = screenImage(page: image) else { throw ReadmeImagesError.pageFailed("screen") }
+        guard let screen = screenImage(page: try await page.image(state)) else { throw ReadmeImagesError.pageFailed("screen") }
         background = screen
     }
 
+    /// 場面の初めに、カーソルを決まった所に戻す
+    func resetOverlay() {
+        overlay = Overlay(mouse: Stage.point(Self.startPoint.x, Self.startPoint.y))
+    }
+
     /// いまの画面を 1 コマ足す（hold: そのコマを見せる秒数）
-    func snap(hold: Double = 1 / framesPerSecond) async {
+    func snap(hold: Double = frameDuration) async {
         await settle(30)
         guard let image = compositor.frame(background: background, overlay: overlay) else { return }
         frames.append(GIFFrame(image: image, delay: hold))
@@ -536,66 +618,54 @@ final class ReadmeImages {
         }
     }
 
+    /// キーを押したことを、右上に出しながら hold 秒見せる
+    func showKeys(_ keys: String, hold: Double, _ action: () -> Void) async {
+        overlay.keys = keys
+        action()
+        await snap(hold: hold)
+        overlay.keys = nil
+    }
+
     func flush(_ name: String) throws {
         try writeGIF(frames, named: name)
         frames = []
     }
 
-    // MARK: キャプチャ
-
-    /// 範囲を選ぶ画面（SelectionController と同じ並び。撮った画面の上に、範囲を選ぶビューと下のバー）
-    func showSelection(mode: CaptureMode) -> (window: NSWindow, view: SelectionView, options: CaptureOptions) {
-        let screen = Stage.screen
-        let shot = ScreenShot(screen: screen, image: background)
-        let options = CaptureOptions(mode: mode, timer: 0)
-        let window = SelectionWindow(screen: screen)
-        let container = NSView(frame: NSRect(origin: .zero, size: screen.frame.size))
-        let imageView = NSImageView(frame: container.bounds)
-        imageView.image = NSImage(cgImage: background, size: screen.frame.size)
-        imageView.imageScaling = .scaleAxesIndependently
-        container.addSubview(imageView)
-        let view = SelectionView(shot: shot, windows: [], options: options)
-        view.frame = container.bounds
-        container.addSubview(view)
-        let bar = FirstMouseHostingView(rootView: CaptureModeBar(options: options, audioPicker: RecordingAudioPicker(), cancel: {}))
-        bar.frame.size = bar.fittingSize
-        // 実際は画面のいちばん下（下から 56 ポイント）に出る。GIF は見本の窓の範囲を切り出すので、窓の下のほうに出す
-        let stageBottom = Stage.frame.minY - screen.frame.minY
-        bar.frame.origin = NSPoint(x: ((container.bounds.width - bar.frame.width) / 2).rounded(), y: stageBottom + 40)
-        container.addSubview(bar)
-        container.wantsLayer = true
-        window.contentView = container
-        window.backgroundColor = .clear
-        window.orderFrontRegardless()
-        view.updatePointer(screenPoint: overlay.mouse)
-        return (window, view, options)
+    /// ⌘⇧2 で範囲を選ぶ画面を出す
+    func openSelection(mode: CaptureMode) async -> SelectionScreen {
+        var selection: SelectionScreen!
+        await showKeys("⌘⇧2", hold: 0.5) {
+            selection = SelectionScreen(background: background, mode: mode, mouse: overlay.mouse)
+            overlay.cursor = .crosshair
+        }
+        return selection
     }
 
+    /// 範囲を選ぶ画面で、start から end までドラッグして選ぶ
+    func dragSelection(_ selection: SelectionScreen, from start: CGPoint, to end: CGPoint, seconds: Double) async -> CaptureTarget? {
+        overlay.cursor = .crosshair
+        await move(to: start, seconds: 0.4) { selection.movePointer(to: $0) }
+        var target: CaptureTarget?
+        selection.view.onSelect = { target = $0 }
+        selection.mouse(.leftMouseDown, at: start)
+        await move(to: end, seconds: seconds) { selection.mouse(.leftMouseDragged, at: $0) }
+        await snap(hold: 0.2)
+        selection.mouse(.leftMouseUp, at: end)
+        selection.close()
+        return target
+    }
+
+    // MARK: キャプチャ
+
     func makeCapture() async throws {
-        overlay = Overlay(mouse: Stage.point(560, 380))
+        try await setPage(PageState())
+        resetOverlay()
         await snap(hold: 0.8)
         await move(to: Stage.point(700, 230), seconds: 0.7)
 
-        // ⌘⇧2 で、範囲を選ぶ画面
-        overlay.keys = "⌘⇧2"
-        let selection = showSelection(mode: .region)
-        overlay.cursor = .crosshair
-        await snap(hold: 0.5)
-        overlay.keys = nil
-
-        // 表をドラッグで選ぶ
-        let start = Stage.point(690, 235)
-        let end = Stage.point(1084, 539)
-        await move(to: start, seconds: 0.4) { selection.view.updatePointer(screenPoint: $0) }
-        var target: CaptureTarget?
-        selection.view.onSelect = { target = $0 }
-        selection.view.mouseDown(with: mouseEvent(.leftMouseDown, at: start, in: selection.window))
-        await move(to: end, seconds: 1.0) { point in
-            selection.view.mouseDragged(with: mouseEvent(.leftMouseDragged, at: point, in: selection.window))
-        }
-        await snap(hold: 0.2)
-        selection.view.mouseUp(with: mouseEvent(.leftMouseUp, at: end, in: selection.window))
-        selection.window.orderOut(nil)
+        // ⌘⇧2 → 表をドラッグで選ぶ
+        let selection = await openSelection(mode: .region)
+        let target = await dragSelection(selection, from: Stage.point(690, 235), to: Stage.point(1084, 539), seconds: 1.0)
         guard case .region(_, let rect) = target else { throw ReadmeImagesError.captureFailed("no region") }
 
         // その場に浮かぶ
@@ -604,51 +674,67 @@ final class ReadmeImages {
         pin.canvas.showHUD("コピーしました")
         await snap(hold: 1.2)
 
-        // ドラッグで左へ動かす
+        // ドラッグで左上へ動かす
         overlay.cursor = .openHand
         let grab = CGPoint(x: rect.midX, y: rect.midY)
         await move(to: grab, seconds: 0.4)
         overlay.cursor = .closedHand
-        let offset = CGPoint(x: -360, y: 80)
-        let from = pin.panel.frame.origin
-        for (index, point) in path(from: .zero, to: offset, seconds: 0.9).enumerated() {
-            _ = index
-            pin.panel.setFrameOrigin(CGPoint(x: from.x + point.x, y: from.y + point.y))
-            overlay.mouse = CGPoint(x: grab.x + point.x, y: grab.y + point.y)
+        let origin = pin.panel.frame.origin
+        for offset in path(from: .zero, to: CGPoint(x: -360, y: 80), seconds: 0.9) {
+            pin.panel.setFrameOrigin(CGPoint(x: origin.x + offset.x, y: origin.y + offset.y))
+            overlay.mouse = CGPoint(x: grab.x + offset.x, y: grab.y + offset.y)
             await snap()
         }
         overlay.cursor = .openHand
         await snap(hold: 1.6)
         try flush("capture.gif")
-        currentPin = pin
+        self.pin = pin
     }
 
-    var currentPin: PinController?
+    /// 範囲 rect（スクリーン座標）を撮った画像を、その場に浮かせる（CaptureController と同じく、撮った画面から切り抜く）
+    func makePin(rect: CGRect) throws -> PinController {
+        guard let cropped = ScreenCapturer.crop(ScreenShot(screen: Stage.screen, image: background), to: rect) else {
+            throw ReadmeImagesError.captureFailed("crop")
+        }
+        let pin = PinController(image: cropped.image, imageSize: cropped.size, frame: rect)
+        pin.panel.contentView?.wantsLayer = true
+        pin.show()
+        return pin
+    }
 
     // MARK: 書き込み
 
     func makeEdit() async throws {
-        guard let pin = currentPin else { throw ReadmeImagesError.captureFailed("no pin") }
+        guard let pin else { throw ReadmeImagesError.captureFailed("no pin") }
         let window = pin.panel
         let canvas = pin.canvas
         // 画像の左上からの位置（ポイント）を、スクリーン座標にする
         func at(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
             CGPoint(x: window.frame.minX + x, y: window.frame.maxY - y)
         }
-        func down(_ point: CGPoint, clicks: Int = 1) { canvas.mouseDown(with: mouseEvent(.leftMouseDown, at: point, in: window, clickCount: clicks)) }
-        func drag(_ point: CGPoint) { canvas.mouseDragged(with: mouseEvent(.leftMouseDragged, at: point, in: window)) }
-        func up(_ point: CGPoint, clicks: Int = 1) { canvas.mouseUp(with: mouseEvent(.leftMouseUp, at: point, in: window, clickCount: clicks)) }
-        func press(_ key: String, _ code: UInt16) async {
-            overlay.keys = key.uppercased()
-            canvas.keyDown(with: keyEvent(key, keyCode: code, in: window))
-            await snap(hold: 0.45)
-            overlay.keys = nil
+        func send(_ type: NSEvent.EventType, _ point: CGPoint, clicks: Int = 1) {
+            let event = mouseEvent(type, at: point, in: window, clickCount: clicks)
+            switch type {
+            case .leftMouseDown: canvas.mouseDown(with: event)
+            case .leftMouseDragged: canvas.mouseDragged(with: event)
+            default: canvas.mouseUp(with: event)
+            }
+        }
+        func press(_ key: String, keyCode: UInt16) async {
+            await showKeys(key.uppercased(), hold: 0.45) { canvas.keyDown(with: keyEvent(key, keyCode: keyCode, in: window)) }
         }
         func click(_ point: CGPoint) async {
             await move(to: point, seconds: 0.35)
-            down(point)
-            up(point)
+            send(.leftMouseDown, point)
+            send(.leftMouseUp, point)
             await snap(hold: 0.25)
+        }
+        func drag(from start: CGPoint, to end: CGPoint, seconds: Double) async {
+            await move(to: start, seconds: 0.4)
+            send(.leftMouseDown, start)
+            await move(to: end, seconds: seconds) { send(.leftMouseDragged, $0) }
+            send(.leftMouseUp, end)
+            await snap(hold: 0.5)
         }
 
         overlay.cursor = .arrow
@@ -658,36 +744,29 @@ final class ReadmeImages {
         // ダブルクリックで編集モード
         let center = at(197, 160)
         await move(to: center, seconds: 0.4)
-        down(center); up(center)
-        down(center, clicks: 2); up(center, clicks: 2)
+        send(.leftMouseDown, center)
+        send(.leftMouseUp, center)
+        send(.leftMouseDown, center, clicks: 2)
+        send(.leftMouseUp, center, clicks: 2)
         await snap(hold: 0.9)
 
         // M: モザイクでメールアドレスを隠す
         overlay.cursor = .crosshair
-        await press("m", 46)
-        let mosaicStart = at(100, 66)
-        let mosaicEnd = at(244, 228)
-        await move(to: mosaicStart, seconds: 0.4)
-        down(mosaicStart)
-        await move(to: mosaicEnd, seconds: 0.7) { drag($0) }
-        up(mosaicEnd)
-        await snap(hold: 0.5)
+        await press("m", keyCode: 46)
+        await drag(from: at(100, 66), to: at(244, 228), seconds: 0.7)
 
         // N: Pro の行に番号
-        await press("n", 45)
+        await press("n", keyCode: 45)
         await click(at(352, 77))
         await click(at(352, 147))
         await snap(hold: 0.3)
 
-        // T: 文字
-        await press("t", 17)
+        // T: 文字（1 文字ずつ入れる）
+        await press("t", keyCode: 17)
         overlay.cursor = .iBeam
         await click(at(150, 6))
-        let text = "Pro プラン"
-        for index in text.indices {
-            if let field = window.firstResponder as? NSTextView {
-                field.insertText(String(text[index]), replacementRange: NSRange(location: NSNotFound, length: 0))
-            }
+        for character in "Pro プラン" {
+            (window.firstResponder as? NSTextView)?.insertText(String(character), replacementRange: NSRange(location: NSNotFound, length: 0))
             await snap(hold: 0.09)
         }
         canvas.commitPendingText()
@@ -695,25 +774,13 @@ final class ReadmeImages {
 
         // A: 矢印
         overlay.cursor = .crosshair
-        await press("a", 0)
-        let arrowStart = at(258, 28)
-        let arrowEnd = at(312, 70)
-        await move(to: arrowStart, seconds: 0.4)
-        down(arrowStart)
-        await move(to: arrowEnd, seconds: 0.5) { drag($0) }
-        up(arrowEnd)
-        await snap(hold: 0.5)
+        await press("a", keyCode: 0)
+        await drag(from: at(258, 28), to: at(312, 70), seconds: 0.5)
 
-        // ⌘C でコピー（クリップボードには入れず、知らせだけ出す）
+        // ⌘C でコピー（クリップボードには入れず、知らせだけ出す） → ⌘E で編集を終える
         overlay.cursor = .arrow
-        overlay.keys = "⌘C"
-        canvas.showHUD("コピーしました")
-        await snap(hold: 1.0)
-        // ⌘E で編集を終える
-        overlay.keys = "⌘E"
-        pin.setEditing(false)
-        await snap(hold: 0.6)
-        overlay.keys = nil
+        await showKeys("⌘C", hold: 1.0) { canvas.showHUD("コピーしました") }
+        await showKeys("⌘E", hold: 0.6) { pin.setEditing(false) }
         await snap(hold: 1.6)
         try flush("edit.gif")
     }
@@ -723,81 +790,48 @@ final class ReadmeImages {
     func makeRecord() async throws {
         var state = PageState()
         try await setPage(state)
-        overlay = Overlay(mouse: Stage.point(560, 380))
+        resetOverlay()
         await snap(hold: 0.8)
 
         // ⌘⇧2 → 下のバーの「録画」
-        overlay.keys = "⌘⇧2"
-        let selection = showSelection(mode: .region)
-        overlay.cursor = .crosshair
-        await snap(hold: 0.5)
-        overlay.keys = nil
-        guard let bar = selection.window.contentView?.subviews.last else { throw ReadmeImagesError.captureFailed("no bar") }
-        // 「録画」のボタンは、バーの横の真ん中あたり（上から 4 割）
-        let barFrame = selection.window.convertToScreen(bar.convert(bar.bounds, to: nil))
-        let recordButton = CGPoint(x: barFrame.minX + barFrame.width * 0.5, y: barFrame.maxY - barFrame.height * 0.39)
+        let selection = await openSelection(mode: .region)
         overlay.cursor = .arrow
-        await move(to: recordButton, seconds: 0.6) { selection.view.updatePointer(screenPoint: $0) }
+        await move(to: selection.recordButton, seconds: 0.6) { selection.movePointer(to: $0) }
         overlay.cursor = .pointingHand
         await snap(hold: 0.2)
         selection.options.mode = .record
         await snap(hold: 0.6)
 
         // グラフの範囲をドラッグ
-        overlay.cursor = .crosshair
-        let start = Stage.point(22, 241)
-        let end = Stage.point(678, 593)
-        await move(to: start, seconds: 0.5) { selection.view.updatePointer(screenPoint: $0) }
-        var target: CaptureTarget?
-        selection.view.onSelect = { target = $0 }
-        selection.view.mouseDown(with: mouseEvent(.leftMouseDown, at: start, in: selection.window))
-        await move(to: end, seconds: 0.9) { point in
-            selection.view.mouseDragged(with: mouseEvent(.leftMouseDragged, at: point, in: selection.window))
-        }
-        selection.view.mouseUp(with: mouseEvent(.leftMouseUp, at: end, in: selection.window))
-        selection.window.orderOut(nil)
+        let target = await dragSelection(selection, from: Stage.point(22, 241), to: Stage.point(678, 593), seconds: 0.9)
         guard case .record(_, let rect) = target else { throw ReadmeImagesError.captureFailed("no record target") }
 
-        // 録画中: 赤い点線の枠と操作パネル（RecordingController と同じ並び）
-        let outline = CaptureOutline.show(around: rect)
-        let model = RecordingPanelModel()
-        let hosting = FirstMouseHostingView(rootView: RecordingPanelView(model: model))
-        let size = hosting.fittingSize
-        let candidates = [
-            NSPoint(x: rect.midX - size.width / 2, y: rect.minY - 12 - size.height),
-            NSPoint(x: rect.midX - size.width / 2, y: rect.maxY + 12),
-        ]
-        let origin = ScreenGeometry.firstFittingOrigin(candidates, size: size, in: Stage.screen.visibleFrame)
-        let panel = OverlayPanel(contentRect: NSRect(origin: origin, size: size), level: .statusBar)
-        hosting.frame = NSRect(origin: .zero, size: size)
-        panel.contentView = hosting
-        panel.orderFrontRegardless()
-
-        // 録画した中身（枠と操作パネルは写さない。カーソルは写る）
-        var recorded: [(image: CGImage, time: Double)] = []
-        var elapsed: Double = 0
-        let step = 1 / framesPerSecond
+        // 録画中。録画した中身（枠と操作パネルは写さない。カーソルは写る）も、コマごとに残す
+        let chrome = RecordingChrome(around: rect)
+        var recorded: [RecordedFrame] = []
         overlay.cursor = .arrow
         func tick() async throws {
-            elapsed += step
-            model.elapsed = elapsed
-            if elapsed > 0.35 { model.isReady = true }
+            chrome.model.elapsed += frameDuration
+            if chrome.model.elapsed > 0.35 { chrome.model.isReady = true }
             try await setPage(state)
-            if model.isReady, let image = compositor.frame(background: background, overlay: overlay, includesWindows: false, area: rect) {
-                recorded.append((image, recorded.last.map { $0.time + step } ?? 0))
+            if chrome.model.isReady, let image = compositor.frame(background: background, overlay: overlay, includesWindows: false, area: rect) {
+                recorded.append(RecordedFrame(image: image, time: Double(recorded.count) * frameDuration))
             }
             await snap()
         }
-        for _ in 0..<8 { try await tick() }
-
-        // 「レポートを作成」を押す
-        let button = Stage.point(107, 524)
-        for point in path(from: overlay.mouse, to: button, seconds: 0.6) {
-            overlay.mouse = point
+        /// 録画しながら、カーソルを target へ動かして押す
+        func pressWhileRecording(_ target: CGPoint, seconds: Double) async throws {
+            for point in path(from: overlay.mouse, to: target, seconds: seconds) {
+                overlay.mouse = point
+                try await tick()
+            }
+            overlay.cursor = .pointingHand
             try await tick()
         }
-        overlay.cursor = .pointingHand
-        try await tick()
+        for _ in 0..<8 { try await tick() }
+
+        // 「レポートを作成」を押すと、進み具合が伸びて「できました」になる
+        try await pressWhileRecording(Stage.point(107, 524), seconds: 0.6)
         state.status = "running"
         let runFrames = Int(2.6 * framesPerSecond)
         for index in 0...runFrames {
@@ -811,49 +845,38 @@ final class ReadmeImages {
         for _ in 0..<10 { try await tick() }
 
         // 操作パネルの「停止」
-        let stopButton = CGPoint(x: panel.frame.minX + panel.frame.width * 0.57, y: panel.frame.midY)
-        for point in path(from: overlay.mouse, to: stopButton, seconds: 0.6) {
-            overlay.mouse = point
-            try await tick()
-        }
-        overlay.cursor = .pointingHand
-        try await tick()
-        outline.orderOut(nil)
-        panel.orderOut(nil)
+        try await pressWhileRecording(chrome.stopButton, seconds: 0.6)
+        chrome.close()
 
         // 止めると、録画がその場に浮かんで再生される
+        try await showPlayer(recorded, around: rect)
+        try flush("record.gif")
+    }
+
+    /// 録画した中身を浮かせて、再生しているところを seconds 秒見せる（RecordingPlayer を使う）
+    func showPlayer(_ recorded: [RecordedFrame], around rect: CGRect, seconds: Double = 3.2) async throws {
         let movie = FileManager.default.temporaryDirectory.appendingPathComponent("Pinshot-README-recording.mov")
         try await writeMovie(recorded, size: rect.size, to: movie)
         RecordingPlayer.show(url: movie, pointSize: rect.size, around: rect, on: Stage.screen)
         await settle(300)
-        let player = NSApp.windows.first { $0.isVisible && $0.contentView.map { findPlayerView(in: $0) != nil } == true }
-        var playhead: Double = 0
+        guard let player = NSApp.windows.first(where: { $0.isVisible && $0.contentView.flatMap(findPlayerView) != nil }),
+              let video = player.contentView.flatMap(findPlayerView), !recorded.isEmpty else {
+            throw ReadmeImagesError.captureFailed("no player")
+        }
+        var playhead = 0
+        // 動画のビューは描き写すと黒くなるので、その範囲を録画した中身で覆う
         compositor.afterWindows = { context, area in
-            guard let player, let content = player.contentView, let video = findPlayerView(in: content), !recorded.isEmpty else { return }
             let frame = player.convertToScreen(video.convert(video.bounds, to: nil)).offsetBy(dx: -area.minX, dy: -area.minY)
-            let index = Int(playhead * framesPerSecond) % recorded.count
-            // 動画のビューは描き写すと黒くなるので、その範囲を録画した中身で覆う
-            context.draw(recorded[index].image, in: frame.insetBy(dx: -0.5, dy: -0.5))
+            context.draw(recorded[playhead % recorded.count].image, in: frame.insetBy(dx: -0.5, dy: -0.5))
         }
         overlay.cursor = .arrow
         overlay.mouse = CGPoint(x: overlay.mouse.x + 40, y: overlay.mouse.y - 60)
-        for _ in 0..<Int(3.2 * framesPerSecond) {
-            playhead += step
+        for _ in 0..<Int(seconds * framesPerSecond) {
+            playhead += 1
             await snap()
         }
         compositor.afterWindows = nil
-        player?.close()
-        try flush("record.gif")
-    }
-
-    /// 範囲 rect（スクリーン座標）を撮った画像を、その場に浮かせる（CaptureController と同じく、撮った画面から切り抜く）
-    func makePin(rect: CGRect) throws -> PinController {
-        let shot = ScreenShot(screen: Stage.screen, image: background)
-        guard let cropped = ScreenCapturer.crop(shot, to: rect) else { throw ReadmeImagesError.captureFailed("crop") }
-        let pin = PinController(image: cropped.image, imageSize: cropped.size, frame: rect)
-        pin.panel.contentView?.wantsLayer = true
-        pin.show()
-        return pin
+        player.close()
     }
 }
 
