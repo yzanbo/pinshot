@@ -35,6 +35,12 @@
 3. **書き出す**：`⌘C` でコピー、`⌘S` で保存します。`⌥` を押しながらドラッグすると、ほかのアプリや Finder に直接ドロップできます。ツールバーの「背景」で、余白・背景・角丸・影を付けた見た目にもできます
 4. **録画する**：`⌘⇧2` のあと、画面の下のバーで「録画」を選んで範囲をドラッグします。止めると録画がその場に浮かんで再生され、MP4 か GIF で保存できます
 
+   <p align="center">
+     <img src="docs/images/record.gif" width="800" alt="下のバーで録画を選んでグラフの範囲をドラッグし、赤い点線の枠と操作パネルが出ている間にページを操作して、停止すると録画がその場に浮かんで再生される様子">
+   </p>
+
+> この節の動きは、Pinshot と同じ部品を実際に動かし、見本の画面の上に描き写して作っています（`make readme-images` で作り直せます）。
+
 ## できること
 
 - **キャプチャ**：範囲・ウィンドウ・画面全体・タイマー。グローバルショートカット（初期設定は `⌘⇧2`）で始められます
@@ -114,6 +120,7 @@ make uninstall
 | `make stop` | 動いている Pinshot を終了する |
 | `make generate` | `Pinshot.xcodeproj` を作るだけ（Xcode で開くとき） |
 | `make icon` | アプリのアイコンを描き直す（`scripts/make-app-icon.swift` を変えたとき） |
+| `make readme-images` | README の動き（`docs/images` の GIF）を作り直す（`scripts/readme-images/main.swift`。見た目・動きを変えたとき。作っている間、画面に Pinshot の部品が少しのあいだ出る） |
 
 `Pinshot.xcodeproj` は `project.yml` から作るため、リポジトリには入れていません。
 

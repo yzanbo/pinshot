@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Hikari Analytics</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, "Hiragino Sans", sans-serif;
+    background: #f4f6fb; color: #1d2433; overflow: hidden;
+  }
+  header {
+    height: 52px; background: #fff; border-bottom: 1px solid #e3e7ef;
+    display: flex; align-items: center; padding: 0 24px; gap: 28px;
+  }
+  .logo { font-weight: 800; font-size: 17px; color: #3b5bdb; letter-spacing: .02em; }
+  nav a { font-size: 14px; color: #6b7385; margin-right: 20px; text-decoration: none; }
+  nav a.on { color: #1d2433; font-weight: 700; }
+  main { display: grid; grid-template-columns: 1fr 380px; gap: 20px; padding: 22px 24px; }
+  .card { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(20,30,60,.08); padding: 18px 20px; }
+  h2 { font-size: 15px; margin-bottom: 14px; }
+  .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
+  .kpi .label { font-size: 12px; color: #6b7385; }
+  .kpi .value { font-size: 28px; font-weight: 800; margin-top: 4px; }
+  .kpi .delta { font-size: 12px; font-weight: 700; margin-top: 2px; }
+  .up { color: #2f9e44; } .down { color: #e03131; }
+  .chart { display: flex; align-items: flex-end; gap: 14px; height: 190px; padding-top: 10px; border-bottom: 1px solid #e3e7ef; }
+  .bar { flex: 1; border-radius: 6px 6px 0 0; background: linear-gradient(#748ffc, #4c6ef5); position: relative; }
+  .bar.hi { background: linear-gradient(#ff8787, #f03e3e); }
+  .bar span { position: absolute; top: -20px; left: 0; right: 0; text-align: center; font-size: 11px; color: #6b7385; }
+  .xlabels { display: flex; gap: 14px; margin-top: 6px; }
+  .xlabels div { flex: 1; text-align: center; font-size: 11px; color: #8a92a3; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; font-size: 11px; color: #8a92a3; font-weight: 600; padding: 0 0 8px; }
+  td { padding: 9px 0; border-top: 1px solid #eef1f6; }
+  td.mail { color: #6b7385; font-size: 12px; }
+  .plan { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; background: #edf2ff; color: #3b5bdb; }
+  .plan.pro { background: #fff4e6; color: #e8590c; }
+  .report { margin-top: 20px; display: flex; align-items: center; gap: 16px; }
+  button {
+    font: inherit; font-size: 14px; font-weight: 700; color: #fff; background: #3b5bdb;
+    border: 0; border-radius: 8px; padding: 10px 18px; cursor: pointer;
+  }
+  .progress { flex: 1; height: 10px; border-radius: 5px; background: #e9ecf3; overflow: hidden; }
+  .progress div { height: 100%; width: 0; background: linear-gradient(90deg, #4c6ef5, #15aabf);  }
+  .status { font-size: 13px; color: #6b7385; width: 150px; }
+  .done { color: #2f9e44; font-weight: 700; }
+  .live { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #6b7385; margin-bottom: 10px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #2f9e44; }
+  .visitors { font-size: 34px; font-weight: 800; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">◆ Hikari Analytics</div>
+  <nav><a class="on">ダッシュボード</a><a>レポート</a><a>メンバー</a><a>設定</a></nav>
+</header>
+<main>
+  <section>
+    <div class="kpis">
+      <div class="card kpi"><div class="label">今週の訪問数</div><div class="value">12,480</div><div class="delta up">▲ 8.2%</div></div>
+      <div class="card kpi"><div class="label">新しい登録</div><div class="value">1,204</div><div class="delta up">▲ 3.5%</div></div>
+      <div class="card kpi"><div class="label">解約率</div><div class="value">2.1%</div><div class="delta down">▲ 0.4pt</div></div>
+    </div>
+    <div class="card">
+      <h2>曜日ごとの訪問数</h2>
+      <div class="chart">
+        <div class="bar" style="height:52%"><span>1,420</span></div>
+        <div class="bar" style="height:61%"><span>1,690</span></div>
+        <div class="bar" style="height:58%"><span>1,610</span></div>
+        <div class="bar hi" style="height:92%"><span>2,540</span></div>
+        <div class="bar" style="height:66%"><span>1,830</span></div>
+        <div class="bar" style="height:40%"><span>1,110</span></div>
+        <div class="bar" style="height:36%"><span>990</span></div>
+      </div>
+      <div class="xlabels"><div>月</div><div>火</div><div>水</div><div>木</div><div>金</div><div>土</div><div>日</div></div>
+      <div class="report">
+        <button id="make">レポートを作成</button>
+        <div class="progress"><div id="bar"></div></div>
+        <div class="status" id="status">待機中</div>
+      </div>
+    </div>
+  </section>
+  <aside>
+    <div class="card" style="margin-bottom:20px">
+      <div class="live"><div class="dot"></div>いま見ている人</div>
+      <div class="visitors" id="visitors">128</div>
+    </div>
+    <div class="card">
+      <h2>最近の申し込み</h2>
+      <table>
+        <tr><th>名前</th><th>メール</th><th>プラン</th></tr>
+        <tr><td>佐藤 美咲</td><td class="mail">misaki@example.com</td><td><span class="plan pro">Pro</span></td></tr>
+        <tr><td>鈴木 大輔</td><td class="mail">daisuke@example.com</td><td><span class="plan">Free</span></td></tr>
+        <tr><td>高橋 結衣</td><td class="mail">yui.t@example.com</td><td><span class="plan pro">Pro</span></td></tr>
+        <tr><td>田中 翔太</td><td class="mail">shota@example.com</td><td><span class="plan">Free</span></td></tr>
+        <tr><td>伊藤 陽菜</td><td class="mail">hina.i@example.com</td><td><span class="plan">Free</span></td></tr>
+      </table>
+    </div>
+  </aside>
+</main>
+<script>
+  // 見本の画面の状態を変える（README の画像を作るプログラムが、コマごとに呼ぶ）
+  // progress: 0〜1（レポートの進み具合）, status: 'idle' | 'running' | 'done', visitors: いま見ている人の数
+  function setState(state) {
+    document.getElementById('bar').style.width = (state.progress * 100) + '%';
+    const status = document.getElementById('status');
+    status.textContent = { idle: '待機中', running: '作成中…', done: '✓ できました' }[state.status];
+    status.className = state.status === 'done' ? 'status done' : 'status';
+    document.getElementById('visitors').textContent = state.visitors;
+  }
+</script>
+</body>
+</html>

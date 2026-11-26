@@ -231,7 +231,8 @@ final class RecordingPanelModel: ObservableObject {
 }
 
 /// 録画中の操作パネル（● 経過時間・停止・やめる）
-private struct RecordingPanelView: View {
+/// 録画中の操作パネルの中身（README の画像を作るプログラムも使う）
+struct RecordingPanelView: View {
     @ObservedObject var model: RecordingPanelModel
 
     private var remaining: TimeInterval { RecordingRules.maxDuration - model.elapsed }
