@@ -62,6 +62,12 @@ enum Stage {
     static func point(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
         CGPoint(x: frame.minX + x, y: frame.maxY - y)
     }
+
+    /// 部品をドラッグで囲むときの、始めと終わりの点（部品の外側に margin の余白をとる。スクリーン座標）
+    static func dragPoints(around element: CGRect, margin: CGFloat = 6) -> (start: CGPoint, end: CGPoint) {
+        let area = element.insetBy(dx: -margin, dy: -margin)
+        return (point(area.minX, area.minY), point(area.maxX, area.maxY))
+    }
 }
 
 // MARK: - 見本のページ（WebKit で描く）
@@ -114,6 +120,16 @@ final class SamplePage: NSObject, WKNavigationDelegate {
     private func finishLoading(_ error: Error?) {
         if let error { loaded?.resume(throwing: error) } else { loaded?.resume() }
         loaded = nil
+    }
+
+    /// ページの中の id の部品の範囲（見本の窓の左上からの位置。ポイント。上の帯の分を足す）。
+    /// ドラッグする範囲・押す場所を、決め打ちの座標ではなくページから測る（ページの見た目を変えても、ずれないように）
+    func frame(ofElement id: String) async throws -> CGRect {
+        let script = "(() => { const r = document.getElementById('\(id)').getBoundingClientRect(); return [r.left, r.top, r.width, r.height]; })()"
+        guard let values = try await webView.evaluateJavaScript(script) as? [Double], values.count == 4 else {
+            throw ReadmeImagesError.pageFailed("no element #\(id)")
+        }
+        return CGRect(x: values[0], y: values[1] + Stage.titleBarHeight, width: values[2], height: values[3])
     }
 
     /// state のときのページを、renderScale 倍の画像にする（同じ状態は使い回す）
@@ -661,11 +677,11 @@ final class ReadmeImages {
         try await setPage(PageState())
         resetOverlay()
         await snap(hold: 0.8)
-        await move(to: Stage.point(700, 230), seconds: 0.7)
-
-        // ⌘⇧2 → 表をドラッグで選ぶ
+        // ⌘⇧2 → 表（最近の申し込み）をドラッグで選ぶ。囲む範囲は、ページの部品の位置から測る
+        let table = Stage.dragPoints(around: try await page.frame(ofElement: "signups"))
+        await move(to: CGPoint(x: table.start.x + 10, y: table.start.y + 5), seconds: 0.7)
         let selection = await openSelection(mode: .region)
-        let target = await dragSelection(selection, from: Stage.point(690, 235), to: Stage.point(1084, 539), seconds: 1.0)
+        let target = await dragSelection(selection, from: table.start, to: table.end, seconds: 1.0)
         guard case .region(_, let rect) = target else { throw ReadmeImagesError.captureFailed("no region") }
 
         // その場に浮かぶ
@@ -802,8 +818,10 @@ final class ReadmeImages {
         selection.options.mode = .record
         await snap(hold: 0.6)
 
-        // グラフの範囲をドラッグ
-        let target = await dragSelection(selection, from: Stage.point(22, 241), to: Stage.point(678, 593), seconds: 0.9)
+        // グラフ（曜日ごとの訪問数）の範囲をドラッグ。囲む範囲・押すボタンは、ページの部品の位置から測る
+        let chart = Stage.dragPoints(around: try await page.frame(ofElement: "chart"))
+        let makeButton = try await page.frame(ofElement: "make")
+        let target = await dragSelection(selection, from: chart.start, to: chart.end, seconds: 0.9)
         guard case .record(_, let rect) = target else { throw ReadmeImagesError.captureFailed("no record target") }
 
         // 録画中。録画した中身（枠と操作パネルは写さない。カーソルは写る）も、コマごとに残す
@@ -831,7 +849,7 @@ final class ReadmeImages {
         for _ in 0..<8 { try await tick() }
 
         // 「レポートを作成」を押すと、進み具合が伸びて「できました」になる
-        try await pressWhileRecording(Stage.point(107, 524), seconds: 0.6)
+        try await pressWhileRecording(Stage.point(makeButton.midX, makeButton.midY), seconds: 0.6)
         state.status = "running"
         let runFrames = Int(2.6 * framesPerSecond)
         for index in 0...runFrames {
