@@ -229,7 +229,7 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(notifiesUploads, forKey: Key.notifiesUploads) }
     }
 
-    /// 撮ったらすぐクリップボードにもコピーする
+    /// 撮ったらすぐクリップボードにもコピーする（録画は、止めたときに録画のファイルをコピーする）
     @Published var copyAfterCapture: Bool {
         didSet { defaults.set(copyAfterCapture, forKey: Key.copyAfterCapture) }
     }

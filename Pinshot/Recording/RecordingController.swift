@@ -133,7 +133,7 @@ final class RecordingController {
             do {
                 let url = try await recorder.stop()
                 RecordingStore.shared.didAdd()
-                RecordingPlayer.show(url: url, pointSize: rect.size, around: rect, on: screen)
+                RecordingPlayer.show(url: url, pointSize: rect.size, around: rect, on: screen, copiesToClipboard: AppSettings.shared.copyAfterCapture)
             } catch {
                 AppAlert.inform("録画を保存できませんでした", detail: error.localizedDescription)
             }

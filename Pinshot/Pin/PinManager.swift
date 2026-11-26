@@ -45,7 +45,7 @@ final class PinManager {
         // 履歴の印を付けておく（あとで履歴から同じ画像を浮かせたときに、増やさずこの画像を前に出す）
         let historyID = CaptureHistory.shared.add(image: image, pointSize: imageSize)
         let controller = show(image: image, imageSize: imageSize, frame: frame, zoom: zoom, origin: historyID.map(PinOrigin.captureHistory))
-        // 設定の「撮ったら、クリップボードにもコピーする」（初期設定はオフ）。
+        // 設定の「撮ったら（録画は止めたら）、クリップボードにもコピーする」（初期設定はオフ）。
         // 撮ったときだけ（履歴・クリップボードから浮かせたときは、クリップボードを上書きしない）
         if AppSettings.shared.copyAfterCapture {
             ImageExporter.writeToPasteboard(image, pointSize: imageSize)

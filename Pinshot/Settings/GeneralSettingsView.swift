@@ -21,7 +21,7 @@ struct GeneralSettingsView: View {
                     SettingTitle("範囲を選ぶ画面", info: "シンプル：画面はそのままで、カーソルの横に座標を出します。\nくわしく：画面を暗くして、ルーペと十字線を出します。1 ピクセル単位で合わせたいときに。")
                 }
                 .pickerStyle(.segmented)
-                Toggle("撮ったら、クリップボードにもコピーする", isOn: $settings.copyAfterCapture)
+                Toggle("撮ったら（録画は止めたら）、クリップボードにもコピーする", isOn: $settings.copyAfterCapture)
             }
             Section {
                 PermissionRow(

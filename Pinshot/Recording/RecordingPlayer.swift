@@ -23,11 +23,13 @@ final class RecordingPlayer: NSObject, NSWindowDelegate {
     private let panel: OverlayPanel
     private let model: RecordingPlayerModel
 
-    /// url の録画を、録画した範囲 around のあたりに浮かせる（大きいときは画面の 7 割に縮める）
-    static func show(url: URL, pointSize: CGSize, around rect: NSRect, on screen: NSScreen?) {
+    /// url の録画を、録画した範囲 around のあたりに浮かせる（大きいときは画面の 7 割に縮める）。
+    /// copiesToClipboard なら、録画のファイルをクリップボードにも入れる（設定の「撮ったら（録画は止めたら）、クリップボードにもコピーする」）
+    static func show(url: URL, pointSize: CGSize, around rect: NSRect, on screen: NSScreen?, copiesToClipboard: Bool = false) {
         let player = RecordingPlayer(url: url, pointSize: pointSize, around: rect, on: screen)
         players.append(player)
         player.panel.makeKeyAndOrderFront(nil)
+        if copiesToClipboard { player.model.copy() }
     }
 
     private init(url: URL, pointSize: CGSize, around rect: NSRect, on screen: NSScreen?) {
@@ -227,6 +229,34 @@ final class RecordingPlayerModel: ObservableObject {
         NSWorkspace.shared.activateFileViewerSelecting([url])
     }
 
+    /// 右クリックのメニュー（操作バーと同じ操作を、同じまとまりで並べる）
+    func makeContextMenu() -> NSMenu {
+        let symbol = MenuEntry.symbol
+        let audioEntry: MenuEntry = hasAudio
+            ? .item(title: isMuted ? "音を出す" : "音を消す", image: symbol(isMuted ? "speaker.wave.2" : "speaker.slash")) { [weak self] in self?.toggleMute() }
+            : .disabled(title: "この録画には音が入っていません")
+        let uploadTitle = "GIF にして \(UploadDestinations.current?.id.label ?? "上げる先") に上げ、リンクをコピー"
+        return PopupMenu.makeMenu([
+            .item(title: isPlaying ? "一時停止" : "再生", image: symbol(isPlaying ? "pause" : "play")) { [weak self] in self?.togglePlay() },
+            audioEntry,
+            .separator,
+            .header("コピー"),
+            .item(title: "コピー（ファイルとして貼り付けられる）", image: symbol("doc.on.doc")) { [weak self] in self?.copy() },
+            isUploading
+                ? .disabled(title: "\(uploadTitle)（上げています）")
+                : .item(title: uploadTitle, image: symbol("link")) { [weak self] in self?.uploadGIF() },
+            .separator,
+            .header("保存"),
+            .item(title: "MP4 で保存…", image: symbol("square.and.arrow.down")) { [weak self] in self?.saveMovie() },
+            gifProgress == nil
+                ? .item(title: "GIF で保存…", image: symbol("photo.on.rectangle")) { [weak self] in self?.saveGIF() }
+                : .disabled(title: "GIF で保存…（作っています）"),
+            .item(title: "Finder で表示", image: symbol("folder")) { [weak self] in self?.revealInFinder() },
+            .separator,
+            .item(title: "閉じる", image: symbol("xmark")) { [weak self] in self?.close() },
+        ])
+    }
+
     /// 短い知らせを出す（sticky なら、次の知らせを出すまで消さない。上げている途中など）
     private func show(_ text: String, sticky: Bool = false) {
         notice = text
@@ -269,7 +299,7 @@ private struct RecordingPlayerView: View {
             // 浮かせた画像と同じく、動画にだけ影を付ける（操作バーには付けない）
             .shadow(color: .black.opacity(0.35), radius: 6, y: 2)
             // 動画の上をドラッグすると、窓ごと動く（動画の部品がマウスを受け取ってしまうため、上に重ねる）
-            .overlay(WindowDragArea().hoverRole(.movable))
+            .overlay(dragArea.hoverRole(.movable))
             .overlay(Rectangle().strokeBorder(Color.white.opacity(model.isHoveringVideo ? 0.8 : 0), lineWidth: 1))
             .overlay { noticeView }
             .overlay(alignment: .topLeading) {
@@ -326,15 +356,20 @@ private struct RecordingPlayerView: View {
         }
         .quickActionBarBackground()
         // 台の何もない所（縁まで）をドラッグしても、窓ごと動く（ボタン・つまみは、その上で押せる）
-        .background(WindowDragArea().clipShape(Capsule()).hoverRole(.movable))
+        .background(dragArea.clipShape(Capsule()).hoverRole(.movable))
     }
 
     /// 動かすつまみ ✙（浮かせた画像の操作バーと同じく、左端に置く）。動画の上・バーの何もない所をドラッグしても動く
     private var moveHandle: some View {
         QuickActionMoveIcon()
-            .overlay(WindowDragArea())
+            .overlay(dragArea)
             .hoverHint("ドラッグで録画の窓を移動（動画の上やバーの何もない所をドラッグしても動く）")
             .hoverRole(.movable)
+    }
+
+    /// ドラッグで窓ごと動かす部品（動画の上・バーの何もない所・✙ に重ねる）。右クリックで、操作バーと同じ操作のメニューを出す
+    private var dragArea: WindowDragArea {
+        WindowDragArea(menu: { model.makeContextMenu() })
     }
 
     /// 音を出す・消す（音の入っていない録画では押せない。録画ごとにバーの幅が変わらないよう、いつも出しておく）

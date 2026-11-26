@@ -32,12 +32,29 @@ extension View {
 /// ドラッグすると、置いたウィンドウごと動かせる所（SwiftUI の部品の上では、ウィンドウの背景のドラッグで動かす設定が効かないため）。
 /// 乗せると手のカーソル、動かしている間はつかんだ手にする
 struct WindowDragArea: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSView { DragView() }
-    func updateNSView(_ nsView: NSView, context: Context) {}
+    /// 右クリックで出すメニュー（nil なら出さない）
+    var menu: (@MainActor () -> NSMenu?)?
+
+    func makeNSView(context: Context) -> NSView {
+        let view = DragView()
+        view.makeMenu = menu
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        (nsView as? DragView)?.makeMenu = menu
+    }
 
     private final class DragView: NSView {
+        var makeMenu: (@MainActor () -> NSMenu?)?
+
         // 前に出ていない窓でも、1 回のドラッグで動かせるようにする
         override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+        // 右クリック（control + クリック）で出すメニュー。NSView の rightMouseDown がこれを開く
+        override func menu(for event: NSEvent) -> NSMenu? {
+            MainActor.assumeIsolated { makeMenu?() }
+        }
 
         override func mouseDown(with event: NSEvent) {
             HoverRole.movable.draggingCursor.set()
