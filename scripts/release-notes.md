@@ -8,10 +8,10 @@
 3. 初めてキャプチャするときに「画面収録」の許可を求められます。システム設定で Pinshot をオンにして、Pinshot を開き直してください
    - 録画にマイクの音を入れるときは、初めてのときに「マイク」の許可も求められます（使わなければ不要です）
 
-新しい版に入れ替えたときは、画面収録の許可を取り直す必要があります（システム設定の一覧で古い Pinshot を「−」で消してから、もう一度許可してください）。
+入れたあとは、アプリの中から新しい版に更新できます（メニューバーのアイコン →「アップデートを確認…」。自動でも確かめます）。更新のときは、手順 2 も、許可の取り直しも要りません。0.4.1 までの版から上げるときだけ、もう一度ここからダウンロードして入れ替え、画面収録の許可を取り直してください（システム設定の一覧で古い Pinshot を「−」で消してから、もう一度許可します）。
 
 ソースからビルドする方法は [README](https://github.com/yzanbo/pinshot#readme) を見てください。
 
 ---
 
-**English:** Download the dmg (or zip), drag `Pinshot.app` to Applications, then allow it in System Settings → Privacy & Security ("Open Anyway"), or run `xattr -dr com.apple.quarantine /Applications/Pinshot.app`. The app is ad-hoc signed and not notarized. You will need to grant Screen Recording permission again after each update.
+**English:** Download the dmg (or zip), drag `Pinshot.app` to Applications, then allow it in System Settings → Privacy & Security ("Open Anyway"), or run `xattr -dr com.apple.quarantine /Applications/Pinshot.app`. The app is signed with the author's self-signed certificate and is not notarized. Once installed, it updates itself from the menu bar ("アップデートを確認…") and keeps its permissions across updates; when coming from 0.4.1 or earlier, install manually once more and grant Screen Recording permission again.
