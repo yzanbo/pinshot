@@ -47,7 +47,8 @@ enum ReadmeImagesError: Error, CustomStringConvertible {
 /// 見本の窓（ブラウザの窓に見立てる）を置く、画面の範囲。GIF はこの範囲を切り出す
 @MainActor
 enum Stage {
-    static let size = CGSize(width: 1100, height: 720)
+    /// Pinstage の README の絵と同じ大きさ（GIF は 980 × 700、hero.png は 2 倍の 1960 × 1400）。README では幅 800 で見せる
+    static let size = CGSize(width: 980, height: 700)
     /// 窓の上の帯（タイトルバー）の高さ
     static let titleBarHeight: CGFloat = 28
 
